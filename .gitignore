@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+target/
+build/
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Documentation files (optional - uncomment if you don't want these in repo)
+# *.docx
+# *.html
+
+# OpenClaw internal
+.openclaw/
+.clawdhub/
+
+# Memory and session files
+memory/
