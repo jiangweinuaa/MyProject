@@ -10,7 +10,14 @@ const request = axios.create({
 // 请求拦截器
 request.interceptors.request.use(
   config => {
-    // 可以在这里添加 token 等
+    // 自动添加 token（从 localStorage 读取）
+    const token = localStorage.getItem('token') || ''
+    
+    // 如果请求体中有 sign 对象，统一添加 token
+    if (config.data && config.data.sign) {
+      config.data.sign.token = token
+    }
+    
     return config
   },
   error => {

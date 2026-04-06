@@ -14,7 +14,8 @@ export function getSalesAnalysis(params) {
       request: params,
       sign: {
         key: 'digiwin',
-        sign: ''
+        sign: '',
+        token: ''
       }
     }
   })
@@ -34,7 +35,8 @@ export function getSalesTrend(params) {
       request: params,
       sign: {
         key: 'digiwin',
-        sign: ''
+        sign: '',
+        token: ''
       }
     }
   })
@@ -54,7 +56,8 @@ export function getProductRanking(params) {
       request: params,
       sign: {
         key: 'digiwin',
-        sign: ''
+        sign: '',
+        token: ''
       }
     }
   })
