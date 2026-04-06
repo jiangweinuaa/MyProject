@@ -1,0 +1,17 @@
+[Unit]
+Description=REPORT Backend Service
+After=network.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin/.openclaw/workspace/REPORT
+ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar target/report-service-1.0.0-SNAPSHOT.jar
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/admin/.openclaw/workspace/REPORT/logs/app.log
+StandardError=append:/home/admin/.openclaw/workspace/REPORT/logs/app.log
+Environment=JAVA_HOME=/usr/lib/jvm/java-17
+
+[Install]
+WantedBy=multi-user.target

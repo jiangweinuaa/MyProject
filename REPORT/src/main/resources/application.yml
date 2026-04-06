@@ -1,0 +1,48 @@
+# REPORT 服务配置文件
+server:
+  port: 8110
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: report-service
+  
+  # 数据源配置 (Oracle 11)
+  datasource:
+    url: jdbc:oracle:thin:@//47.99.153.144:1521/posdb
+    username: pos
+    password: pos_2020
+    driver-class-name: oracle.jdbc.OracleDriver
+    # HikariCP 连接池配置
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 30000
+      connection-timeout: 30000
+      max-lifetime: 1800000
+      pool-name: ReportHikariCP
+  
+  # JSON 配置
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    serialization:
+      write-dates-as-timestamps: false
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.report: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+
+# 自定义配置
+report:
+  # 默认签名密钥 (生产环境请修改)
+  default-key: digiwin
+  # 签名验证开关
+  sign-verify: false
+  # 服务超时 (毫秒)
+  timeout: 30000
