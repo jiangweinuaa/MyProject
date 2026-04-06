@@ -352,7 +352,7 @@ public class ReportServiceImpl implements ReportService {
 
             // 计算汇总数据
             double totalAmount = 0;
-            int totalQty = 0;
+            double totalQty = 0;
             
             for (Map<String, Object> row : resultList) {
                 Object amountObj = row.get("AMOUNT");
@@ -361,7 +361,7 @@ public class ReportServiceImpl implements ReportService {
                 }
                 Object qtyObj = row.get("QTY");
                 if (qtyObj != null) {
-                    totalQty += Integer.parseInt(qtyObj.toString());
+                    totalQty += Double.parseDouble(qtyObj.toString());
                 }
             }
 
