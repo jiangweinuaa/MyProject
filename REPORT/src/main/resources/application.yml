@@ -10,9 +10,9 @@ spring:
   
   # 数据源配置 (Oracle 11)
   datasource:
-    url: jdbc:oracle:thin:@//47.99.153.144:1521/posdb
-    username: pos
-    password: pos_2020
+    # url: jdbc:oracle:thin:@//47.99.153.144:1521/posdb
+    # username: pos
+    # password: pos_2020
     driver-class-name: oracle.jdbc.OracleDriver
     # HikariCP 连接池配置
     hikari:
@@ -37,12 +37,3 @@ logging:
     com.report: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
-
-# 自定义配置
-report:
-  # 默认签名密钥 (生产环境请修改)
-  default-key: digiwin
-  # 签名验证开关
-  sign-verify: false
-  # 服务超时 (毫秒)
-  timeout: 30000
