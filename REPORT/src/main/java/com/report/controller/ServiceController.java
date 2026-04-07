@@ -4,6 +4,7 @@ import com.report.dto.ServiceRequest;
 import com.report.dto.ServiceResponse;
 import com.report.service.LoginService;
 import com.report.service.ReportService;
+import com.report.service.impl.ServiceRouter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,7 +19,7 @@ import java.util.Map;
 public class ServiceController {
 
     @Autowired
-    private ReportService reportService;
+    private ServiceRouter serviceRouter;
 
     @Autowired(required = false)
     private LoginService loginService;
@@ -61,7 +62,7 @@ public class ServiceController {
             }
         }
         
-        return reportService.execute(request);
+        return serviceRouter.route(request);
     }
 
     /**
