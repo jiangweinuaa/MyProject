@@ -20,9 +20,6 @@ public class ReportServiceImpl implements ReportService {
 
     /**
      * 默认密钥 (生产环境请从配置读取)
-     */
-    private static final String DEFAULT_KEY = "digiwin";
-
     /**
      * 默认 EID (生产环境从 token 解析)
      */
@@ -201,8 +198,8 @@ public class ReportServiceImpl implements ReportService {
         ServiceResponse<Map<String, Object>> response = ServiceResponse.success(memberData);
         
         // 生成响应签名
-        String respSign = SignUtil.generateSign(memberData.toString(), DEFAULT_KEY);
-        response.setSign(new SignInfo(DEFAULT_KEY, respSign));
+        String respSign = SignUtil.generateSign(memberData.toString(), null);
+        response.setSign(new SignInfo(null, respSign));
 
         return response;
     }
@@ -222,8 +219,8 @@ public class ReportServiceImpl implements ReportService {
 
         ServiceResponse<Map<String, Object>> response = ServiceResponse.success(reportData);
         
-        String respSign = SignUtil.generateSign(reportData.toString(), DEFAULT_KEY);
-        response.setSign(new SignInfo(DEFAULT_KEY, respSign));
+        String respSign = SignUtil.generateSign(reportData.toString(), null);
+        response.setSign(new SignInfo(null, respSign));
 
         return response;
     }
