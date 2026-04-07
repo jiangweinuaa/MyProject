@@ -1,4 +1,6 @@
-# REPORT 服务配置文件
+# REPORT 服务配置文件（部署模板）
+# 部署时复制为 application.yml 并填写真实数据库信息
+
 server:
   port: 8110
   servlet:
@@ -8,8 +10,11 @@ spring:
   application:
     name: report-service
   
-  # 数据源配置 (部署时填写)
+  # 数据源配置 (部署时填写真实信息)
   datasource:
+    url: jdbc:oracle:thin:@//YOUR_HOST:1521/YOUR_DB
+    username: YOUR_USERNAME
+    password: YOUR_PASSWORD
     driver-class-name: oracle.jdbc.OracleDriver
     # HikariCP 连接池配置
     hikari:

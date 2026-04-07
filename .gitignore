@@ -37,3 +37,9 @@ Thumbs.db
 
 # Memory and session files
 memory/
+
+# 数据库配置（包含敏感信息）
+REPORT/src/main/resources/application.yml
+
+# 但保留模板文件
+!REPORT/src/main/resources/application.yml.template
