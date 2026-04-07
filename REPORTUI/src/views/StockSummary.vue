@@ -83,8 +83,20 @@
       </template>
       <el-table :data="stockList" style="width: 100%" v-loading="loading" :default-sort="{prop: 'STOCK_AMT', order: 'descending'}">
         <el-table-column type="index" label="序号" width="80" align="center" />
-        <el-table-column prop="SHOPID" label="门店 ID" width="120" sortable />
-        <el-table-column prop="ORG_NAME" label="门店名称" min-width="200" />
+        <el-table-column label="门店 ID" width="120" sortable>
+          <template #default="{ row }">
+            <el-link type="primary" @click.stop="navigateToStockAnalysis(row.SHOPID)" :underline="false">
+              {{ row.SHOPID }}
+            </el-link>
+          </template>
+        </el-table-column>
+        <el-table-column label="门店名称" min-width="200">
+          <template #default="{ row }">
+            <el-link type="primary" @click.stop="navigateToStockAnalysis(row.SHOPID)" :underline="false">
+              {{ row.ORG_NAME }}
+            </el-link>
+          </template>
+        </el-table-column>
         <el-table-column prop="STOCK_QTY" label="库存数量" width="120" align="right" sortable />
         <el-table-column prop="STOCK_AMT" label="库存金额" width="140" align="right" sortable>
           <template #default="{ row }">
@@ -98,13 +110,6 @@
               :stroke-width="12"
               :color="getProgressColor(calculatePercent(row.STOCK_AMT))"
             />
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="120" align="center" fixed="right">
-          <template #default="{ row }">
-            <el-button type="primary" size="small" @click="viewDetail(row)">
-              查看详情
-            </el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -206,12 +211,12 @@ const handleReset = () => {
   handleSearch()
 }
 
-// 查看详情（跳转到商品库存分析页面）
-const viewDetail = (row) => {
+// 跳转到商品库存分析页面
+const navigateToStockAnalysis = (shopId) => {
   router.push({
     path: '/stock-analysis',
     query: {
-      shopId: row.SHOPID
+      shopId: shopId
     }
   })
 }

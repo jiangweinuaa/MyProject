@@ -107,14 +107,14 @@
         <el-table-column type="index" label="排名" width="80" align="center" />
         <el-table-column label="门店 ID" width="100">
           <template #default="{ row }">
-            <el-link type="primary" @click="navigateToGoodsAnalysis(row.shopId)" :underline="false">
+            <el-link type="primary" @click.stop="navigateToGoodsAnalysis(row.shopId)" :underline="false">
               {{ row.shopId }}
             </el-link>
           </template>
         </el-table-column>
         <el-table-column label="门店名称" min-width="180">
           <template #default="{ row }">
-            <el-link type="primary" @click="navigateToGoodsAnalysis(row.shopId)" :underline="false">
+            <el-link type="primary" @click.stop="navigateToGoodsAnalysis(row.shopId)" :underline="false">
               {{ row.shopName }}
             </el-link>
           </template>
@@ -189,6 +189,31 @@
       <div class="chart-container" ref="trendChartRef" id="trendChart"></div>
     </el-card>
 
+    <!-- 每日销售汇总表格 -->
+    <el-card class="table-card" shadow="hover">
+      <template #header>
+        <div class="card-title">
+          <el-icon><Calendar /></el-icon>
+          <span>每日销售汇总</span>
+        </div>
+      </template>
+      <el-table :data="dailySummaryList" style="width: 100%" v-loading="loading" :default-sort="{prop: 'saleDate', order: 'descending'}" show-summary :summary-method="getDailySummaries">
+        <el-table-column prop="saleDate" label="日期" width="120" sortable />
+        <el-table-column prop="amount" label="销售金额" width="140" align="right" sortable>
+          <template #default="{ row }">
+            ¥ {{ formatNumber(row.amount) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="orderCount" label="订单数" width="100" align="right" sortable />
+        <el-table-column prop="avgOrderValue" label="客单价" width="120" align="right" sortable>
+          <template #default="{ row }">
+            ¥ {{ formatNumber(row.avgOrderValue) }}
+          </template>
+        </el-table-column>
+        <el-table-column prop="shopCount" label="参与门店数" width="120" align="right" />
+      </el-table>
+    </el-card>
+
     <!-- 每日销售明细 -->
     <el-card class="table-card" shadow="hover">
       <template #header>
@@ -200,14 +225,14 @@
       <el-table :data="daySaleList" style="width: 100%" v-loading="loading" :default-sort="{prop: 'saleDate', order: 'descending'}">
         <el-table-column label="日期" width="120" sortable>
           <template #default="{ row }">
-            <el-link type="primary" @click="navigateToGoodsAnalysisByDate(row.saleDate, row.shopName, row.shopId)" :underline="false">
+            <el-link type="primary" @click.stop="navigateToGoodsAnalysisByDate(row.saleDate, row.shopName, row.shopId)" :underline="false">
               {{ row.saleDate }}
             </el-link>
           </template>
         </el-table-column>
         <el-table-column label="门店" min-width="150">
           <template #default="{ row }">
-            <el-link type="primary" @click="navigateToGoodsAnalysis(row.shopId)" :underline="false">
+            <el-link type="primary" @click.stop="navigateToGoodsAnalysis(row.shopId)" :underline="false">
               {{ row.shopName }}
             </el-link>
           </template>
@@ -286,6 +311,9 @@ const shopRankingList = ref([])
 
 // 每日销售数据
 const daySaleList = ref([])
+
+// 每日销售汇总数据（按日期汇总，不区分门店）
+const dailySummaryList = ref([])
 
 // 格式化数字
 const formatNumber = (num) => {
@@ -406,6 +434,35 @@ const handleSearch = async () => {
         if (dateCompare !== 0) return dateCompare
         return a.shopId.localeCompare(b.shopId)
       })
+      
+      // 计算每日汇总数据（按日期汇总，不区分门店）
+      const dailyMap = new Map()
+      rawData.forEach(item => {
+        const dateKey = item.SALEDATE || ''
+        if (!dailyMap.has(dateKey)) {
+          dailyMap.set(dateKey, {
+            saleDate: formatDateToDisplay(dateKey),
+            saleDateRaw: dateKey,
+            amount: 0,
+            orderCount: 0,
+            shopSet: new Set()
+          })
+        }
+        const data = dailyMap.get(dateKey)
+        data.amount += (item.AMOUNT || 0)
+        data.orderCount += (item.ORDERCOUNT || 0)
+        if (item.SHOPID) {
+          data.shopSet.add(item.SHOPID)
+        }
+      })
+      
+      dailySummaryList.value = Array.from(dailyMap.values()).map(item => ({
+        saleDate: item.saleDate,
+        amount: item.amount,
+        orderCount: item.orderCount,
+        avgOrderValue: item.orderCount > 0 ? item.amount / item.orderCount : 0,
+        shopCount: item.shopSet.size
+      })).sort((a, b) => b.saleDate.localeCompare(a.saleDate))
       
       // 渲染图表（按日期汇总，不分门店）
       const chartDataMap = new Map()
@@ -791,6 +848,58 @@ const renderChannelPieChart = (data) => {
   }
   
   channelPieChart.setOption(option)
+}
+
+// 表格汇总行 - 每日销售汇总
+const getDailySummaries = (param) => {
+  const { columns, data } = param
+  const sums = []
+  
+  // 计算汇总数据
+  let totalAmount = 0
+  let totalOrderCount = 0
+  let totalShopCount = 0
+  
+  data.forEach(row => {
+    totalAmount += row.amount || 0
+    totalOrderCount += row.orderCount || 0
+    if (row.shopCount > totalShopCount) {
+      totalShopCount = row.shopCount
+    }
+  })
+  
+  const avgOrderValue = totalOrderCount > 0 ? totalAmount / totalOrderCount : 0
+  
+  columns.forEach((column, index) => {
+    if (index === 0) {
+      sums[index] = '汇总'
+      return
+    }
+    
+    if (column.property === 'amount') {
+      sums[index] = '¥ ' + formatNumber(totalAmount)
+      return
+    }
+    
+    if (column.property === 'orderCount') {
+      sums[index] = totalOrderCount.toString()
+      return
+    }
+    
+    if (column.property === 'avgOrderValue') {
+      sums[index] = '¥ ' + formatNumber(avgOrderValue)
+      return
+    }
+    
+    if (column.property === 'shopCount') {
+      sums[index] = totalShopCount.toString()
+      return
+    }
+    
+    sums[index] = ''
+  })
+  
+  return sums
 }
 
 // 窗口大小变化时重新渲染图表

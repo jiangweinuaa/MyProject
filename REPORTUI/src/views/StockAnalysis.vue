@@ -343,7 +343,13 @@ const loadFromUrlParams = () => {
 
 // 返回上一页
 const goBack = () => {
-  router.push('/')
+  // 如果有门店 ID 参数，说明是从库存分析页面跳转过来的，返回库存分析
+  if (route.query.shopId) {
+    router.push('/stock-summary')
+  } else {
+    // 否则返回销售分析首页
+    router.push('/')
+  }
 }
 
 onMounted(() => {

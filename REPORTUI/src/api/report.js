@@ -1,13 +1,34 @@
 import request from './request'
 
 /**
+ * 用户登录
+ * @param {Object} params - 登录参数 {eid, username, password, captcha}
+ * @returns {Promise}
+ */
+export function userLogin(params) {
+  return request({
+    url: '/service',
+    method: 'post',
+    data: {
+      serviceId: 'UserLogin',
+      request: params,
+      sign: {
+        key: 'digiwin',
+        sign: '',
+        token: ''
+      }
+    }
+  })
+}
+
+/**
  * 获取销售分析数据
  * @param {Object} params - 查询参数
  * @returns {Promise}
  */
 export function getSalesAnalysis(params) {
   return request({
-    url: '/service/GetSalesAnalysis',
+    url: '/service',
     method: 'post',
     data: {
       serviceId: 'GetSalesAnalysis',
@@ -28,7 +49,7 @@ export function getSalesAnalysis(params) {
  */
 export function getSalesTrend(params) {
   return request({
-    url: '/service/GetSalesTrend',
+    url: '/service',
     method: 'post',
     data: {
       serviceId: 'GetSalesTrend',
@@ -49,7 +70,7 @@ export function getSalesTrend(params) {
  */
 export function getProductRanking(params) {
   return request({
-    url: '/service/GetProductRanking',
+    url: '/service',
     method: 'post',
     data: {
       serviceId: 'GetProductRanking',
@@ -70,7 +91,7 @@ export function getProductRanking(params) {
  */
 export function getDaySaleQuery(params) {
   return request({
-    url: '/service/DaySaleQuery',
+    url: '/service',
     method: 'post',
     data: {
       serviceId: 'DaySaleQuery',
@@ -91,7 +112,7 @@ export function getDaySaleQuery(params) {
  */
 export function getDayShopGoodsQuery(params) {
   return request({
-    url: '/service/DayShopGoodsQuery',
+    url: '/service',
     method: 'post',
     data: {
       serviceId: 'DayShopGoodsQuery',
@@ -112,7 +133,7 @@ export function getDayShopGoodsQuery(params) {
  */
 export function getDayChannelQuery(params) {
   return request({
-    url: '/service/DayChannelQuery',
+    url: '/service',
     method: 'post',
     data: {
       serviceId: 'DayChannelQuery',
@@ -133,7 +154,7 @@ export function getDayChannelQuery(params) {
  */
 export function getDayShopChannelQuery(params) {
   return request({
-    url: '/service/DayShopChannelQuery',
+    url: '/service',
     method: 'post',
     data: {
       serviceId: 'DayShopChannelQuery',
@@ -154,7 +175,7 @@ export function getDayShopChannelQuery(params) {
  */
 export function getStockQuery(params) {
   return request({
-    url: '/service/StockQuery',
+    url: '/service',
     method: 'post',
     data: {
       serviceId: 'StockQuery',
@@ -175,7 +196,7 @@ export function getStockQuery(params) {
  */
 export function getStockSumQuery(params) {
   return request({
-    url: '/service/StockSumQuery',
+    url: '/service',
     method: 'post',
     data: {
       serviceId: 'StockSumQuery',
@@ -185,6 +206,50 @@ export function getStockSumQuery(params) {
         sign: '',
         token: ''
       }
+    }
+  })
+}
+
+/**
+ * 查询所有企业编号
+ * @param {Object} params - 查询参数 {}
+ * @returns {Promise}
+ */
+export function getAllEidQuery(params) {
+  return request({
+    url: '/service',
+    method: 'post',
+    data: {
+      serviceId: 'AllEidQuery',
+      request: params,
+      sign: {
+        key: 'digiwin',
+        sign: '',
+        token: ''
+      }
+    }
+  })
+}
+
+/**
+ * 商品销售明细查询
+ * @param {Object} params - 查询参数 {shopId, startDate, endDate}
+ * @returns {Promise}
+ */
+export function getDcpSaleQty(params) {
+  return request({
+    url: '/service',
+    method: 'post',
+    data: {
+      serviceId: 'DcpSaleQty',
+      request: params,
+      sign: {
+        key: 'digiwin',
+        sign: '',
+        token: ''
+      },
+      pageNumber: params.pageNumber || 1,
+      pageSize: params.pageSize || 20
     }
   })
 }

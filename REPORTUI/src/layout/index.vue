@@ -13,7 +13,7 @@
         background-color="#304156"
         text-color="#bfcbd9"
         active-text-color="#409EFF"
-        router
+        @select="handleMenuSelect"
       >
         <el-menu-item
           v-for="menu in menus"
@@ -24,6 +24,11 @@
           <span>{{ menu.title }}</span>
         </el-menu-item>
       </el-menu>
+      <!-- 版本号 -->
+      <div class="version-info" :class="{ 'version-collapse': sidebarCollapse }">
+        <span v-if="!sidebarCollapse">v{{ version }}</span>
+        <span v-else>🦞</span>
+      </div>
     </el-aside>
 
     <!-- 移动端侧边栏 -->
@@ -76,12 +81,12 @@
           <el-dropdown>
             <span class="user-info">
               <el-avatar :size="32" icon="UserFilled" />
-              <span class="username pc-only">管理员</span>
+              <span class="username pc-only">{{ userInfo.username || '管理员' }}</span>
             </span>
             <template #dropdown>
               <el-dropdown-menu>
                 <el-dropdown-item>个人设置</el-dropdown-item>
-                <el-dropdown-item divided>退出登录</el-dropdown-item>
+                <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -98,16 +103,56 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { logout } from '@/api/auth'
 
 const route = useRoute()
+const router = useRouter()
+
+// 版本号（从 package.json 读取）
+const version = '1.0.0'
 
 const menus = [
   { path: '/sales-analysis', title: '销售分析', icon: 'DataAnalysis' },
   { path: '/goods-analysis', title: '商品销售分析', icon: 'Goods' },
   { path: '/stock-summary', title: '库存分析', icon: 'Box' },
-  { path: '/stock-analysis', title: '商品库存分析', icon: 'Box' }
+  { path: '/stock-analysis', title: '商品库存分析', icon: 'Box' },
+  { path: '/dcp-sale-qty', title: '商品销售明细', icon: 'List' }
 ]
+
+// 用户信息
+const userInfo = ref({})
+
+// 加载用户信息
+const loadUserInfo = () => {
+  const opno = localStorage.getItem('opno')
+  const eid = localStorage.getItem('eid')
+  if (opno) {
+    userInfo.value = {
+      opno,
+      eid,
+      username: opno
+    }
+  }
+}
+
+// 退出登录
+const handleLogout = async () => {
+  try {
+    await logout()
+    ElMessage.success('已退出登录')
+    router.push('/login')
+  } catch (error) {
+    // 即使接口失败也清除本地状态
+    localStorage.removeItem('token')
+    localStorage.removeItem('opno')
+    localStorage.removeItem('eid')
+    localStorage.removeItem('userInfo')
+    ElMessage.success('已退出登录')
+    router.push('/login')
+  }
+}
 
 const activeMenu = computed(() => route.path)
 const currentTitle = computed(() => {
@@ -136,6 +181,12 @@ const toggleSidebar = () => {
   sidebarCollapse.value = !sidebarCollapse.value
 }
 
+// PC 端菜单选择处理
+const handleMenuSelect = (index) => {
+  console.log('菜单点击:', index)
+  router.push(index)
+}
+
 // 移动端菜单选择后关闭抽屉
 const handleMobileMenuSelect = () => {
   mobileDrawerVisible.value = false
@@ -148,6 +199,7 @@ const handleResize = () => {
 
 onMounted(() => {
   checkMobile()
+  loadUserInfo()
   window.addEventListener('resize', handleResize)
 })
 
@@ -169,6 +221,9 @@ onUnmounted(() => {
   color: #fff;
   overflow-x: hidden;
   transition: width 0.3s;
+  display: flex;
+  flex-direction: column;
+  position: relative;
 }
 
 .sidebar-collapse {
@@ -195,22 +250,28 @@ onUnmounted(() => {
 
 .el-menu {
   border-right: none;
+  cursor: pointer;
+  flex: 1;
 }
 
 .el-menu-item {
   height: 50px;
   line-height: 50px;
   font-size: 14px;
+  cursor: pointer;
+  pointer-events: auto !important;
 }
 
 .el-menu-item .el-icon {
   margin-right: 10px;
   font-size: 16px;
+  pointer-events: none;
 }
 
 .el-menu-item span {
   font-size: 14px;
   color: #bfcbd9;
+  pointer-events: none;
 }
 
 .el-menu-item:hover {
@@ -227,6 +288,30 @@ onUnmounted(() => {
 
 .el-menu-item.is-active span {
   color: #fff;
+}
+
+/* 版本号样式 */
+.version-info {
+  margin-top: auto;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #263445;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 12px;
+  color: #7a8c99;
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+
+.version-info.version-collapse {
+  height: 50px;
+}
+
+.version-info span {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
 }
 
 /* 移动端抽屉菜单 */

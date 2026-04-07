@@ -1,6 +1,7 @@
 package com.report.service.impl;
 
 import com.report.dto.*;
+import com.report.service.LoginService;
 import com.report.service.ReportService;
 import com.report.util.SignUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,9 @@ public class ReportServiceImpl implements ReportService {
 
     @Autowired(required = false)
     private JdbcTemplate jdbcTemplate;
+    
+    @Autowired(required = false)
+    private LoginService loginService;
 
     /**
      * 根据 token 解析获取 Token 信息
@@ -70,6 +74,8 @@ public class ReportServiceImpl implements ReportService {
         String serviceId = request.getServiceId();
         Object params = request.getRequest();
         SignInfo signInfo = request.getSign();
+        Integer pageNumber = request.getPageNumber();
+        Integer pageSize = request.getPageSize();
 
         // 验证签名
         if (signInfo != null) {
@@ -82,23 +88,29 @@ public class ReportServiceImpl implements ReportService {
         // 根据 serviceId 路由到不同的服务
         switch (serviceId) {
             case "QueryMember":
-                return queryMember(params);
+                return queryMember(params, pageNumber, pageSize);
             case "QueryReport":
-                return queryReport(params);
+                return queryReport(params, pageNumber, pageSize);
             case "DaySaleQuery":
-                return daySaleQuery(params);
+                return daySaleQuery(params, pageNumber, pageSize);
             case "DayShopGoodsQuery":
-                return dayShopGoodsQuery(params);
+                return dayShopGoodsQuery(params, pageNumber, pageSize);
             case "DayChannelQuery":
-                return dayChannelQuery(params);
+                return dayChannelQuery(params, pageNumber, pageSize);
             case "DayShopChannelQuery":
-                return dayShopChannelQuery(params);
+                return dayShopChannelQuery(params, pageNumber, pageSize);
             case "StockQuery":
-                return stockQuery(params);
+                return stockQuery(params, pageNumber, pageSize);
             case "StockSumQuery":
-                return stockSumQuery(params);
+                return stockSumQuery(params, pageNumber, pageSize);
             case "GetStockColumns":
-                return getStockColumns(params);
+                return getStockColumns(params, pageNumber, pageSize);
+            case "AllEidQuery":
+                return allEidQuery(params, pageNumber, pageSize);
+            case "UserLogin":
+                return userLogin(params);
+            case "DcpSaleQty":
+                return dcpSaleQty(params, pageNumber, pageSize);
             default:
                 return ServiceResponse.error("999", "未知服务 ID: " + serviceId);
         }
@@ -106,24 +118,71 @@ public class ReportServiceImpl implements ReportService {
 
     @Override
     public ServiceResponse<?> executeByServiceId(String serviceId, Object params, String key) {
+        System.out.println("[DEBUG executeByServiceId] serviceId=" + serviceId);
+        System.out.println("[DEBUG executeByServiceId] params 类型=" + (params != null ? params.getClass().getName() : "null"));
+        
         ServiceRequest request = new ServiceRequest();
         request.setServiceId(serviceId);
-        request.setRequest(params);
         
-        if (key != null && params != null) {
-            String sign = SignUtil.generateSign(params.toString(), key);
-            request.setSign(new SignInfo(key, sign));
+        // 如果 params 已经是完整的请求结构（包含 request、sign、pageNumber、pageSize）
+        if (params instanceof Map) {
+            Map<?, ?> paramMap = (Map<?, ?>) params;
+            System.out.println("[DEBUG executeByServiceId] paramMap keys=" + paramMap.keySet());
+            
+            // 提取 request 对象
+            Object requestObj = paramMap.get("request");
+            System.out.println("[DEBUG executeByServiceId] requestObj=" + (requestObj != null ? requestObj.getClass().getName() : "null"));
+            
+            if (requestObj != null) {
+                request.setRequest(requestObj);
+                if (requestObj instanceof Map) {
+                    Map<?, ?> requestMap = (Map<?, ?>) requestObj;
+                    System.out.println("[DEBUG executeByServiceId] 日期参数 startDate=" + requestMap.get("startDate") + ", endDate=" + requestMap.get("endDate"));
+                }
+            } else {
+                request.setRequest(params);
+            }
+            
+            // 提取 sign 对象
+            Object signObj = paramMap.get("sign");
+            if (signObj instanceof Map) {
+                Map<?, ?> signMap = (Map<?, ?>) signObj;
+                String signKey = signMap.get("key") != null ? signMap.get("key").toString() : key;
+                String signValue = signMap.get("sign") != null ? signMap.get("sign").toString() : "";
+                String token = signMap.get("token") != null ? signMap.get("token").toString() : "";
+                request.setSign(new SignInfo(signKey, signValue, token));
+            } else if (key != null) {
+                String sign = SignUtil.generateSign(params.toString(), key);
+                request.setSign(new SignInfo(key, sign));
+            }
+            
+            // 提取分页参数
+            Object pageNumObj = paramMap.get("pageNumber");
+            Object pageSizeObj = paramMap.get("pageSize");
+            System.out.println("[DEBUG executeByServiceId] pageNumber=" + pageNumObj + ", pageSize=" + pageSizeObj);
+            
+            if (pageNumObj != null) {
+                request.setPageNumber(Integer.valueOf(pageNumObj.toString()));
+            }
+            if (pageSizeObj != null) {
+                request.setPageSize(Integer.valueOf(pageSizeObj.toString()));
+            }
         } else {
-            request.setSign(new SignInfo(DEFAULT_KEY, ""));
+            request.setRequest(params);
+            if (key != null) {
+                String sign = SignUtil.generateSign(params.toString(), key);
+                request.setSign(new SignInfo(key, sign));
+            }
         }
 
+        System.out.println("[DEBUG executeByServiceId] 最终 request 对象：" + request.getRequest());
         return execute(request);
     }
 
     /**
      * 查询会员示例服务
      */
-    private ServiceResponse<?> queryMember(Object params) {
+    private ServiceResponse<?> queryMember(Object params, Integer pageNumber, Integer pageSize) {
         Map<String, Object> memberData = new HashMap<>();
         
         // 模拟会员数据
@@ -151,7 +210,7 @@ public class ReportServiceImpl implements ReportService {
     /**
      * 查询报表示例服务
      */
-    private ServiceResponse<?> queryReport(Object params) {
+    private ServiceResponse<?> queryReport(Object params, Integer pageNumber, Integer pageSize) {
         Map<String, Object> reportData = new HashMap<>();
         
         // 模拟报表数据
@@ -178,7 +237,7 @@ public class ReportServiceImpl implements ReportService {
      *      where a.BDATE >= '开始日期' AND a.BDATE <= '截止日期' 
      *      group by a.BDATE,a.SHOPID,gl.ORG_NAME order by a.BDATE,a.SHOPID,gl.ORG_NAME
      */
-    private ServiceResponse<?> daySaleQuery(Object params) {
+    private ServiceResponse<?> daySaleQuery(Object params, Integer pageNumber, Integer pageSize) {
         if (jdbcTemplate == null) {
             return ServiceResponse.error("500", "数据库未连接");
         }
@@ -190,16 +249,12 @@ public class ReportServiceImpl implements ReportService {
             if (params instanceof Map) {
                 Map<?, ?> paramMap = (Map<?, ?>) params;
                 
-                // 参数在 request 嵌套对象中
-                Object requestObj = paramMap.get("request");
-                if (requestObj instanceof Map) {
-                    Map<?, ?> requestMap = (Map<?, ?>) requestObj;
-                    if (requestMap.get("startDate") != null) {
-                        startDate = requestMap.get("startDate").toString();
-                    }
-                    if (requestMap.get("endDate") != null) {
-                        endDate = requestMap.get("endDate").toString();
-                    }
+                // 直接从 params 读取日期参数（params 本身就是 request 对象）
+                if (paramMap.get("startDate") != null) {
+                    startDate = paramMap.get("startDate").toString();
+                }
+                if (paramMap.get("endDate") != null) {
+                    endDate = paramMap.get("endDate").toString();
                 }
             } else if (params instanceof DaySaleQueryRequest) {
                 DaySaleQueryRequest req = (DaySaleQueryRequest) params;
@@ -217,12 +272,17 @@ public class ReportServiceImpl implements ReportService {
                     "SUM(case when a.type='1' or a.type='2' or a.type='4' then -(a.TOT_AMT) else (a.TOT_AMT) end) as AMOUNT, " +
                     "COUNT(*) as ORDERCOUNT " +
                     "FROM DCP_SALE a " +
-                    "left join DCP_ORG_LANG gl on gl.EID = a.EID and gl.ORGANIZATIONNO = a.SHOPID " +
-                    "where a.EID = ? AND a.BDATE >= ? AND a.BDATE <= ? AND gl.LANG_TYPE = 'zh_CN' " +
+                    "left join DCP_ORG_LANG gl on gl.EID = a.EID and gl.ORGANIZATIONNO = a.SHOPID and gl.LANG_TYPE = 'zh_CN' " +
+                    "where a.EID = ? AND a.BDATE >= ? AND a.BDATE <= ? " +
                     "group by a.BDATE, a.SHOPID, gl.ORG_NAME " +
                     "order by a.BDATE, a.SHOPID, gl.ORG_NAME";
+            
+            String countSql = "SELECT COUNT(*) FROM (SELECT a.SHOPID FROM DCP_SALE a " +
+                    "where a.EID = ? AND a.BDATE >= ? AND a.BDATE <= ? " +
+                    "group by a.BDATE, a.SHOPID)";
 
-            List<Map<String, Object>> resultList = jdbcTemplate.queryForList(sql, eid, startDate, endDate);
+            Map<String, Object> pageData = buildPaginatedResult(sql, pageNumber, pageSize, countSql, eid, startDate, endDate);
+            List<Map<String, Object>> resultList = (List<Map<String, Object>>) pageData.get("list");
 
             // 计算汇总数据
             double totalAmount = 0;
@@ -260,8 +320,15 @@ public class ReportServiceImpl implements ReportService {
             summary.put("avgOrderValue", avgOrderValue);
             resultData.put("summary", summary);
 
-            ServiceResponse<Map<String, Object>> response = ServiceResponse.success(resultData);
+            ServiceResponse<Map<String, Object>> response = new ServiceResponse<>();
+            response.setDatas(resultData);
             response.setServiceDescription("查询成功，共 " + resultList.size() + " 条记录");
+            
+            // 设置分页信息
+            response.setTotalRecords((Integer) pageData.get("totalRecords"));
+            response.setTotalPages((Integer) pageData.get("totalPages"));
+            response.setPageNumber((Integer) pageData.get("pageNumber"));
+            response.setPageSize((Integer) pageData.get("pageSize"));
 
             return response;
 
@@ -281,7 +348,7 @@ public class ReportServiceImpl implements ReportService {
      *      where a.BDATE >= '开始日期' AND a.BDATE <= '截止日期' AND a.SHOPID = '门店' 
      *      group by d.PLUNO,gl.PLU_NAME order by d.PLUNO,gl.PLU_NAME
      */
-    private ServiceResponse<?> dayShopGoodsQuery(Object params) {
+    private ServiceResponse<?> dayShopGoodsQuery(Object params, Integer pageNumber, Integer pageSize) {
         if (jdbcTemplate == null) {
             return ServiceResponse.error("500", "数据库未连接");
         }
@@ -294,19 +361,15 @@ public class ReportServiceImpl implements ReportService {
             if (params instanceof Map) {
                 Map<?, ?> paramMap = (Map<?, ?>) params;
                 
-                // 参数在 request 嵌套对象中
-                Object requestObj = paramMap.get("request");
-                if (requestObj instanceof Map) {
-                    Map<?, ?> requestMap = (Map<?, ?>) requestObj;
-                    if (requestMap.get("startDate") != null) {
-                        startDate = requestMap.get("startDate").toString();
-                    }
-                    if (requestMap.get("endDate") != null) {
-                        endDate = requestMap.get("endDate").toString();
-                    }
-                    if (requestMap.get("shopId") != null) {
-                        shopId = requestMap.get("shopId").toString();
-                    }
+                // 直接从 params 读取参数（params 本身就是 request 对象）
+                if (paramMap.get("startDate") != null) {
+                    startDate = paramMap.get("startDate").toString();
+                }
+                if (paramMap.get("endDate") != null) {
+                    endDate = paramMap.get("endDate").toString();
+                }
+                if (paramMap.get("shopId") != null) {
+                    shopId = paramMap.get("shopId").toString();
                 }
             } else if (params instanceof DayShopGoodsQueryRequest) {
                 DayShopGoodsQueryRequest req = (DayShopGoodsQueryRequest) params;
@@ -333,22 +396,26 @@ public class ReportServiceImpl implements ReportService {
             sqlBuilder.append("left join DCP_GOODS_LANG gl on gl.EID = d.EID and gl.PLUNO = d.PLUNO and gl.LANG_TYPE = 'zh_CN' ");
             sqlBuilder.append("where a.EID = ? AND a.BDATE >= ? AND a.BDATE <= ? ");
             
-            List<Object> paramsList = new java.util.ArrayList<>();
-            paramsList.add(eid);
-            paramsList.add(startDate);
-            paramsList.add(endDate);
+            List<Object> sqlParamsList = new java.util.ArrayList<>();
+            sqlParamsList.add(eid);
+            sqlParamsList.add(startDate);
+            sqlParamsList.add(endDate);
             
             // 如果指定了门店 ID，添加条件
             if (shopId != null && !shopId.trim().isEmpty()) {
                 sqlBuilder.append("AND a.SHOPID = ? ");
-                paramsList.add(shopId);
+                sqlParamsList.add(shopId);
             }
             
             sqlBuilder.append("group by d.PLUNO, gl.PLU_NAME ");
             sqlBuilder.append("order by d.PLUNO");
             
             String sql = sqlBuilder.toString();
-            List<Map<String, Object>> resultList = jdbcTemplate.queryForList(sql, paramsList.toArray());
+            String countSql = "SELECT COUNT(*) FROM (" + sqlBuilder.toString().replace("order by d.PLUNO", "") + ")";
+            
+            Object[] sqlParams = sqlParamsList.toArray();
+            Map<String, Object> pageData = buildPaginatedResult(sql, pageNumber, pageSize, countSql, sqlParams);
+            List<Map<String, Object>> resultList = (List<Map<String, Object>>) pageData.get("list");
 
             // 计算汇总数据
             double totalAmount = 0;
@@ -379,8 +446,15 @@ public class ReportServiceImpl implements ReportService {
             summary.put("goodsCount", resultList.size());
             resultData.put("summary", summary);
 
-            ServiceResponse<Map<String, Object>> response = ServiceResponse.success(resultData);
+            ServiceResponse<Map<String, Object>> response = new ServiceResponse<>();
+            response.setDatas(resultData);
             response.setServiceDescription("查询成功，共 " + resultList.size() + " 种商品");
+            
+            // 设置分页信息
+            response.setTotalRecords((Integer) pageData.get("totalRecords"));
+            response.setTotalPages((Integer) pageData.get("totalPages"));
+            response.setPageNumber((Integer) pageData.get("pageNumber"));
+            response.setPageSize((Integer) pageData.get("pageSize"));
 
             return response;
 
@@ -399,7 +473,7 @@ public class ReportServiceImpl implements ReportService {
      *      where a.BDATE >= '开始日期' AND a.BDATE <= '截止日期'
      *      group by a.BDATE, a.CHANNELID order by a.BDATE, a.CHANNELID
      */
-    private ServiceResponse<?> dayChannelQuery(Object params) {
+    private ServiceResponse<?> dayChannelQuery(Object params, Integer pageNumber, Integer pageSize) {
         if (jdbcTemplate == null) {
             return ServiceResponse.error("500", "数据库未连接");
         }
@@ -411,16 +485,12 @@ public class ReportServiceImpl implements ReportService {
             if (params instanceof Map) {
                 Map<?, ?> paramMap = (Map<?, ?>) params;
                 
-                // 参数在 request 嵌套对象中
-                Object requestObj = paramMap.get("request");
-                if (requestObj instanceof Map) {
-                    Map<?, ?> requestMap = (Map<?, ?>) requestObj;
-                    if (requestMap.get("startDate") != null) {
-                        startDate = requestMap.get("startDate").toString();
-                    }
-                    if (requestMap.get("endDate") != null) {
-                        endDate = requestMap.get("endDate").toString();
-                    }
+                // 直接从 params 读取参数（params 本身就是 request 对象）
+                if (paramMap.get("startDate") != null) {
+                    startDate = paramMap.get("startDate").toString();
+                }
+                if (paramMap.get("endDate") != null) {
+                    endDate = paramMap.get("endDate").toString();
                 }
             }
 
@@ -433,8 +503,13 @@ public class ReportServiceImpl implements ReportService {
                     "where a.EID = ? AND a.BDATE >= ? AND a.BDATE <= ? " +
                     "group by a.BDATE, a.CHANNELID " +
                     "order by a.BDATE, a.CHANNELID";
+            
+            String countSql = "SELECT COUNT(*) FROM (SELECT a.CHANNELID FROM DCP_SALE a " +
+                    "where a.EID = ? AND a.BDATE >= ? AND a.BDATE <= ? " +
+                    "group by a.BDATE, a.CHANNELID)";
 
-            List<Map<String, Object>> resultList = jdbcTemplate.queryForList(sql, eid, startDate, endDate);
+            Map<String, Object> pageData = buildPaginatedResult(sql, pageNumber, pageSize, countSql, eid, startDate, endDate);
+            List<Map<String, Object>> resultList = (List<Map<String, Object>>) pageData.get("list");
 
             // 计算汇总数据
             double totalAmount = 0;
@@ -474,8 +549,15 @@ public class ReportServiceImpl implements ReportService {
             summary.put("avgOrderValue", avgOrderValue);
             resultData.put("summary", summary);
 
-            ServiceResponse<Map<String, Object>> response = ServiceResponse.success(resultData);
+            ServiceResponse<Map<String, Object>> response = new ServiceResponse<>();
+            response.setDatas(resultData);
             response.setServiceDescription("查询成功，共 " + resultList.size() + " 条记录");
+            
+            // 设置分页信息
+            response.setTotalRecords((Integer) pageData.get("totalRecords"));
+            response.setTotalPages((Integer) pageData.get("totalPages"));
+            response.setPageNumber((Integer) pageData.get("pageNumber"));
+            response.setPageSize((Integer) pageData.get("pageSize"));
 
             return response;
 
@@ -494,7 +576,7 @@ public class ReportServiceImpl implements ReportService {
      *      where a.BDATE >= '开始日期' AND a.BDATE <= '截止日期' AND a.SHOPID = '门店 ID'
      *      group by a.BDATE, a.CHANNELID order by a.BDATE, a.CHANNELID
      */
-    private ServiceResponse<?> dayShopChannelQuery(Object params) {
+    private ServiceResponse<?> dayShopChannelQuery(Object params, Integer pageNumber, Integer pageSize) {
         if (jdbcTemplate == null) {
             return ServiceResponse.error("500", "数据库未连接");
         }
@@ -507,19 +589,15 @@ public class ReportServiceImpl implements ReportService {
             if (params instanceof Map) {
                 Map<?, ?> paramMap = (Map<?, ?>) params;
                 
-                // 参数在 request 嵌套对象中
-                Object requestObj = paramMap.get("request");
-                if (requestObj instanceof Map) {
-                    Map<?, ?> requestMap = (Map<?, ?>) requestObj;
-                    if (requestMap.get("startDate") != null) {
-                        startDate = requestMap.get("startDate").toString();
-                    }
-                    if (requestMap.get("endDate") != null) {
-                        endDate = requestMap.get("endDate").toString();
-                    }
-                    if (requestMap.get("shopId") != null) {
-                        shopId = requestMap.get("shopId").toString();
-                    }
+                // 直接从 params 读取参数（params 本身就是 request 对象）
+                if (paramMap.get("startDate") != null) {
+                    startDate = paramMap.get("startDate").toString();
+                }
+                if (paramMap.get("endDate") != null) {
+                    endDate = paramMap.get("endDate").toString();
+                }
+                if (paramMap.get("shopId") != null) {
+                    shopId = paramMap.get("shopId").toString();
                 }
             }
 
@@ -532,22 +610,26 @@ public class ReportServiceImpl implements ReportService {
             sqlBuilder.append("where a.EID = ? AND a.BDATE >= ? AND a.BDATE <= ? ");
             
             String eid = getEidFromParams(params);
-            List<Object> paramsList = new java.util.ArrayList<>();
-            paramsList.add(eid);
-            paramsList.add(startDate);
-            paramsList.add(endDate);
+            List<Object> sqlParamsList = new java.util.ArrayList<>();
+            sqlParamsList.add(eid);
+            sqlParamsList.add(startDate);
+            sqlParamsList.add(endDate);
             
             // 如果指定了门店 ID，添加条件
             if (shopId != null && !shopId.trim().isEmpty()) {
                 sqlBuilder.append("AND a.SHOPID = ? ");
-                paramsList.add(shopId);
+                sqlParamsList.add(shopId);
             }
             
             sqlBuilder.append("group by a.BDATE, a.CHANNELID ");
             sqlBuilder.append("order by a.BDATE, a.CHANNELID");
 
             String sql = sqlBuilder.toString();
-            List<Map<String, Object>> resultList = jdbcTemplate.queryForList(sql, paramsList.toArray());
+            String countSql = "SELECT COUNT(*) FROM (" + sqlBuilder.toString().replace("order by a.BDATE, a.CHANNELID", "") + ")";
+            
+            Object[] sqlParams = sqlParamsList.toArray();
+            Map<String, Object> pageData = buildPaginatedResult(sql, pageNumber, pageSize, countSql, sqlParams);
+            List<Map<String, Object>> resultList = (List<Map<String, Object>>) pageData.get("list");
 
             // 计算汇总数据
             double totalAmount = 0;
@@ -588,8 +670,15 @@ public class ReportServiceImpl implements ReportService {
             summary.put("avgOrderValue", avgOrderValue);
             resultData.put("summary", summary);
 
-            ServiceResponse<Map<String, Object>> response = ServiceResponse.success(resultData);
+            ServiceResponse<Map<String, Object>> response = new ServiceResponse<>();
+            response.setDatas(resultData);
             response.setServiceDescription("查询成功，共 " + resultList.size() + " 条记录");
+            
+            // 设置分页信息
+            response.setTotalRecords((Integer) pageData.get("totalRecords"));
+            response.setTotalPages((Integer) pageData.get("totalPages"));
+            response.setPageNumber((Integer) pageData.get("pageNumber"));
+            response.setPageSize((Integer) pageData.get("pageSize"));
 
             return response;
 
@@ -610,7 +699,7 @@ public class ReportServiceImpl implements ReportService {
      *      group by a.ORGANIZATIONNO, gl.ORG_NAME
      *      order by a.ORGANIZATIONNO
      */
-    private ServiceResponse<?> stockSumQuery(Object params) {
+    private ServiceResponse<?> stockSumQuery(Object params, Integer pageNumber, Integer pageSize) {
         if (jdbcTemplate == null) {
             return ServiceResponse.error("500", "数据库未连接");
         }
@@ -621,40 +710,40 @@ public class ReportServiceImpl implements ReportService {
             if (params instanceof Map) {
                 Map<?, ?> paramMap = (Map<?, ?>) params;
                 
-                // 参数在 request 嵌套对象中
-                Object requestObj = paramMap.get("request");
-                if (requestObj instanceof Map) {
-                    Map<?, ?> requestMap = (Map<?, ?>) requestObj;
-                    if (requestMap.get("shopId") != null) {
-                        shopId = requestMap.get("shopId").toString();
-                    }
+                // 直接从 params 读取参数（params 本身就是 request 对象）
+                if (paramMap.get("shopId") != null) {
+                    shopId = paramMap.get("shopId").toString();
                 }
             }
 
-            // 构建动态 SQL
+            // 构建动态 SQL - 直接按门店分组
             StringBuilder sqlBuilder = new StringBuilder();
-            sqlBuilder.append("select a.ORGANIZATIONNO as SHOPID, gl.ORG_NAME, ");
-            sqlBuilder.append("SUM(a.QTY) as STOCK_QTY, SUM(a.QTY * goods.PRICE) as STOCK_AMT ");
+            sqlBuilder.append("SELECT a.ORGANIZATIONNO AS SHOPID, gl.ORG_NAME, ");
+            sqlBuilder.append("SUM(a.QTY) AS STOCK_QTY, SUM(a.QTY * goods.PRICE) AS STOCK_AMT ");
             sqlBuilder.append("FROM DCP_STOCK a ");
-            sqlBuilder.append("left join DCP_ORG_LANG gl on gl.EID = a.EID and gl.ORGANIZATIONNO = a.ORGANIZATIONNO ");
-            sqlBuilder.append("left join DCP_GOODS goods on goods.EID = a.EID and goods.PLUNO = a.PLUNO ");
-            sqlBuilder.append("where a.EID = ? AND gl.LANG_TYPE = 'zh_CN' ");
+            sqlBuilder.append("LEFT JOIN DCP_ORG_LANG gl ON gl.EID = a.EID AND gl.ORGANIZATIONNO = a.ORGANIZATIONNO AND gl.LANG_TYPE = 'zh_CN' ");
+            sqlBuilder.append("LEFT JOIN DCP_GOODS goods ON goods.EID = a.EID AND goods.PLUNO = a.PLUNO ");
+            sqlBuilder.append("WHERE a.EID = ? ");
             
             String eid = getEidFromParams(params);
-            List<Object> paramsList = new java.util.ArrayList<>();
-            paramsList.add(eid);
+            List<Object> sqlParamsList = new java.util.ArrayList<>();
+            sqlParamsList.add(eid);
             
             // 如果指定了门店 ID，添加条件
             if (shopId != null && !shopId.trim().isEmpty()) {
                 sqlBuilder.append("AND a.ORGANIZATIONNO = ? ");
-                paramsList.add(shopId);
+                sqlParamsList.add(shopId);
             }
             
-            sqlBuilder.append("group by a.ORGANIZATIONNO, gl.ORG_NAME ");
-            sqlBuilder.append("order by a.ORGANIZATIONNO");
+            sqlBuilder.append("GROUP BY a.ORGANIZATIONNO, gl.ORG_NAME ");
+            sqlBuilder.append("ORDER BY a.ORGANIZATIONNO");
 
             String sql = sqlBuilder.toString();
-            List<Map<String, Object>> resultList = jdbcTemplate.queryForList(sql, paramsList.toArray());
+            String countSql = "SELECT COUNT(*) FROM (" + sqlBuilder.toString().replace("ORDER BY a.ORGANIZATIONNO", "") + ")";
+            
+            Object[] sqlParams = sqlParamsList.toArray();
+            Map<String, Object> pageData = buildPaginatedResult(sql, pageNumber, pageSize, countSql, sqlParams);
+            List<Map<String, Object>> resultList = (List<Map<String, Object>>) pageData.get("list");
 
             // 计算汇总数据
             double totalQty = 0;
@@ -685,8 +774,15 @@ public class ReportServiceImpl implements ReportService {
             summary.put("shopCount", resultList.size());
             resultData.put("summary", summary);
 
-            ServiceResponse<Map<String, Object>> response = ServiceResponse.success(resultData);
+            ServiceResponse<Map<String, Object>> response = new ServiceResponse<>();
+            response.setDatas(resultData);
             response.setServiceDescription("查询成功，共 " + resultList.size() + " 家门店");
+            
+            // 设置分页信息
+            response.setTotalRecords((Integer) pageData.get("totalRecords"));
+            response.setTotalPages((Integer) pageData.get("totalPages"));
+            response.setPageNumber((Integer) pageData.get("pageNumber"));
+            response.setPageSize((Integer) pageData.get("pageSize"));
 
             return response;
 
@@ -699,7 +795,7 @@ public class ReportServiceImpl implements ReportService {
     /**
      * 获取 DCP_STOCK 表结构
      */
-    private ServiceResponse<?> getStockColumns(Object params) {
+    private ServiceResponse<?> getStockColumns(Object params, Integer pageNumber, Integer pageSize) {
         if (jdbcTemplate == null) {
             return ServiceResponse.error("500", "数据库未连接");
         }
@@ -735,7 +831,7 @@ public class ReportServiceImpl implements ReportService {
      *      group by a.ORGANIZATIONNO, gl.ORG_NAME, a.PLUNO, g.PLU_NAME
      *      order by a.ORGANIZATIONNO, a.PLUNO
      */
-    private ServiceResponse<?> stockQuery(Object params) {
+    private ServiceResponse<?> stockQuery(Object params, Integer pageNumber, Integer pageSize) {
         if (jdbcTemplate == null) {
             return ServiceResponse.error("500", "数据库未连接");
         }
@@ -746,13 +842,9 @@ public class ReportServiceImpl implements ReportService {
             if (params instanceof Map) {
                 Map<?, ?> paramMap = (Map<?, ?>) params;
                 
-                // 参数在 request 嵌套对象中
-                Object requestObj = paramMap.get("request");
-                if (requestObj instanceof Map) {
-                    Map<?, ?> requestMap = (Map<?, ?>) requestObj;
-                    if (requestMap.get("shopId") != null) {
-                        shopId = requestMap.get("shopId").toString();
-                    }
+                // 直接从 params 读取参数（params 本身就是 request 对象）
+                if (paramMap.get("shopId") != null) {
+                    shopId = paramMap.get("shopId").toString();
                 }
             }
 
@@ -761,26 +853,30 @@ public class ReportServiceImpl implements ReportService {
             sqlBuilder.append("select a.ORGANIZATIONNO as SHOPID, gl.ORG_NAME, a.PLUNO, g.PLU_NAME, ");
             sqlBuilder.append("SUM(a.QTY) as STOCK_QTY, SUM(a.QTY * goods.PRICE) as STOCK_AMT ");
             sqlBuilder.append("FROM DCP_STOCK a ");
-            sqlBuilder.append("left join DCP_ORG_LANG gl on gl.EID = a.EID and gl.ORGANIZATIONNO = a.ORGANIZATIONNO ");
-            sqlBuilder.append("left join DCP_GOODS_LANG g on g.EID = a.EID and g.PLUNO = a.PLUNO ");
+            sqlBuilder.append("left join DCP_ORG_LANG gl on gl.EID = a.EID and gl.ORGANIZATIONNO = a.ORGANIZATIONNO and gl.LANG_TYPE = 'zh_CN' ");
+            sqlBuilder.append("left join DCP_GOODS_LANG g on g.EID = a.EID and g.PLUNO = a.PLUNO and g.LANG_TYPE = 'zh_CN' ");
             sqlBuilder.append("left join DCP_GOODS goods on goods.EID = a.EID and goods.PLUNO = a.PLUNO ");
-            sqlBuilder.append("where a.EID = ? AND gl.LANG_TYPE = 'zh_CN' and g.LANG_TYPE = 'zh_CN' ");
+            sqlBuilder.append("where a.EID = ? ");
             
             String eid = getEidFromParams(params);
-            List<Object> paramsList = new java.util.ArrayList<>();
-            paramsList.add(eid);
+            List<Object> sqlParamsList = new java.util.ArrayList<>();
+            sqlParamsList.add(eid);
             
             // 如果指定了门店 ID，添加条件
             if (shopId != null && !shopId.trim().isEmpty()) {
                 sqlBuilder.append("AND a.ORGANIZATIONNO = ? ");
-                paramsList.add(shopId);
+                sqlParamsList.add(shopId);
             }
             
             sqlBuilder.append("group by a.ORGANIZATIONNO, gl.ORG_NAME, a.PLUNO, g.PLU_NAME ");
             sqlBuilder.append("order by a.ORGANIZATIONNO, a.PLUNO");
 
             String sql = sqlBuilder.toString();
-            List<Map<String, Object>> resultList = jdbcTemplate.queryForList(sql, paramsList.toArray());
+            String countSql = "SELECT COUNT(*) FROM (" + sqlBuilder.toString().replace("order by a.ORGANIZATIONNO, a.PLUNO", "") + ")";
+            
+            Object[] sqlParams = sqlParamsList.toArray();
+            Map<String, Object> pageData = buildPaginatedResult(sql, pageNumber, pageSize, countSql, sqlParams);
+            List<Map<String, Object>> resultList = (List<Map<String, Object>>) pageData.get("list");
 
             // 计算汇总数据
             double totalQty = 0;
@@ -822,8 +918,15 @@ public class ReportServiceImpl implements ReportService {
             summary.put("goodsCount", goodsSet.size());
             resultData.put("summary", summary);
 
-            ServiceResponse<Map<String, Object>> response = ServiceResponse.success(resultData);
+            ServiceResponse<Map<String, Object>> response = new ServiceResponse<>();
+            response.setDatas(resultData);
             response.setServiceDescription("查询成功，共 " + resultList.size() + " 条记录");
+            
+            // 设置分页信息
+            response.setTotalRecords((Integer) pageData.get("totalRecords"));
+            response.setTotalPages((Integer) pageData.get("totalPages"));
+            response.setPageNumber((Integer) pageData.get("pageNumber"));
+            response.setPageSize((Integer) pageData.get("pageSize"));
 
             return response;
 
@@ -831,5 +934,241 @@ public class ReportServiceImpl implements ReportService {
             e.printStackTrace();
             return ServiceResponse.error("500", "查询失败：" + e.getMessage());
         }
+    }
+
+    /**
+     * 查询所有企业编号（特殊服务：不需要 token 校验）
+     * SQL: select distinct EID from PLATFORM_STAFFS order by EID
+     */
+    private ServiceResponse<?> allEidQuery(Object params, Integer pageNumber, Integer pageSize) {
+        if (jdbcTemplate == null) {
+            return ServiceResponse.error("500", "数据库未连接");
+        }
+
+        try {
+            String sql = "select distinct EID from PLATFORM_STAFFS order by EID";
+            List<Map<String, Object>> resultList = jdbcTemplate.queryForList(sql);
+
+            // 提取 EID 列表
+            List<String> eidList = new java.util.ArrayList<>();
+            for (Map<String, Object> row : resultList) {
+                Object eidObj = row.get("EID");
+                if (eidObj != null) {
+                    eidList.add(eidObj.toString());
+                }
+            }
+
+            Map<String, Object> resultData = new HashMap<>();
+            resultData.put("list", eidList);
+            resultData.put("total", eidList.size());
+
+            ServiceResponse<Map<String, Object>> response = ServiceResponse.success(resultData);
+            response.setServiceDescription("查询成功，共 " + eidList.size() + " 个企业");
+
+            return response;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ServiceResponse.error("500", "查询失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 用户登录服务（通过 /api/service/UserLogin 调用）
+     */
+    private ServiceResponse<?> userLogin(Object params) {
+        // 调用 LoginService 实现登录
+        String opno = "";
+        String password = "";
+        String clientIp = "unknown";
+        
+        if (params instanceof Map) {
+            Map<?, ?> requestMap = (Map<?, ?>) params;
+            opno = requestMap.get("username") != null ? requestMap.get("username").toString() : "";
+            password = requestMap.get("password") != null ? requestMap.get("password").toString() : "";
+            // 获取 Controller 传递的客户端 IP
+            Object ipObj = requestMap.get("clientIp");
+            if (ipObj != null && !"unknown".equals(ipObj.toString())) {
+                clientIp = ipObj.toString();
+            }
+        }
+        
+        return loginService.login(opno, password, clientIp);
+    }
+
+    /**
+     * 商品销售明细查询服务
+     * SQL: select a.SHOPID,a.SALENO,a.TOT_OLDAMT,a.TOT_DISC,a.TOT_AMT,a.BDATE,a.WORKNO,a.OPNO,a.MACHINE,a.SDATE,a.STIME 
+     *      FROM DCP_SALE a 
+     *      where a.EID = ? AND a.SHOPID = ? and a.BDATE>=? and a.BDATE <= ?
+     */
+    private ServiceResponse<?> dcpSaleQty(Object params, Integer pageNumber, Integer pageSize) {
+        if (jdbcTemplate == null) {
+            return ServiceResponse.error("500", "数据库未连接");
+        }
+
+        try {
+            String shopId = "";
+            String startDate = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"));
+            String endDate = startDate;
+
+            if (params instanceof Map) {
+                Map<?, ?> paramMap = (Map<?, ?>) params;
+                
+                // 直接从 params 读取参数
+                if (paramMap.get("shopId") != null) {
+                    shopId = paramMap.get("shopId").toString().trim();
+                }
+                if (paramMap.get("startDate") != null) {
+                    startDate = paramMap.get("startDate").toString();
+                }
+                if (paramMap.get("endDate") != null) {
+                    endDate = paramMap.get("endDate").toString();
+                }
+            }
+
+            String eid = getEidFromParams(params);
+            
+            // 构建动态 SQL - 门店号为空时不限制门店，考虑退货的正负号
+            StringBuilder sqlBuilder = new StringBuilder();
+            sqlBuilder.append("select a.SHOPID,a.SALENO, ");
+            sqlBuilder.append("(case when a.type='1' or a.type='2' or a.type='4' then -(a.TOT_OLDAMT) else (a.TOT_OLDAMT) end) as TOT_OLDAMT, ");
+            sqlBuilder.append("(case when a.type='1' or a.type='2' or a.type='4' then -(a.TOT_DISC) else (a.TOT_DISC) end) as TOT_DISC, ");
+            sqlBuilder.append("(case when a.type='1' or a.type='2' or a.type='4' then -(a.TOT_AMT) else (a.TOT_AMT) end) as TOT_AMT, ");
+            sqlBuilder.append("a.BDATE,a.WORKNO,a.OPNO,a.MACHINE,a.SDATE,a.STIME ");
+            sqlBuilder.append("FROM DCP_SALE a ");
+            sqlBuilder.append("where a.EID = ? ");
+            
+            List<Object> sqlParams = new java.util.ArrayList<>();
+            sqlParams.add(eid);
+            
+            // 如果指定了门店号，添加门店条件
+            if (shopId != null && !shopId.trim().isEmpty()) {
+                sqlBuilder.append("AND a.SHOPID = ? ");
+                sqlParams.add(shopId);
+            }
+            
+            sqlBuilder.append("and a.BDATE>=? and a.BDATE <= ? ");
+            sqlParams.add(startDate);
+            sqlParams.add(endDate);
+            
+            // 排序：按系统日期、系统时间、门店、销售单号排序
+            sqlBuilder.append("order by a.SDATE,a.STIME,a.SHOPID,a.SALENO");
+            
+            String sql = sqlBuilder.toString();
+            
+            // 构建 COUNT SQL（不需要 case when，只统计记录数）
+            StringBuilder countSqlBuilder = new StringBuilder();
+            countSqlBuilder.append("SELECT COUNT(*) FROM DCP_SALE a ");
+            countSqlBuilder.append("where a.EID = ? ");
+            
+            List<Object> countSqlParams = new java.util.ArrayList<>();
+            countSqlParams.add(eid);
+            
+            if (shopId != null && !shopId.trim().isEmpty()) {
+                countSqlBuilder.append("AND a.SHOPID = ? ");
+                countSqlParams.add(shopId);
+            }
+            
+            countSqlBuilder.append("and a.BDATE>=? and a.BDATE <= ?");
+            countSqlParams.add(startDate);
+            countSqlParams.add(endDate);
+            
+            String countSql = countSqlBuilder.toString();
+
+            Map<String, Object> pageData = buildPaginatedResult(sql, pageNumber, pageSize, countSql, countSqlParams.toArray());
+            List<Map<String, Object>> resultList = (List<Map<String, Object>>) pageData.get("list");
+
+            Map<String, Object> resultData = new HashMap<>();
+            resultData.put("list", resultList);
+            resultData.put("total", resultList.size());
+            resultData.put("shopId", shopId);
+            resultData.put("startDate", startDate);
+            resultData.put("endDate", endDate);
+
+            ServiceResponse<Map<String, Object>> response = new ServiceResponse<>();
+            response.setDatas(resultData);
+            response.setServiceDescription("查询成功，共 " + resultList.size() + " 条记录");
+            
+            // 设置分页信息
+            response.setTotalRecords((Integer) pageData.get("totalRecords"));
+            response.setTotalPages((Integer) pageData.get("totalPages"));
+            response.setPageNumber((Integer) pageData.get("pageNumber"));
+            response.setPageSize((Integer) pageData.get("pageSize"));
+
+            return response;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ServiceResponse.error("500", "查询失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 构建分页 SQL 和处理分页结果
+     * @param sql 原始 SQL（必须包含 order by）
+     * @param pageNumber 页码
+     * @param pageSize 每页大小
+     * @param countSql 用于查询总数的 SQL
+     * @param sqlParams SQL 参数
+     * @return 包含分页数据的 Map
+     */
+    private Map<String, Object> buildPaginatedResult(String sql, Integer pageNumber, Integer pageSize, 
+                                                      String countSql, Object... sqlParams) {
+        Map<String, Object> result = new HashMap<>();
+        
+        // 判断是否需要分页
+        boolean needPagination = pageNumber != null && pageSize != null && pageNumber > 0 && pageSize > 0;
+        
+        System.out.println("[DEBUG 分页] needPagination=" + needPagination + 
+                          ", pageNumber=" + pageNumber + 
+                          ", pageSize=" + pageSize);
+        
+        if (needPagination) {
+            // 查询总数
+            int totalRecords = jdbcTemplate.queryForObject(countSql, Integer.class, sqlParams);
+            int totalPages = (int) Math.ceil((double) totalRecords / pageSize);
+            
+            System.out.println("[DEBUG 分页] totalRecords=" + totalRecords + 
+                              ", totalPages=" + totalPages);
+            
+            // 确保页码不越界
+            if (pageNumber > totalPages) {
+                pageNumber = totalPages > 0 ? totalPages : 1;
+            }
+            
+            // 计算行号范围（Oracle 行号从 1 开始）
+            int startRow = (pageNumber - 1) * pageSize + 1;
+            int endRow = pageNumber * pageSize;
+            
+            System.out.println("[DEBUG 分页] startRow=" + startRow + ", endRow=" + endRow);
+            
+            // 构建分页 SQL（Oracle 语法 - 三层嵌套）
+            String paginatedSql = "select * from ( SELECT rownum as NUM, ALLTABLE.* FROM ( " + sql + " ) ALLTABLE ) where NUM >= " + startRow + " AND NUM <= " + endRow;
+            
+            System.out.println("[DEBUG 分页 SQL] " + paginatedSql);
+            
+            List<Map<String, Object>> resultList = jdbcTemplate.queryForList(paginatedSql, sqlParams);
+            
+            System.out.println("[DEBUG 分页结果] 返回 " + resultList.size() + " 条记录");
+            
+            result.put("list", resultList);
+            result.put("totalRecords", totalRecords);
+            result.put("totalPages", totalPages);
+            result.put("pageNumber", pageNumber);
+            result.put("pageSize", pageSize);
+        } else {
+            // 不分页，查询全部
+            System.out.println("[DEBUG 分页] 不分页模式，查询全部");
+            List<Map<String, Object>> resultList = jdbcTemplate.queryForList(sql, sqlParams);
+            
+            result.put("list", resultList);
+            result.put("totalRecords", resultList.size());
+            result.put("totalPages", resultList.size() > 0 ? 1 : 0);
+            result.put("pageNumber", 1);
+            result.put("pageSize", 0);
+        }
+        
+        return result;
     }
 }

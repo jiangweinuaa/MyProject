@@ -13,6 +13,15 @@ import java.util.TreeMap;
 public class SignUtil {
 
     /**
+     * 生成 MD5 哈希值
+     * @param content 待哈希内容
+     * @return MD5 值 (32 位小写)
+     */
+    public static String md5(String content) {
+        return DigestUtil.md5Hex(content);
+    }
+
+    /**
      * 生成 MD5 签名
      * @param content 待签名内容
      * @param key 密钥

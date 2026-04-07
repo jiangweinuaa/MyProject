@@ -25,6 +25,16 @@ public class ServiceRequest implements Serializable {
      */
     private SignInfo sign;
 
+    /**
+     * 页码 (分页用，从 1 开始)
+     */
+    private Integer pageNumber;
+
+    /**
+     * 每页大小 (分页用)
+     */
+    private Integer pageSize;
+
     public ServiceRequest() {
     }
 
@@ -56,6 +66,22 @@ public class ServiceRequest implements Serializable {
 
     public void setSign(SignInfo sign) {
         this.sign = sign;
+    }
+
+    public Integer getPageNumber() {
+        return pageNumber;
+    }
+
+    public void setPageNumber(Integer pageNumber) {
+        this.pageNumber = pageNumber;
+    }
+
+    public Integer getPageSize() {
+        return pageSize;
+    }
+
+    public void setPageSize(Integer pageSize) {
+        this.pageSize = pageSize;
     }
 
     @Override

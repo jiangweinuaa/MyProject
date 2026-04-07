@@ -23,6 +23,7 @@ export default defineConfig({
     }
   },
   build: {
+    // 每次构建生成不同的 hash，确保浏览器加载最新文件
     rollupOptions: {
       output: {
         manualChunks: {
@@ -30,6 +31,10 @@ export default defineConfig({
           'echarts': ['echarts']
         }
       }
-    }
+    },
+    // 在文件名中添加 hash，文件内容变化时文件名会变化
+    assetsDir: 'assets',
+    // 禁用 CSS 代码分割，避免缓存问题
+    cssCodeSplit: false
   }
 })

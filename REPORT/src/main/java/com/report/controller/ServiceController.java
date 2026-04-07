@@ -2,9 +2,12 @@ package com.report.controller;
 
 import com.report.dto.ServiceRequest;
 import com.report.dto.ServiceResponse;
+import com.report.service.LoginService;
 import com.report.service.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 /**
  * 统一服务入口 Controller
@@ -17,6 +20,9 @@ public class ServiceController {
     @Autowired
     private ReportService reportService;
 
+    @Autowired(required = false)
+    private LoginService loginService;
+
     /**
      * 统一服务入口
      * POST /api/service
@@ -25,46 +31,113 @@ public class ServiceController {
      * @return 服务响应
      */
     @PostMapping("/service")
-    public ServiceResponse<?> service(@RequestBody ServiceRequest request) {
+    public ServiceResponse<?> service(
+            @RequestBody ServiceRequest request,
+            @RequestHeader(value = "X-Forwarded-For", required = false) String xForwardedFor,
+            @RequestHeader(value = "X-Real-IP", required = false) String xRealIp,
+            javax.servlet.http.HttpServletRequest httpRequest) {
+        System.out.println("[DEBUG] /service 请求，serviceId=" + request.getServiceId());
         if (request.getServiceId() == null || request.getServiceId().isEmpty()) {
             return ServiceResponse.error("400", "serviceId 不能为空");
         }
-        return reportService.execute(request);
-    }
-
-    /**
-     * 直接调用指定服务
-     * POST /api/service/{serviceId}
-     * 
-     * @param serviceId 服务 ID
-     * @param params 请求参数
-     * @return 服务响应
-     */
-    @PostMapping("/service/{serviceId}")
-    public ServiceResponse<?> serviceById(
-            @PathVariable String serviceId,
-            @RequestBody Object params) {
-        return reportService.executeByServiceId(serviceId, params, null);
-    }
-
-    /**
-     * GET 方式调用服务 (简单查询)
-     * GET /api/service/{serviceId}?param1=value1&param2=value2
-     */
-    @GetMapping("/service/{serviceId}")
-    public ServiceResponse<?> serviceByIdGet(
-            @PathVariable String serviceId,
-            @RequestParam(required = false) String mobile,
-            @RequestParam(required = false) String withAccount) {
         
-        ServiceRequest request = new ServiceRequest();
-        request.setServiceId(serviceId);
-        
-        if (mobile != null || withAccount != null) {
-            request.setRequest(new QueryMemberRequest(mobile, withAccount));
+        // 如果是 UserLogin 服务，直接调用 loginService 以获取客户端 IP
+        if ("UserLogin".equals(request.getServiceId())) {
+            System.out.println("[DEBUG] UserLogin 请求，loginService=" + (loginService != null ? "not null" : "null"));
+            if (loginService != null) {
+                String clientIp = getClientIp(xForwardedFor, xRealIp, httpRequest);
+                System.out.println("[DEBUG] 获取到客户端 IP: " + clientIp);
+                
+                // 从 request 中提取参数
+                String opno = "";
+                String password = "";
+                if (request.getRequest() instanceof Map) {
+                    Map<?, ?> requestMap = (Map<?, ?>) request.getRequest();
+                    opno = requestMap.get("username") != null ? requestMap.get("username").toString() : "";
+                    password = requestMap.get("password") != null ? requestMap.get("password").toString() : "";
+                }
+                
+                return loginService.login(opno, password, clientIp);
+            }
         }
         
         return reportService.execute(request);
+    }
+
+    /**
+     * 用户登录
+     * POST /api/login
+     * 
+     * @param params 登录参数 {"opno":"xxx","password":"xxx"}
+     * @return 包含 token 的响应
+     */
+    @PostMapping("/login")
+    public ServiceResponse<?> login(
+            @RequestBody Map<String, Object> params,
+            @RequestHeader(value = "X-Forwarded-For", required = false) String xForwardedFor,
+            @RequestHeader(value = "X-Real-IP", required = false) String xRealIp,
+            javax.servlet.http.HttpServletRequest request) {
+        if (loginService == null) {
+            return ServiceResponse.error("500", "登录服务未初始化");
+        }
+        
+        String opno = params.get("opno") != null ? params.get("opno").toString() : null;
+        String password = params.get("password") != null ? params.get("password").toString() : null;
+        
+        // 获取客户端 IP
+        String clientIp = getClientIp(xForwardedFor, xRealIp, request);
+        
+        return loginService.login(opno, password, clientIp);
+    }
+    
+    /**
+     * 获取客户端 IP 地址
+     */
+    private String getClientIp(String xForwardedFor, String xRealIp, javax.servlet.http.HttpServletRequest request) {
+        if (xForwardedFor != null && !xForwardedFor.isEmpty() && !"unknown".equalsIgnoreCase(xForwardedFor)) {
+            // X-Forwarded-For 可能有多个 IP，取第一个
+            return xForwardedFor.split(",")[0].trim();
+        }
+        if (xRealIp != null && !xRealIp.isEmpty() && !"unknown".equalsIgnoreCase(xRealIp)) {
+            return xRealIp;
+        }
+        return request != null ? request.getRemoteAddr() : "unknown";
+    }
+
+    /**
+     * 验证 token
+     * POST /api/token/verify
+     * 
+     * @param params 验证参数 {"token":"xxx"}
+     * @return 验证结果
+     */
+    @PostMapping("/token/verify")
+    public ServiceResponse<?> verifyToken(@RequestBody Map<String, Object> params) {
+        if (loginService == null) {
+            return ServiceResponse.error("500", "登录服务未初始化");
+        }
+        
+        String token = params.get("token") != null ? params.get("token").toString() : null;
+        
+        return loginService.verifyToken(token);
+    }
+
+    /**
+     * 退出登录
+     * POST /api/logout
+     * 
+     * @param params 退出参数 {"token":"xxx"}
+     * @return 退出结果
+     */
+    @PostMapping("/logout")
+    public ServiceResponse<?> logout(@RequestBody Map<String, Object> params) {
+        if (loginService == null) {
+            return ServiceResponse.error("500", "登录服务未初始化");
+        }
+        
+        String token = params.get("token") != null ? params.get("token").toString() : null;
+        
+        return loginService.logout(token);
     }
 
     /**
