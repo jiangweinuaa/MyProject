@@ -1,0 +1,59 @@
+-- =====================================================
+-- 商品识别功能 - 数据库表结构
+-- =====================================================
+
+-- 1. 识别日志表
+-- =====================================================
+
+CREATE TABLE PRODUCT_RECOGNITION_LOGS (
+    LOG_ID VARCHAR2(64) PRIMARY KEY,           -- 日志 ID
+    IMAGE_URL VARCHAR2(1000),                   -- 识别图片 URL
+    RECOGNIZED_PLUNO VARCHAR2(50),              -- 识别出的商品品号
+    RECOGNIZED_NAME VARCHAR2(200),              -- 识别出的商品名称
+    CONFIDENCE NUMBER(5,4),                     -- 识别置信度 (0-1)
+    USER_CONFIRMED_PLUNO VARCHAR2(50),          -- 用户确认的商品品号
+    IS_CORRECT CHAR(1) DEFAULT 'N',             -- 是否识别正确 (Y/N)
+    CREATED_TIME DATE DEFAULT SYSDATE,          -- 识别时间
+    CREATED_BY VARCHAR2(50) DEFAULT 'system'    -- 创建人
+);
+
+-- 添加表注释
+COMMENT ON TABLE PRODUCT_RECOGNITION_LOGS IS '商品识别日志表';
+COMMENT ON COLUMN PRODUCT_RECOGNITION_LOGS.LOG_ID IS '日志 ID';
+COMMENT ON COLUMN PRODUCT_RECOGNITION_LOGS.IMAGE_URL IS '识别图片 URL';
+COMMENT ON COLUMN PRODUCT_RECOGNITION_LOGS.RECOGNIZED_PLUNO IS '识别出的商品品号';
+COMMENT ON COLUMN PRODUCT_RECOGNITION_LOGS.RECOGNIZED_NAME IS '识别出的商品名称';
+COMMENT ON COLUMN PRODUCT_RECOGNITION_LOGS.CONFIDENCE IS '识别置信度 (0-1)';
+COMMENT ON COLUMN PRODUCT_RECOGNITION_LOGS.USER_CONFIRMED_PLUNO IS '用户确认的商品品号';
+COMMENT ON COLUMN PRODUCT_RECOGNITION_LOGS.IS_CORRECT IS '是否识别正确 (Y/N)';
+COMMENT ON COLUMN PRODUCT_RECOGNITION_LOGS.CREATED_TIME IS '识别时间';
+COMMENT ON COLUMN PRODUCT_RECOGNITION_LOGS.CREATED_BY IS '创建人';
+
+-- 创建索引
+CREATE INDEX IDX_RECOGNITION_PLUNO ON PRODUCT_RECOGNITION_LOGS(RECOGNIZED_PLUNO);
+CREATE INDEX IDX_RECOGNITION_TIME ON PRODUCT_RECOGNITION_LOGS(CREATED_TIME);
+CREATE INDEX IDX_RECOGNITION_CORRECT ON PRODUCT_RECOGNITION_LOGS(IS_CORRECT);
+
+-- =====================================================
+-- 2. 查询示例
+-- =====================================================
+
+-- 查询最新 10 条识别记录
+-- SELECT * FROM PRODUCT_RECOGNITION_LOGS ORDER BY CREATED_TIME DESC FETCH FIRST 10 ROWS ONLY;
+
+-- 查询识别准确率
+-- SELECT 
+--     COUNT(*) AS TOTAL_COUNT,
+--     SUM(CASE WHEN IS_CORRECT = 'Y' THEN 1 ELSE 0 END) AS CORRECT_COUNT,
+--     ROUND(SUM(CASE WHEN IS_CORRECT = 'Y' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) AS ACCURACY_RATE
+-- FROM PRODUCT_RECOGNITION_LOGS;
+
+-- 查询某个商品的识别历史
+-- SELECT * FROM PRODUCT_RECOGNITION_LOGS WHERE RECOGNIZED_PLUNO = '12345' ORDER BY CREATED_TIME DESC;
+
+-- =====================================================
+-- 注意事项：
+-- 1. 执行前请确认有建表权限
+-- 2. 如果表已存在，先 DROP 再 CREATE
+-- 3. 生产环境建议先备份数据
+-- =====================================================

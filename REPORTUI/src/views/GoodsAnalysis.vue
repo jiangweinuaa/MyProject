@@ -165,6 +165,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getDayShopGoodsQuery, getDayShopChannelQuery } from '@/api/report'
 import * as echarts from 'echarts'
+import { getDefaultDateRange } from '@/utils/date'
 
 const route = useRoute()
 const router = useRouter()
@@ -177,14 +178,11 @@ const checkMobile = () => {
 }
 
 // 查询表单 - 默认本月第一天到今天
-const today = new Date().toISOString().split('T')[0]
-const firstDayOfMonth = new Date()
-firstDayOfMonth.setDate(1)
-const firstDayStr = firstDayOfMonth.toISOString().split('T')[0]
+const defaultDateRange = getDefaultDateRange()
 
 const searchForm = reactive({
-  startDate: firstDayStr,
-  endDate: today,
+  startDate: defaultDateRange.startDate,
+  endDate: defaultDateRange.endDate,
   shopId: ''
 })
 
@@ -311,8 +309,8 @@ const handleSearch = async () => {
 
 // 重置
 const handleReset = () => {
-  searchForm.startDate = firstDayStr
-  searchForm.endDate = today
+  searchForm.startDate = defaultDateRange.startDate
+  searchForm.endDate = defaultDateRange.endDate
   searchForm.shopId = ''
   // 清除 URL 参数
   if (route.query.shopId || route.query.startDate || route.query.endDate) {

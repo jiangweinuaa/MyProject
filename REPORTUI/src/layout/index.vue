@@ -42,23 +42,30 @@
       <div class="mobile-logo">
         <h2>🦞 REPORT</h2>
       </div>
-      <el-menu
-        :default-active="activeMenu"
-        background-color="#304156"
-        text-color="#bfcbd9"
-        active-text-color="#409EFF"
-        router
-        @select="handleMobileMenuSelect"
-      >
-        <el-menu-item
-          v-for="menu in menus"
-          :key="menu.path"
-          :index="menu.path"
+      <div class="mobile-menu-container">
+        <el-menu
+          :default-active="activeMenu"
+          background-color="#304156"
+          text-color="#bfcbd9"
+          active-text-color="#409EFF"
+          router
+          @select="handleMobileMenuSelect"
         >
-          <el-icon><component :is="menu.icon" /></el-icon>
-          <span>{{ menu.title }}</span>
-        </el-menu-item>
-      </el-menu>
+          <el-menu-item
+            v-for="menu in menus"
+            :key="menu.path"
+            :index="menu.path"
+          >
+            <el-icon><component :is="menu.icon" /></el-icon>
+            <span>{{ menu.title }}</span>
+          </el-menu-item>
+        </el-menu>
+        
+        <!-- 移动端版本号 -->
+        <div class="mobile-version-info">
+          <span>v{{ version }}</span>
+        </div>
+      </div>
     </el-drawer>
 
     <!-- 右侧内容区 -->
@@ -110,15 +117,21 @@ import { logout } from '@/api/auth'
 const route = useRoute()
 const router = useRouter()
 
-// 版本号（从 package.json 读取）
-const version = '1.0.0'
+// 版本号（格式：1.0.yymmdd.HHMM）
+const version = '1.0.260408.2240'
 
 const menus = [
   { path: '/sales-analysis', title: '销售分析', icon: 'DataAnalysis' },
   { path: '/goods-analysis', title: '商品销售分析', icon: 'Goods' },
+  { path: '/category-sale-analysis', title: '品类销售分析', icon: 'DataLine' },
   { path: '/stock-summary', title: '库存分析', icon: 'Box' },
   { path: '/stock-analysis', title: '商品库存分析', icon: 'Box' },
-  { path: '/dcp-sale-qty', title: '商品销售明细', icon: 'List' }
+  { path: '/dcp-sale-qty', title: '商品销售明细', icon: 'List' },
+  { path: '/api-doc', title: 'API 文档', icon: 'Document' },
+  { path: '/product-recognition', title: '商品识别', icon: 'Scan' },
+  { path: '/product-training', title: '商品训练', icon: 'Camera' },
+  { path: '/training-library', title: '训练库管理', icon: 'FolderOpened' },
+  { path: '/sales-accuracy-analysis', title: '销售预估准确性', icon: 'TrendCharts' }
 ]
 
 // 用户信息
@@ -299,7 +312,7 @@ onUnmounted(() => {
   justify-content: center;
   background-color: #263445;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: 12px;
+  font-size: 11px;
   color: #7a8c99;
   transition: all 0.3s;
   flex-shrink: 0;
@@ -312,6 +325,18 @@ onUnmounted(() => {
 .version-info span {
   font-family: 'Courier New', monospace;
   letter-spacing: 1px;
+}
+
+/* 移动端版本号可见性 */
+@media screen and (max-width: 768px) {
+  .version-info {
+    font-size: 10px;
+    color: #8a9caa;
+  }
+  
+  .version-info span {
+    font-size: 9px;
+  }
 }
 
 /* 移动端抽屉菜单 */
@@ -343,6 +368,37 @@ onUnmounted(() => {
   color: #fff;
   font-size: 18px;
   margin: 0;
+}
+
+/* 移动端菜单容器 */
+.mobile-menu-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px);
+}
+
+.mobile-menu-container :deep(.el-menu) {
+  flex: 1;
+  overflow-y: auto;
+  border-right: none;
+}
+
+/* 移动端版本号样式 */
+.mobile-version-info {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #263445;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 10px;
+  color: #8a9caa;
+  flex-shrink: 0;
+}
+
+.mobile-version-info span {
+  font-family: 'Courier New', monospace;
+  letter-spacing: 1px;
 }
 
 /* 主容器 */

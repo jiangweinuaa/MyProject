@@ -236,12 +236,35 @@ export function getAllEidQuery(params) {
  * @param {Object} params - 查询参数 {shopId, startDate, endDate}
  * @returns {Promise}
  */
-export function getDcpSaleQty(params) {
+export function getDcpSaleQuery(params) {
   return request({
     url: '/service',
     method: 'post',
     data: {
-      serviceId: 'DcpSaleQty',
+      serviceId: 'DcpSaleQuery',
+      request: params,
+      sign: {
+        key: 'digiwin',
+        sign: '',
+        token: ''
+      },
+      pageNumber: params.pageNumber || 1,
+      pageSize: params.pageSize || 20
+    }
+  })
+}
+
+/**
+ * 品类销售分析查询
+ * @param {Object} params - 查询参数 {shopId, startDate, endDate}
+ * @returns {Promise}
+ */
+export function getCategorySaleQuery(params) {
+  return request({
+    url: '/service',
+    method: 'post',
+    data: {
+      serviceId: 'CategorySaleQuery',
       request: params,
       sign: {
         key: 'digiwin',

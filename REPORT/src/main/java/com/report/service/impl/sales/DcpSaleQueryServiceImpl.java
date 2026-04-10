@@ -5,6 +5,7 @@ import com.report.service.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import com.report.service.impl.BaseService;
 
 import java.util.HashMap;
 import java.util.List;
@@ -13,8 +14,8 @@ import java.util.Map;
 /**
  * 商品销售明细查询服务实现
  */
-@Service("dcpSaleQtyService")
-public class DcpSaleQtyServiceImpl implements ReportService {
+@Service("dcpSaleQueryService")
+public class DcpSaleQueryServiceImpl extends BaseService implements ReportService {
 
     @Autowired(required = false)
     private JdbcTemplate jdbcTemplate;
@@ -42,7 +43,7 @@ public class DcpSaleQtyServiceImpl implements ReportService {
                 }
             }
 
-            String eid = "66"; // TODO: 从 token 解析
+            String eid = resolveEid(jdbcTemplate, params);
             
             // 构建动态 SQL - 门店号为空时不限制门店，考虑退货的正负号
             StringBuilder sqlBuilder = new StringBuilder();
@@ -89,7 +90,10 @@ public class DcpSaleQtyServiceImpl implements ReportService {
             
             String countSql = countSqlBuilder.toString();
 
-            Map<String, Object> pageData = buildPaginatedResult(sql, pageNumber, pageSize, countSql, countSqlParams.toArray());
+            // 执行分页查询（使用基类的统一分页方法）
+            Map<String, Object> pageData = buildPaginatedResult(
+                jdbcTemplate, sql, countSql, pageNumber, pageSize, countSqlParams.toArray()
+            );
             List<Map<String, Object>> resultList = (List<Map<String, Object>>) pageData.get("list");
 
             Map<String, Object> resultData = new HashMap<>();
@@ -114,44 +118,5 @@ public class DcpSaleQtyServiceImpl implements ReportService {
             e.printStackTrace();
             return ServiceResponse.error("500", "查询失败：" + e.getMessage());
         }
-    }
-
-    private Map<String, Object> buildPaginatedResult(String sql, Integer pageNumber, Integer pageSize, 
-                                                      String countSql, Object... sqlParams) {
-        Map<String, Object> result = new HashMap<>();
-        
-        boolean needPagination = pageNumber != null && pageSize != null && pageNumber > 0 && pageSize > 0;
-        
-        if (needPagination) {
-            int totalRecords = jdbcTemplate.queryForObject(countSql, Integer.class, sqlParams);
-            int totalPages = (int) Math.ceil((double) totalRecords / pageSize);
-            
-            if (pageNumber > totalPages) {
-                pageNumber = totalPages > 0 ? totalPages : 1;
-            }
-            
-            int startRow = (pageNumber - 1) * pageSize + 1;
-            int endRow = pageNumber * pageSize;
-            
-            String paginatedSql = "select * from ( SELECT rownum as NUM, ALLTABLE.* FROM ( " + sql + " ) ALLTABLE ) where NUM >= " + startRow + " AND NUM <= " + endRow;
-            
-            List<Map<String, Object>> resultList = jdbcTemplate.queryForList(paginatedSql, sqlParams);
-            
-            result.put("list", resultList);
-            result.put("totalRecords", totalRecords);
-            result.put("totalPages", totalPages);
-            result.put("pageNumber", pageNumber);
-            result.put("pageSize", pageSize);
-        } else {
-            List<Map<String, Object>> resultList = jdbcTemplate.queryForList(sql, sqlParams);
-            
-            result.put("list", resultList);
-            result.put("totalRecords", resultList.size());
-            result.put("totalPages", resultList.size() > 0 ? 1 : 0);
-            result.put("pageNumber", 1);
-            result.put("pageSize", 0);
-        }
-        
-        return result;
     }
 }

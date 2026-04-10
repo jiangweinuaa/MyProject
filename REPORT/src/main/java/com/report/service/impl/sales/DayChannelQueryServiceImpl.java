@@ -5,6 +5,7 @@ import com.report.service.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import com.report.service.impl.BaseService;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,7 +17,7 @@ import java.util.Set;
  * 每日渠道查询服务实现
  */
 @Service("dayChannelQueryService")
-public class DayChannelQueryServiceImpl implements ReportService {
+public class DayChannelQueryServiceImpl extends BaseService implements ReportService {
 
     @Autowired(required = false)
     private JdbcTemplate jdbcTemplate;
@@ -40,7 +41,7 @@ public class DayChannelQueryServiceImpl implements ReportService {
                 }
             }
 
-            String eid = "66";
+            String eid = resolveEid(jdbcTemplate, params);
             
             String sql = "select a.CHANNELID, a.BDATE as SALEDATE, " +
                     "SUM(case when a.type='1' or a.type='2' or a.type='4' then -(a.TOT_AMT) else (a.TOT_AMT) end) as AMOUNT, " +

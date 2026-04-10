@@ -26,6 +26,12 @@ const routes = [
         meta: { title: '商品销售分析', icon: 'Goods' }
       },
       {
+        path: '/category-sale-analysis',
+        name: 'CategorySaleAnalysis',
+        component: () => import('@/views/CategorySaleAnalysis.vue'),
+        meta: { title: '品类销售分析', icon: 'DataLine' }
+      },
+      {
         path: '/stock-summary',
         name: 'StockSummary',
         component: () => import('@/views/StockSummary.vue'),
@@ -42,6 +48,36 @@ const routes = [
         name: 'DcpSaleQty',
         component: () => import('@/views/DcpSaleQty.vue'),
         meta: { title: '商品销售明细', icon: 'List' }
+      },
+      {
+        path: '/product-recognition',
+        name: 'ProductRecognition',
+        component: () => import('@/views/ProductRecognition.vue'),
+        meta: { title: '商品识别', icon: 'Scan' }
+      },
+      {
+        path: '/product-training',
+        name: 'ProductTraining',
+        component: () => import('@/views/ProductTraining.vue'),
+        meta: { title: '商品训练', icon: 'Camera' }
+      },
+      {
+        path: '/training-library',
+        name: 'TrainingLibrary',
+        component: () => import('@/views/TrainingLibrary.vue'),
+        meta: { title: '训练库管理', icon: 'FolderOpened' }
+      },
+      {
+        path: '/sales-accuracy-analysis',
+        name: 'SalesAccuracyAnalysis',
+        component: () => import('@/views/SalesAccuracyAnalysis.vue'),
+        meta: { title: '销售预估准确性', icon: 'TrendCharts' }
+      },
+      {
+        path: '/api-doc',
+        name: 'ApiDoc',
+        component: () => import('@/views/ApiDoc.vue'),
+        meta: { title: 'API 文档', icon: 'Document' }
       }
     ]
   }

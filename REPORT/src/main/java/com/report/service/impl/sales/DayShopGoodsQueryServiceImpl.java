@@ -5,6 +5,7 @@ import com.report.service.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import com.report.service.impl.BaseService;
 
 import java.util.HashMap;
 import java.util.List;
@@ -14,7 +15,7 @@ import java.util.Map;
  * 每日门店商品查询服务实现
  */
 @Service("dayShopGoodsQueryService")
-public class DayShopGoodsQueryServiceImpl implements ReportService {
+public class DayShopGoodsQueryServiceImpl extends BaseService implements ReportService {
 
     @Autowired(required = false)
     private JdbcTemplate jdbcTemplate;
@@ -42,7 +43,7 @@ public class DayShopGoodsQueryServiceImpl implements ReportService {
                 }
             }
 
-            String eid = "66";
+            String eid = resolveEid(jdbcTemplate, params);
             
             StringBuilder sqlBuilder = new StringBuilder();
             sqlBuilder.append("select d.PLUNO, gl.PLU_NAME, ");

@@ -2,6 +2,7 @@ package com.report.service.impl.sales;
 
 import com.report.dto.ServiceResponse;
 import com.report.service.ReportService;
+import com.report.service.impl.BaseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -14,7 +15,7 @@ import java.util.Map;
  * 每日销售查询服务实现
  */
 @Service("daySaleQueryService")
-public class DaySaleQueryServiceImpl implements ReportService {
+public class DaySaleQueryServiceImpl extends BaseService implements ReportService {
 
     @Autowired(required = false)
     private JdbcTemplate jdbcTemplate;
@@ -26,19 +27,11 @@ public class DaySaleQueryServiceImpl implements ReportService {
         }
 
         try {
-            String startDate = "20250101";
-            String endDate = "20261231";
+            String startDate = getStringParam(params, "startDate", "20250101");
+            String endDate = getStringParam(params, "endDate", "20261231");
 
-            if (params != null) {
-                if (params.get("startDate") != null) {
-                    startDate = params.get("startDate").toString();
-                }
-                if (params.get("endDate") != null) {
-                    endDate = params.get("endDate").toString();
-                }
-            }
-
-            String eid = "66"; // TODO: 从 token 解析
+            // 从 token 解析 EID（公共方法）
+            String eid = resolveEid(jdbcTemplate, params);
             
             String sql = "select a.SHOPID, gl.ORG_NAME, a.BDATE as SALEDATE, " +
                     "SUM(case when a.type='1' or a.type='2' or a.type='4' then -(a.TOT_AMT) else (a.TOT_AMT) end) as AMOUNT, " +

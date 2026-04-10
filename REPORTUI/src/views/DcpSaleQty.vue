@@ -112,7 +112,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getDcpSaleQty } from '@/api/report'
+import { getDcpSaleQuery } from '@/api/report'
+import { getDefaultDateRange, formatDateToDB } from '@/utils/date'
 
 const router = useRouter()
 
@@ -123,22 +124,13 @@ const checkMobile = () => {
   isMobile.value = window.innerWidth <= 768
 }
 
-// 获取今天日期 YYYY-MM-DD
-const getToday = () => {
-  const today = new Date()
-  const year = today.getFullYear()
-  const month = String(today.getMonth() + 1).padStart(2, '0')
-  const day = String(today.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+// 查询表单 - 默认本月第一天到今天
+const defaultDateRange = getDefaultDateRange()
 
-const today = getToday()
-
-// 查询表单
 const searchForm = reactive({
   shopId: '',
-  startDate: today,
-  endDate: today
+  startDate: defaultDateRange.startDate,
+  endDate: defaultDateRange.endDate
 })
 
 const loading = ref(false)
@@ -172,12 +164,6 @@ const formatDate = (dateStr) => {
   return `${dateStr.substring(0, 4)}-${dateStr.substring(4, 6)}-${dateStr.substring(6, 8)}`
 }
 
-// 格式化日期 YYYY-MM-DD -> YYYYMMDD
-const formatDateToDB = (dateStr) => {
-  if (!dateStr) return ''
-  return dateStr.replace(/-/g, '')
-}
-
 // 查询
 const handleSearch = async () => {
   loading.value = true
@@ -192,7 +178,7 @@ const handleSearch = async () => {
     
     console.log('查询参数:', params)
     
-    const res = await getDcpSaleQty(params)
+    const res = await getDcpSaleQuery(params)
     
     if (res.datas && res.datas.list) {
       saleList.value = res.datas.list
@@ -274,8 +260,8 @@ const getSummaries = (param) => {
 // 重置
 const handleReset = () => {
   searchForm.shopId = ''
-  searchForm.startDate = today
-  searchForm.endDate = today
+  searchForm.startDate = defaultDateRange.startDate
+  searchForm.endDate = defaultDateRange.endDate
   pagination.pageNumber = 1
   handleSearch()
 }

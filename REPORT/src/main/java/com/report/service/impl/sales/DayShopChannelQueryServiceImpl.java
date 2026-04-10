@@ -5,6 +5,7 @@ import com.report.service.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import com.report.service.impl.BaseService;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,7 +17,7 @@ import java.util.Set;
  * 每日门店渠道查询服务实现
  */
 @Service("dayShopChannelQueryService")
-public class DayShopChannelQueryServiceImpl implements ReportService {
+public class DayShopChannelQueryServiceImpl extends BaseService implements ReportService {
 
     @Autowired(required = false)
     private JdbcTemplate jdbcTemplate;
@@ -51,7 +52,7 @@ public class DayShopChannelQueryServiceImpl implements ReportService {
             sqlBuilder.append("FROM DCP_SALE a ");
             sqlBuilder.append("where a.EID = ? AND a.BDATE >= ? AND a.BDATE <= ? ");
             
-            String eid = "66";
+            String eid = resolveEid(jdbcTemplate, params);
             java.util.List<Object> sqlParamsList = new java.util.ArrayList<>();
             sqlParamsList.add(eid);
             sqlParamsList.add(startDate);

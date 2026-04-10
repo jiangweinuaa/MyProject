@@ -5,6 +5,7 @@ import com.report.service.ReportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import com.report.service.impl.BaseService;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -16,7 +17,7 @@ import java.util.Set;
  * 商品库存查询服务实现
  */
 @Service("stockQueryService")
-public class StockQueryServiceImpl implements ReportService {
+public class StockQueryServiceImpl extends BaseService implements ReportService {
 
     @Autowired(required = false)
     private JdbcTemplate jdbcTemplate;
@@ -45,7 +46,7 @@ public class StockQueryServiceImpl implements ReportService {
             sqlBuilder.append("left join DCP_GOODS goods on goods.EID = a.EID and goods.PLUNO = a.PLUNO ");
             sqlBuilder.append("where a.EID = ? ");
             
-            String eid = "66";
+            String eid = resolveEid(jdbcTemplate, params);
             java.util.List<Object> sqlParamsList = new java.util.ArrayList<>();
             sqlParamsList.add(eid);
             

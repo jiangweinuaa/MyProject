@@ -95,26 +95,37 @@
       </el-col>
     </el-row>
 
-    <!-- 门店销售排行 -->
+    <!-- 门店销售排行柱状图 -->
+    <el-card class="chart-card" shadow="hover">
+      <template #header>
+        <div class="card-title">
+          <el-icon><Histogram /></el-icon>
+          <span>门店销售排行</span>
+        </div>
+      </template>
+      <div class="chart-container" ref="shopBarChartRef" id="shopBarChart"></div>
+    </el-card>
+
+    <!-- 门店销售排行表格 -->
     <el-card class="table-card" shadow="hover">
       <template #header>
         <div class="card-title">
           <el-icon><Shop /></el-icon>
-          <span>门店销售排行</span>
+          <span>门店销售明细</span>
         </div>
       </template>
       <el-table :data="shopRankingList" style="width: 100%" v-loading="loading" :default-sort="{prop: 'totalAmount', order: 'descending'}">
         <el-table-column type="index" label="排名" width="80" align="center" />
         <el-table-column label="门店 ID" width="100">
           <template #default="{ row }">
-            <el-link type="primary" @click.stop="navigateToGoodsAnalysis(row.shopId)" :underline="false">
+            <el-link type="primary" @click.stop="navigateToGoodsAnalysis(row.shopId)" underline="never">
               {{ row.shopId }}
             </el-link>
           </template>
         </el-table-column>
         <el-table-column label="门店名称" min-width="180">
           <template #default="{ row }">
-            <el-link type="primary" @click.stop="navigateToGoodsAnalysis(row.shopId)" :underline="false">
+            <el-link type="primary" @click.stop="navigateToGoodsAnalysis(row.shopId)" underline="never">
               {{ row.shopName }}
             </el-link>
           </template>
@@ -225,14 +236,14 @@
       <el-table :data="daySaleList" style="width: 100%" v-loading="loading" :default-sort="{prop: 'saleDate', order: 'descending'}">
         <el-table-column label="日期" width="120" sortable>
           <template #default="{ row }">
-            <el-link type="primary" @click.stop="navigateToGoodsAnalysisByDate(row.saleDate, row.shopName, row.shopId)" :underline="false">
+            <el-link type="primary" @click.stop="navigateToGoodsAnalysisByDate(row.saleDate, row.shopName, row.shopId)" underline="never">
               {{ row.saleDate }}
             </el-link>
           </template>
         </el-table-column>
         <el-table-column label="门店" min-width="150">
           <template #default="{ row }">
-            <el-link type="primary" @click.stop="navigateToGoodsAnalysis(row.shopId)" :underline="false">
+            <el-link type="primary" @click.stop="navigateToGoodsAnalysis(row.shopId)" underline="never">
               {{ row.shopName }}
             </el-link>
           </template>
@@ -259,6 +270,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getDaySaleQuery, getDayChannelQuery } from '@/api/report'
 import * as echarts from 'echarts'
+import { getDefaultDateRange } from '@/utils/date'
 
 const router = useRouter()
 const route = useRoute()
@@ -274,24 +286,23 @@ const checkMobile = () => {
 }
 
 // 查询表单 - 默认本月第一天到今天
-const today = new Date().toISOString().split('T')[0]
-const firstDayOfMonth = new Date()
-firstDayOfMonth.setDate(1)
-const firstDayStr = firstDayOfMonth.toISOString().split('T')[0]
+const defaultDateRange = getDefaultDateRange()
 
 const searchForm = reactive({
-  startDate: firstDayStr,
-  endDate: today
+  startDate: defaultDateRange.startDate,
+  endDate: defaultDateRange.endDate
 })
 
 const loading = ref(false)
 const exporting = ref(false)
 const trendChartRef = ref(null)
 const shopPieChartRef = ref(null)
+const shopBarChartRef = ref(null)
 const dateBarChartRef = ref(null)
 const channelPieChartRef = ref(null)
 let trendChart = null
 let shopPieChart = null
+let shopBarChart = null
 let dateBarChart = null
 let channelPieChart = null
 
@@ -482,6 +493,7 @@ const handleSearch = async () => {
       
       nextTick(() => {
         renderTrendChart(chartData)
+        renderShopBarChart(shopRankingList.value)
         renderShopPieChart(shopRankingList.value)
         renderDateBarChart(chartData)
       })
@@ -532,8 +544,8 @@ const handleSearch = async () => {
 
 // 重置
 const handleReset = () => {
-  searchForm.startDate = firstDayStr
-  searchForm.endDate = today
+  searchForm.startDate = defaultDateRange.startDate
+  searchForm.endDate = defaultDateRange.endDate
   handleSearch()
 }
 
@@ -675,6 +687,77 @@ const renderShopPieChart = (shopData) => {
   }
   
   shopPieChart.setOption(option)
+}
+
+// 渲染门店销售排行柱状图（按销售额降序排序）
+const renderShopBarChart = (shopData) => {
+  if (!shopBarChartRef.value) return
+  
+  if (shopBarChart) {
+    shopBarChart.dispose()
+  }
+  
+  shopBarChart = echarts.init(shopBarChartRef.value)
+  
+  const colors = ['#409EFF', '#67C23A', '#E6A23C', '#F56C6C', '#909399', '#13C2C2', '#722ED1', '#FA541C', '#1890FF', '#13C2C2']
+  
+  // 取前 10 名门店
+  const topShops = shopData.slice(0, 10)
+  const shopNames = topShops.map(shop => shop.shopName || shop.shopId)
+  const amounts = topShops.map(shop => shop.totalAmount)
+  
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      formatter: '{b}<br/>销售额：¥{c}'
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      top: '10%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: shopNames,
+      axisLabel: {
+        rotate: 45,
+        interval: 'auto',
+        fontSize: 11
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: '销售额 (元)',
+      axisLabel: {
+        formatter: '¥{value}'
+      }
+    },
+    series: [{
+      name: '销售额',
+      type: 'bar',
+      data: amounts,
+      barWidth: '60%',
+      itemStyle: {
+        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+          { offset: 0, color: '#409EFF' },
+          { offset: 1, color: '#67C23A' }
+        ]),
+        borderRadius: [4, 4, 0, 0]
+      },
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowOffsetX: 0,
+          shadowColor: 'rgba(0, 0, 0, 0.3)'
+        }
+      }
+    }]
+  }
+  
+  shopBarChart.setOption(option)
 }
 
 // 渲染每日销售柱状图（按日期升序排序）
@@ -907,6 +990,9 @@ const handleResize = () => {
   if (trendChart) {
     trendChart.resize()
   }
+  if (shopBarChart) {
+    shopBarChart.resize()
+  }
   if (shopPieChart) {
     shopPieChart.resize()
   }
@@ -963,6 +1049,9 @@ onUnmounted(() => {
   window.removeEventListener('resize', checkMobile)
   if (trendChart) {
     trendChart.dispose()
+  }
+  if (shopBarChart) {
+    shopBarChart.dispose()
   }
   if (shopPieChart) {
     shopPieChart.dispose()

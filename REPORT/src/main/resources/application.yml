@@ -8,8 +8,17 @@ spring:
   application:
     name: report-service
   
+  # 文件上传大小配置
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  
   # 数据源配置 (部署时填写)
   datasource:
+    url: jdbc:oracle:thin:@//47.99.153.144:1521/posdb
+    username: pos
+    password: pos_2020
     driver-class-name: oracle.jdbc.OracleDriver
     # HikariCP 连接池配置
     hikari:
