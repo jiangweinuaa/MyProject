@@ -45,6 +45,9 @@ public class ServiceRouter {
 
     @Autowired(required = false)
     private ShopSaleForecastQueryServiceImpl shopSaleForecastQueryService;
+    
+    @Autowired(required = false)
+    private ShopGoodsSaleForcastQueryServiceImpl shopGoodsSaleForcastQueryService;
 
     /**
      * 根据 serviceId 路由到对应的服务
@@ -81,6 +84,8 @@ public class ServiceRouter {
                 return allEidQueryService != null ? allEidQueryService.execute(paramsMap, pageNumber, pageSize) : ServiceResponse.error("500", "服务未初始化");
             case "ShopSaleForecastQuery":
                 return shopSaleForecastQueryService != null ? shopSaleForecastQueryService.queryAccuracyAnalysisFull(paramsMap) : ServiceResponse.error("500", "服务未初始化");
+            case "ShopGoodsSaleForcastQuery":
+                return shopGoodsSaleForcastQueryService != null ? shopGoodsSaleForcastQueryService.queryGoodsAccuracyAnalysisFull(paramsMap) : ServiceResponse.error("500", "服务未初始化");
             default:
                 return ServiceResponse.error("999", "未知服务 ID: " + serviceId);
         }

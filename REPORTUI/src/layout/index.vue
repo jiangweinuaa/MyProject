@@ -131,7 +131,10 @@ const menus = [
   { path: '/product-recognition', title: '商品识别', icon: 'Scan' },
   { path: '/product-training', title: '商品训练', icon: 'Camera' },
   { path: '/training-library', title: '训练库管理', icon: 'FolderOpened' },
-  { path: '/sales-accuracy-analysis', title: '销售预估准确性', icon: 'TrendCharts' }
+  { path: '/sales-accuracy-analysis', title: '销售预估准确性', icon: 'TrendCharts' },
+  { path: '/goods-forecast-accuracy', title: '单品预估准确性', icon: 'ShoppingCart' },
+  { path: '/selection-simulator', title: '甄选模拟', icon: 'Star' },
+  { path: '/selection-simulator2', title: '甄选模拟 2', icon: 'ShoppingCart' }
 ]
 
 // 用户信息

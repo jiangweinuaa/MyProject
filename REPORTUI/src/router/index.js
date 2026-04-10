@@ -74,6 +74,24 @@ const routes = [
         meta: { title: '销售预估准确性', icon: 'TrendCharts' }
       },
       {
+        path: '/goods-forecast-accuracy',
+        name: 'GoodsForecastAccuracy',
+        component: () => import('@/views/GoodsForecastAccuracyAnalysis.vue'),
+        meta: { title: '单品预估准确性', icon: 'ShoppingCart' }
+      },
+      {
+        path: '/selection-simulator',
+        name: 'SelectionSimulator',
+        component: () => import('@/views/SelectionSimulator.vue'),
+        meta: { title: '甄选模拟', icon: 'Star' }
+      },
+      {
+        path: '/selection-simulator2',
+        name: 'SelectionSimulator2',
+        component: () => import('@/views/SelectionSimulator2.vue'),
+        meta: { title: '甄选模拟 2', icon: 'ShoppingCart' }
+      },
+      {
         path: '/api-doc',
         name: 'ApiDoc',
         component: () => import('@/views/ApiDoc.vue'),

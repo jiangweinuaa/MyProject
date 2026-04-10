@@ -63,11 +63,15 @@ public class ShopSaleForecastQueryServiceImpl extends BaseService {
             List<Map<String, Object>> errorDist = calculateErrorDistribution(rawData);
             result.put("errorDist", errorDist);
             
-            // 7. 逐日数据
+            // 7. 按日期维度分析（新增）
+            List<Map<String, Object>> dateAnalysis = analyzeByDate(rawData);
+            result.put("dateAnalysis", dateAnalysis);
+            
+            // 8. 逐日数据（用于图表）
             List<Map<String, Object>> dailyData = processDailyData(rawData);
             result.put("dailyData", dailyData);
             
-            // 8. 异常天数
+            // 9. 异常天数
             List<Map<String, Object>> abnormalDays = extractAbnormalDays(rawData);
             result.put("abnormalDays", abnormalDays);
             
@@ -140,6 +144,7 @@ public class ShopSaleForecastQueryServiceImpl extends BaseService {
         int abnormalDays = 0;
         double totalSalesMAE = 0;
         double totalSalesMAPE = 0;
+        double totalSquaredError = 0;
         int validDays = 0;
         
         for (Map<String, Object> row : rawData) {
@@ -170,6 +175,9 @@ public class ShopSaleForecastQueryServiceImpl extends BaseService {
             double salesError = Math.abs(forecast - actual);
             totalSalesMAE += salesError;
             
+            // 计算平方误差（用于 RMSE）
+            totalSquaredError += salesError * salesError;
+            
             // 计算 MAPE
             if (actual > 0) {
                 totalSalesMAPE += (salesError / actual) * 100;
@@ -179,6 +187,7 @@ public class ShopSaleForecastQueryServiceImpl extends BaseService {
         // 计算平均值
         double avgSalesMAE = validDays > 0 ? totalSalesMAE / validDays : 0;
         double avgSalesMAPE = validDays > 0 ? totalSalesMAPE / validDays : 0;
+        double salesRMSE = validDays > 0 ? Math.sqrt(totalSquaredError / validDays) : 0;
         
         // 计算准确率
         double accuracyRate = 100 - avgSalesMAPE;
@@ -189,6 +198,7 @@ public class ShopSaleForecastQueryServiceImpl extends BaseService {
         result.put("accuracyRate", Math.round(accuracyRate * 10.0) / 10.0);
         result.put("salesMAE", Math.round(avgSalesMAE * 10.0) / 10.0);
         result.put("salesMAPE", Math.round(avgSalesMAPE * 10.0) / 10.0);
+        result.put("salesRMSE", Math.round(salesRMSE * 10.0) / 10.0);
         
         return result;
     }
@@ -253,16 +263,15 @@ public class ShopSaleForecastQueryServiceImpl extends BaseService {
         // 计算每个星期的指标
         List<Map<String, Object>> result = new ArrayList<>();
         String[] weekdayNames = {"", "星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"};
+        Integer[] weekdayOrder = {2, 3, 4, 5, 6, 7, 1}; // 星期一到星期日
         
-        for (int i = 2; i <= 8; i++) {
-            int weekday = i % 8;
-            if (weekday == 0) weekday = 1;
-            
+        for (int weekday : weekdayOrder) {
             List<Map<String, Object>> dayData = weekdayData.getOrDefault(weekday, new ArrayList<>());
             if (dayData.isEmpty()) continue;
             
             Map<String, Object> stats = new HashMap<>();
             stats.put("weekday", weekdayNames[weekday]);
+            stats.put("weekdayIndex", weekday == 1 ? 7 : weekday - 1); // 用于排序：星期一=1, 星期日=7
             stats.put("days", dayData.size());
             
             double totalForecast = 0, totalActual = 0, totalMAE = 0;
@@ -349,7 +358,49 @@ public class ShopSaleForecastQueryServiceImpl extends BaseService {
     }
     
     /**
-     * 处理逐日数据（只处理销售额）
+     * 按日期维度分析（新增）
+     */
+    private List<Map<String, Object>> analyzeByDate(List<Map<String, Object>> rawData) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        String[] weekdayNames = {"", "星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"};
+        
+        for (Map<String, Object> row : rawData) {
+            Number actualAmt = (Number) row.get("AMT");
+            Number forecastAmt = (Number) row.get("AMT_FORCAST");
+            Date saleDate = (Date) row.get("SALEDATE");
+            
+            if (actualAmt != null && forecastAmt != null && saleDate != null) {
+                double actual = actualAmt.doubleValue();
+                double forecast = forecastAmt.doubleValue();
+                double error = forecast - actual;
+                double errorRate = actual > 0 ? (error / actual) * 100 : 0;
+                double mape = actual > 0 ? Math.abs(error) / actual * 100 : 0;
+                double accuracy = actual > 0 ? Math.max(0, (1 - Math.abs(error) / actual) * 100) : 0;
+                
+                Calendar cal = Calendar.getInstance();
+                cal.setTime(saleDate);
+                int weekday = cal.get(Calendar.DAY_OF_WEEK);
+                
+                Map<String, Object> item = new HashMap<>();
+                item.put("date", new java.text.SimpleDateFormat("yyyy-MM-dd").format(saleDate));
+                item.put("weekday", weekdayNames[weekday]);
+                item.put("forecastSales", Math.round(forecast * 100.0) / 100.0);
+                item.put("actualSales", Math.round(actual * 100.0) / 100.0);
+                item.put("errorSales", Math.round(error * 100.0) / 100.0);
+                item.put("errorRate", Math.round(errorRate * 10.0) / 10.0);
+                item.put("mape", Math.round(mape * 10.0) / 10.0);
+                item.put("accuracy", Math.round(accuracy * 10.0) / 10.0);
+                item.put("abnormal", forecast < 0);
+                
+                result.add(item);
+            }
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 处理逐日数据（只处理销售额，用于图表）
      */
     private List<Map<String, Object>> processDailyData(List<Map<String, Object>> rawData) {
         List<Map<String, Object>> result = new ArrayList<>();

@@ -58,11 +58,7 @@
           <div class="metric-info">
             <div class="metric-label">综合准确率</div>
             <div class="metric-value">{{ metrics.accuracyRate }}%</div>
-            <div class="metric-trend" :class="metrics.accuracyTrend">
-              <el-icon v-if="metrics.accuracyTrend === 'up'"><ArrowUp /></el-icon>
-              <el-icon v-else><ArrowDown /></el-icon>
-              <span>较上月</span>
-            </div>
+            <div class="metric-desc">100% - MAPE</div>
           </div>
         </el-card>
       </el-col>
@@ -152,6 +148,9 @@
             <el-descriptions-item label="销售额 MAE">
               ¥{{ formatNumber(bias.salesMAE) }}
             </el-descriptions-item>
+            <el-descriptions-item label="销售额 RMSE">
+              ¥{{ formatNumber(metrics.salesRMSE) }}
+            </el-descriptions-item>
             <el-descriptions-item label="销售额 MAPE">
               {{ metrics.salesMAPE }}%
             </el-descriptions-item>
@@ -159,6 +158,27 @@
               <el-tag :type="getAccuracyType(metrics.accuracyRate)">
                 {{ metrics.accuracyRate }}%
               </el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="综合评级">
+              <div style="display: flex; align-items: center; gap: 8px">
+                <div style="display: flex; flex-direction: column; gap: 5px; flex: 1">
+                  <el-rate v-model="rating.stars" disabled :colors="['#F56C6C', '#E6A23C', '#67C23A']" />
+                  <span style="font-size: 13px; color: #606266">{{ rating.text }}</span>
+                </div>
+                <el-tooltip placement="top" :offset="10">
+                  <template #content>
+                    <div style="font-size: 12px; line-height: 1.6">
+                      <div style="font-weight: bold; margin-bottom: 6px">⭐ 评级标准</div>
+                      <div><span style="color: #67C23A">●</span> ≥90%：优秀 ★★★★★</div>
+                      <div><span style="color: #67C23A">●</span> ≥80%：良好 ★★★★☆</div>
+                      <div><span style="color: #E6A23C">●</span> ≥70%：一般 ★★★☆☆</div>
+                      <div><span style="color: #E6A23C">●</span> ≥60%：较差 ★★☆☆☆</div>
+                      <div><span style="color: #F56C6C">●</span> <60%：差 ★☆☆☆☆</div>
+                    </div>
+                  </template>
+                  <el-icon style="cursor: pointer; color: #909399; font-size: 16px" @click.stop><QuestionFilled /></el-icon>
+                </el-tooltip>
+              </div>
             </el-descriptions-item>
           </el-descriptions>
         </el-card>
@@ -186,6 +206,61 @@
       </el-col>
     </el-row>
 
+    <!-- 按日期维度分析 -->
+    <el-row :gutter="15" class="date-row">
+      <el-col :xs="24">
+        <el-card shadow="hover">
+          <template #header>
+            <span>📅 按日期维度的预估准确性分析</span>
+          </template>
+          <el-table :data="dateData" style="width: 100%" :default-sort="{prop: 'date', order: 'ascending'}" show-summary :summary-method="summaryMethod">
+            <el-table-column prop="date" label="日期" width="120" sortable />
+            <el-table-column prop="weekday" label="星期" width="80" />
+            <el-table-column prop="forecastSales" label="预估销售额 (元)" align="center" sortable>
+              <template #default="{ row }">
+                <span :style="row.abnormal ? 'color: #F56C6C; font-weight: bold;' : ''">
+                  {{ formatNumber(row.forecastSales) }}
+                </span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="actualSales" label="实际销售额 (元)" align="center" sortable>
+              <template #default="{ row }">
+                {{ formatNumber(row.actualSales) }}
+              </template>
+            </el-table-column>
+            <el-table-column prop="errorSales" label="误差销售额 (元)" align="center" sortable>
+              <template #default="{ row }">
+                <el-tag :type="row.errorSales > 0 ? 'warning' : (row.errorSales < 0 ? 'success' : 'info')" size="small">
+                  {{ row.errorSales > 0 ? '+' : '' }}{{ formatNumber(row.errorSales) }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="errorRate" label="误差率 (%)" align="center" sortable>
+              <template #default="{ row }">
+                <el-tag :type="Math.abs(row.errorRate) < 10 ? 'success' : (Math.abs(row.errorRate) < 20 ? 'primary' : (Math.abs(row.errorRate) < 30 ? 'warning' : 'danger'))" size="small">
+                  {{ row.errorRate > 0 ? '+' : '' }}{{ row.errorRate }}%
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="mape" label="MAPE (%)" align="center" sortable>
+              <template #default="{ row }">
+                <el-tag :type="row.mape < 10 ? 'success' : (row.mape < 20 ? 'primary' : (row.mape < 30 ? 'warning' : 'danger'))" size="small">
+                  {{ row.mape }}%
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="accuracy" label="准确率 (%)" align="center" sortable>
+              <template #default="{ row }">
+                <el-tag :type="getAccuracyType(row.accuracy)" size="small">
+                  {{ row.accuracy }}%
+                </el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-card>
+      </el-col>
+    </el-row>
+
     <!-- 按星期维度分析 -->
     <el-row :gutter="15" class="weekday-row">
       <el-col :xs="24">
@@ -193,8 +268,9 @@
           <template #header>
             <span>📆 按星期维度的预估准确性分析</span>
           </template>
-          <el-table :data="weekdayData" style="width: 100%" :default-sort="{prop: 'days', order: 'ascending'}">
+          <el-table :data="weekdayData" style="width: 100%" :default-sort="{prop: 'weekdayIndex', order: 'ascending'}">
             <el-table-column prop="weekday" label="星期" width="100" />
+            <el-table-column prop="weekdayIndex" label="" width="0" :sortable="true" :show-overflow-tooltip="true" v-if="false" />
             <el-table-column prop="days" label="天数" width="80" align="center" />
             <el-table-column prop="forecastAvg" label="预估均值 (元)" align="center" />
             <el-table-column prop="actualAvg" label="实际均值 (元)" align="center" />
@@ -290,7 +366,7 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { DataLine, TrendCharts, Money, CircleCheck, ArrowUp, ArrowDown, ArrowLeft, Search, Refresh } from '@element-plus/icons-vue'
+import { DataLine, TrendCharts, Money, CircleCheck, ArrowUp, ArrowDown, ArrowLeft, Search, Refresh, QuestionFilled } from '@element-plus/icons-vue'
 import * as echarts from 'echarts'
 import { queryAccuracyAnalysisFull } from '@/api/shopSaleForecast'
 
@@ -348,16 +424,6 @@ const storeInfo = reactive({
   storeName: '测试门店'
 })
 
-// 核心指标
-const metrics = reactive({
-  accuracyRate: 0,
-  accuracyTrend: 'down',
-  salesMAPE: 0,
-  revenueMAPE: 0,
-  validDays: 0,
-  abnormalDays: 0
-})
-
 // 偏差分析
 const bias = reactive({
   salesBias: 0,
@@ -370,13 +436,26 @@ const bias = reactive({
   totalActualRevenue: 0,
   revenueDifference: 0,
   revenueMAE: 0,
-  salesMAE: 0,
+  salesMAE: 0
+})
+
+// 核心指标（包含 RMSE）
+const metrics = reactive({
+  accuracyRate: 0,
+  accuracyTrend: 'down',
+  salesMAPE: 0,
+  revenueMAPE: 0,
+  validDays: 0,
+  abnormalDays: 0,
   salesRMSE: 0
 })
 
 // 图表引用
 const dailyChartRef = ref(null)
 const errorDistChartRef = ref(null)
+
+// 日期数据
+const dateData = ref([])
 
 // 星期数据
 const weekdayData = ref([])
@@ -412,6 +491,40 @@ const formatNumber = (num) => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   })
+}
+
+// 表格汇总方法
+const summaryMethod = (param) => {
+  const { columns, data } = param
+  const sums = []
+  
+  columns.forEach((column, index) => {
+    if (index === 0) {
+      sums[index] = '汇总'
+      return
+    }
+    
+    const values = data.map(item => Number(item[column.property]))
+    if (values.every(value => !isNaN(value))) {
+      if (column.property === 'mape' || column.property === 'accuracy' || column.property === 'errorRate') {
+        // MAPE、准确率和误差率计算平均值，添加%号
+        const avg = values.reduce((prev, curr) => prev + curr, 0) / values.length
+        sums[index] = avg.toFixed(1) + '%'
+      } else if (column.property === 'errorSales') {
+        // 误差销售额计算总和
+        const sum = values.reduce((prev, curr) => prev + curr, 0)
+        sums[index] = formatNumber(sum)
+      } else {
+        // 其他数值字段计算总和
+        const sum = values.reduce((prev, curr) => prev + curr, 0)
+        sums[index] = formatNumber(sum)
+      }
+    } else {
+      sums[index] = ''
+    }
+  })
+  
+  return sums
 }
 
 // 返回上一页
@@ -464,6 +577,7 @@ const loadAllData = async (params = {}) => {
         const m = data.metrics
         metrics.accuracyRate = m.accuracyRate || 0
         metrics.salesMAPE = m.salesMAPE || 0
+        metrics.salesRMSE = m.salesRMSE || 0
         metrics.validDays = m.validDays || 0
         metrics.abnormalDays = m.abnormalDays || 0
       }
@@ -478,6 +592,14 @@ const loadAllData = async (params = {}) => {
         bias.totalActualSales = b.totalActualSales || 0
         bias.difference = b.difference || 0
         bias.salesMAE = b.salesMAE || 0
+      }
+      
+      // 更新按日期维度数据
+      if (data.dateAnalysis) {
+        console.log('日期维度数据:', data.dateAnalysis)
+        dateData.value = data.dateAnalysis
+      } else {
+        console.log('未找到日期维度数据，完整返回:', data)
       }
       
       // 更新星期数据
@@ -508,6 +630,7 @@ const loadAllData = async (params = {}) => {
         rating.stars = data.rating.stars || 3
         rating.text = data.rating.text || '-'
         rating.description = data.rating.description || '-'
+        console.log('评级数据:', rating)
       }
     }
   } catch (error) {
@@ -526,18 +649,24 @@ const initDailyChart = () => {
       axisPointer: { type: 'cross' }
     },
     legend: {
-      data: ['预估销售额', '实际销售额', '准确率']
+      data: ['预估销售额', '实际销售额', '准确率'],
+      top: '5%',
+      type: 'scroll'
     },
     grid: {
       left: '3%',
       right: '4%',
-      bottom: '3%',
+      top: '15%',
+      bottom: '12%',
       containLabel: true
     },
     xAxis: {
       type: 'category',
       data: dailyData.value.map(d => d.date.slice(5)),
-      axisLabel: { rotate: 45 }
+      axisLabel: { 
+        rotate: 45,
+        interval: 0
+      }
     },
     yAxis: [
       {
@@ -769,6 +898,19 @@ onMounted(async () => {
 
 .chart-container {
   width: 100%;
+}
+
+.date-row,
+.weekday-row {
+  margin-bottom: 15px;
+}
+
+.el-table__footer-wrapper {
+  font-weight: bold;
+}
+
+.el-table__footer .cell {
+  color: #303133;
 }
 
 .rating-card {
