@@ -12,16 +12,14 @@ import router from './router'
 const app = createApp(App)
 const pinia = createPinia()
 
-// 初始化 vConsole（仅开发环境和商品识别页面需要）
-if (process.env.NODE_ENV === 'development' || window.location.pathname.includes('product-recognition')) {
-  new VConsole({
-    defaultPlugins: ['system', 'network', 'element', 'storage'],
-    maxLogNumber: 1000,
-    onReady: () => {
-      console.log('vConsole 已初始化')
-    }
-  })
-}
+// 初始化 vConsole（全局启用）
+const vConsole = new VConsole({
+  defaultPlugins: ['system', 'network', 'element', 'storage'],
+  maxLogNumber: 1000,
+  onReady: () => {
+    console.log('vConsole 已初始化')
+  }
+})
 
 // 注册 Element Plus 图标
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
