@@ -218,20 +218,15 @@
               size="small" 
               @click="submitToTraining(product)"
               :loading="product.submitting"
-              :disabled="product.confidence > 0.8"
             >
               📚 提交到训练库
             </el-button>
-            <span class="submit-hint" v-if="product.confidence > 0.8">（置信度高，无需提交）</span>
           </div>
         </el-card>
       </div>
       
-      <!-- 用户确认 -->
+      <!-- 重新识别 -->
       <div class="confirm-actions">
-        <el-button @click="confirmResult" type="success" :icon="Check">
-          ✓ 确认结果
-        </el-button>
         <el-button @click="retakePhoto" type="warning" :icon="Refresh">
           🔄 重新识别
         </el-button>
@@ -243,7 +238,7 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Check, Refresh } from '@element-plus/icons-vue'
+import { Refresh } from '@element-plus/icons-vue'
 
 const videoRef = ref(null)
 const canvasRef = ref(null)
@@ -392,11 +387,6 @@ const submitToTraining = async (product) => {
   } finally {
     product.submitting = false
   }
-}
-
-// 确认结果
-const confirmResult = () => {
-  ElMessage.success('结果已确认')
 }
 
 // 重新识别
