@@ -21,14 +21,14 @@ public class AliyunConfigUtil {
      * 获取阿里云 OSS Bucket
      */
     public String getOssBucket() {
-        return getConfigValue("ALI_OSS", "BUCKET");
+        return getConfigValue("ALI_OSS", "ACCESSKEYID");
     }
     
     /**
      * 获取阿里云 OSS Endpoint
      */
     public String getOssEndpoint() {
-        return getConfigValue("ALI_OSS", "ENDPOINT");
+        return getConfigValue("ALI_OSS", "ACCESSKEYSECRET");
     }
     
     /**
