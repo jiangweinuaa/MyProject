@@ -435,18 +435,18 @@ public class AliyunVisionClient {
     }
     
     /**
-     * 从 MultipartFile 直接识别商品（不上传 OSS）
+     * 从 MultipartFile 识别商品（先上传到 OSS 获取 URL）
      * @param file 图片文件
      * @return 识别结果
      */
     public Map<String, Object> recognizeProductFromMultipart(MultipartFile file) {
         try {
-            // 将 MultipartFile 转换为 Base64
-            byte[] imageBytes = file.getBytes();
-            String base64Image = Base64.getEncoder().encodeToString(imageBytes);
+            // 先上传到 OSS 获取 URL
+            String ossImageUrl = uploadImageToOSS(file, "recognize");
+            System.out.println("✅ 识别图片已上传到 OSS: " + ossImageUrl);
             
-            // 调用阿里云 API（使用 Base64）
-            return recognizeProductFromBase64(base64Image);
+            // 调用阿里云 API（使用 URL）
+            return recognizeProduct(ossImageUrl);
             
         } catch (IOException e) {
             Map<String, Object> result = new HashMap<>();
@@ -454,83 +454,6 @@ public class AliyunVisionClient {
             result.put("message", "图片处理失败：" + e.getMessage());
             result.put("pluno", null);
             result.put("confidence", 0.0);
-            return result;
-        }
-    }
-    
-    /**
-     * 从 Base64 图片识别商品
-     * @param base64Image Base64 编码的图片
-     * @return 识别结果
-     */
-    public Map<String, Object> recognizeProductFromBase64(String base64Image) {
-        String accessKeyId = configUtil.getAccessKeyId();
-        String accessKeySecret = configUtil.getAccessKeySecret();
-        
-        Map<String, Object> result = new HashMap<>();
-        
-        // 检查配置
-        if (accessKeyId == null || accessKeySecret == null ||
-            accessKeyId.trim().isEmpty() || accessKeySecret.trim().isEmpty()) {
-            result.put("success", false);
-            result.put("message", "阿里云 AccessKey 未配置");
-            result.put("pluno", null);
-            result.put("productName", null);
-            result.put("category", null);
-            result.put("confidence", 0.0);
-            return result;
-        }
-        
-        try {
-            System.out.println("🔍 开始调用阿里云商品分类 API（Base64）...");
-            
-            // 使用阿里云视觉智能 API
-            String host = "goodstech.cn-shanghai.aliyuncs.com";
-            
-            // 构建请求参数
-            Map<String, String> params = new HashMap<>();
-            params.put("ImageBase64", base64Image);
-            
-            // 调用 OpenAPI（使用 GET 方式，参数放在 URL 中）
-            String responseBody = callOpenApi(host, "GET", accessKeyId, accessKeySecret, params);
-            
-            System.out.println("🔍 商品分类 API 响应：" + responseBody);
-            
-            // 解析响应
-            result.put("success", true);
-            result.put("message", "识别成功");
-            
-            // 提取最佳匹配结果
-            String categoryName = extractFromJson(responseBody, "CategoryName");
-            String categoryId = extractFromJson(responseBody, "CategoryId");
-            String score = extractFromJson(responseBody, "Score");
-            
-            // 打印原始返回 JSON 用于调试
-            System.out.println("📋 阿里云原始返回 JSON: " + responseBody);
-            System.out.println("📋 解析结果：CategoryId=" + categoryId + ", CategoryName=" + categoryName + ", Score=" + score);
-            
-            // pluno: 使用 CategoryId 作为临时品号（阿里返回的原始识别结果）
-            result.put("sourcePluno", categoryId != null ? categoryId : null);
-            result.put("productName", categoryName != null ? categoryName : "识别商品");
-            result.put("category", categoryName != null ? categoryName : "通用商品");
-            result.put("confidence", score != null ? Double.parseDouble(score) : 0.85);
-            result.put("platform", "ALIYUN");  // 标记识别平台
-            
-            System.out.println("🎯 识别完成：类目=" + categoryName + ", 置信度=" + score);
-            
-            return result;
-            
-        } catch (Exception e) {
-            System.err.println("商品识别失败：" + e.getMessage());
-            e.printStackTrace();
-            
-            result.put("success", false);
-            result.put("message", "识别失败：" + e.getMessage());
-            result.put("pluno", null);
-            result.put("productName", null);
-            result.put("category", null);
-            result.put("confidence", 0.0);
-            
             return result;
         }
     }
