@@ -120,14 +120,16 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
             jdbcTemplate.update(sql,
                 logId,
                 imageUrl != null ? imageUrl : "unknown",
-                result.getPluno(),
+                result.getSourcePluno(),      // RECOGNIZED_PLUNO: 阿里返回的 sourcePluno（CategoryId）
                 result.getProductName(),
                 result.getConfidence(),
-                result.getPluno(),  // USERCONFIRMEDPLUNO 暂时使用识别结果
+                result.getPluno(),            // USERCONFIRMEDPLUNO: 匹配到的真实品号
                 recognitionTime
             );
             
-            System.out.println("📝 识别日志已记录：" + logId + ", 品号=" + result.getPluno());
+            System.out.println("📝 识别日志已记录：" + logId + 
+                ", 识别品号=" + result.getSourcePluno() + 
+                ", 匹配品号=" + result.getPluno());
             
         } catch (Exception e) {
             System.err.println("记录识别日志失败：" + e.getMessage());
