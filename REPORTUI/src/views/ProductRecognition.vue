@@ -188,7 +188,7 @@
                     v-model="product.pluno" 
                     size="small"
                     placeholder="品号"
-                    style="width: 100px; margin-right: 5px"
+                    style="width: 120px; margin-right: 5px"
                   />
                   <span v-else class="real-pluno">{{ product.pluno || '无' }}</span>
                   <el-button 
