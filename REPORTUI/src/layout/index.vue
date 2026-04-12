@@ -113,6 +113,23 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { logout } from '@/api/auth'
+// 导入所有菜单图标
+import {
+  DataAnalysis,
+  Goods,
+  DataLine,
+  Box,
+  List,
+  Document,
+  Picture,
+  Camera,
+  FolderOpened,
+  TrendCharts,
+  ShoppingCart,
+  Star,
+  Fold,
+  Expand
+} from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

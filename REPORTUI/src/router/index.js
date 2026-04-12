@@ -53,7 +53,7 @@ const routes = [
         path: '/product-recognition',
         name: 'ProductRecognition',
         component: () => import('@/views/ProductRecognition.vue'),
-        meta: { title: '商品识别', icon: 'Scan' }
+        meta: { title: '商品识别', icon: 'Picture' }
       },
       {
         path: '/product-training',
