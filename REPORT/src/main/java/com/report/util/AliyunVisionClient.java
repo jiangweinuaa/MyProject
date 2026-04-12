@@ -486,10 +486,13 @@ public class AliyunVisionClient {
             
             // 使用阿里云视觉智能 API
             String host = "goodstech.cn-shanghai.aliyuncs.com";
-            String method = "POST";
             
-            // 调用阿里云 API（使用 POST 请求体传递 Base64）
-            String responseBody = callOpenApiWithBody(host, method, accessKeyId, accessKeySecret, "ImageBase64", base64Image);
+            // 构建请求参数
+            Map<String, String> params = new HashMap<>();
+            params.put("ImageBase64", base64Image);
+            
+            // 调用 OpenAPI（使用 GET 方式，参数放在 URL 中）
+            String responseBody = callOpenApi(host, "GET", accessKeyId, accessKeySecret, params);
             
             System.out.println("🔍 商品分类 API 响应：" + responseBody);
             
