@@ -493,15 +493,15 @@ onMounted(() => {
 }
 
 .product-pluno {
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   color: #409EFF;
 }
 
 .product-name {
-  font-size: 10px;
+  font-size: 13px;
   color: #303133;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -509,7 +509,7 @@ onMounted(() => {
 }
 
 .product-stats {
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 
 .stat-item {
@@ -518,39 +518,39 @@ onMounted(() => {
 }
 
 .stat-item :deep(.el-tag) {
-  transform: scale(0.85);
+  transform: scale(0.9);
   transform-origin: left center;
 }
 
 .product-quality {
   display: flex;
   align-items: center;
-  gap: 3px;
-  margin-bottom: 4px;
+  gap: 4px;
+  margin-bottom: 6px;
 }
 
 .quality-label {
-  font-size: 9px;
+  font-size: 12px;
   color: #909399;
 }
 
 .product-quality :deep(.el-rate) {
   display: inline-flex;
-  transform: scale(0.8);
+  transform: scale(0.9);
   transform-origin: left center;
 }
 
 .product-time {
   display: flex;
   align-items: center;
-  gap: 3px;
-  font-size: 9px;
+  gap: 4px;
+  font-size: 11px;
   color: #909399;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .product-time :deep(.el-icon) {
-  font-size: 10px;
+  font-size: 12px;
 }
 
 .product-actions {
@@ -561,9 +561,9 @@ onMounted(() => {
 
 .product-actions .el-button {
   flex: 1;
-  font-size: 12px;
-  padding: 4px 0;
-  min-height: 26px;
+  font-size: 13px;
+  padding: 6px 0;
+  min-height: 30px;
 }
 
 /* 移动端优化 */
