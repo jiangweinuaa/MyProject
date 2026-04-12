@@ -187,8 +187,8 @@
                     v-if="product.editing" 
                     v-model="product.pluno" 
                     size="small"
-                    placeholder="输入真实品号"
-                    style="width: 150px; margin-right: 5px"
+                    placeholder="品号"
+                    style="width: 100px; margin-right: 5px"
                   />
                   <span v-else class="real-pluno">{{ product.pluno || '无' }}</span>
                   <el-button 
@@ -197,7 +197,7 @@
                     size="small" 
                     @click="savePlunoEdit(product)"
                   >
-                    保存
+                    确认
                   </el-button>
                   <el-button 
                     v-else 
