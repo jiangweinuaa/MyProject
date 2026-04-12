@@ -7,7 +7,8 @@ import java.util.List;
  */
 public class ProductRecognitionResult {
     
-    private String pluno;                  // 商品品号
+    private String pluno;                  // 商品品号（匹配到的真实品号）
+    private String sourcePluno;            // 临时品号（阿里云返回的 CategoryId）
     private String productName;            // 商品名称
     private String category;               // 商品类别
     private Double confidence;             // 识别置信度
@@ -48,6 +49,14 @@ public class ProductRecognitionResult {
     
     public void setPluno(String pluno) {
         this.pluno = pluno;
+    }
+    
+    public String getSourcePluno() {
+        return sourcePluno;
+    }
+    
+    public void setSourcePluno(String sourcePluno) {
+        this.sourcePluno = sourcePluno;
     }
     
     public String getProductName() {

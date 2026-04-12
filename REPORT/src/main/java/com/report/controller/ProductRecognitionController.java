@@ -44,8 +44,8 @@ public class ProductRecognitionController {
             
             ProductRecognitionResponse product = new ProductRecognitionResponse();
             product.setPluno(result.getPluno());  // 匹配到的真实品号（可能为 null）
-            // sourcePluno: 阿里云返回的原始识别结果（商品名称），作为临时品号显示
-            product.setSourcePluno(result.getProductName());  
+            // sourcePluno: 阿里云返回的原始识别结果（CategoryId），作为临时品号显示
+            product.setSourcePluno(result.getSourcePluno());  
             product.setProductName(result.getProductName());
             product.setCategory(result.getCategory());
             product.setConfidence(result.getConfidence());

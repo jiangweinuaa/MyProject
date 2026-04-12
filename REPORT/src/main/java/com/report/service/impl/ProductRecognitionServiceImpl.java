@@ -48,9 +48,10 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
             if (recognitionResult != null && Boolean.TRUE.equals(recognitionResult.get("success"))) {
                 String aliCategoryName = (String) recognitionResult.get("category");
                 String aliProductName = (String) recognitionResult.get("productName");
+                String aliCategoryId = (String) recognitionResult.get("sourcePluno");  // 阿里返回的 CategoryId
                 Double confidence = (Double) recognitionResult.get("confidence");
                 
-                System.out.println("🎯 阿里云识别结果：类目=" + aliCategoryName + ", 置信度=" + confidence);
+                System.out.println("🎯 阿里云识别结果：类目=" + aliCategoryName + ", CategoryId=" + aliCategoryId + ", 置信度=" + confidence);
                 
                 // 4. 匹配本地训练库
                 String localPluno = matchLocalProduct(aliCategoryName, aliProductName);
@@ -63,6 +64,7 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                     Map<String, Object> localProduct = getProductInfo(localPluno);
                     
                     result.setPluno(localPluno);
+                    result.setSourcePluno(aliCategoryId);  // 保存阿里返回的原始 CategoryId
                     result.setProductName(localProduct != null ? (String) localProduct.get("PRODUCT_NAME") : aliProductName);
                     result.setCategory(localProduct != null ? (String) localProduct.get("CATEGORY") : aliCategoryName);
                     result.setConfidence(confidence != null ? confidence : 0.85);
@@ -71,7 +73,8 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                     // 未匹配到本地商品，使用阿里云结果（品号为空，表示没有真实品号）
                     System.out.println("⚠️ 未匹配到本地商品，使用阿里云结果（无真实品号）");
                     
-                    result.setPluno(null);  // 【关键修改】品号为空，表示没有真实品号
+                    result.setPluno(null);  // 品号为空，表示没有真实品号
+                    result.setSourcePluno(aliCategoryId);  // 保存阿里返回的原始 CategoryId
                     result.setProductName(aliProductName != null ? aliProductName : "识别商品");
                     result.setCategory(aliCategoryName != null ? aliCategoryName : "通用商品");
                     result.setConfidence(confidence != null ? confidence : 0.85);

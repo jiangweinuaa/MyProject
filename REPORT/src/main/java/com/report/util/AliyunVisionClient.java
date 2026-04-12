@@ -163,7 +163,12 @@ public class AliyunVisionClient {
             String categoryId = extractFromJson(responseBody, "CategoryId");
             String score = extractFromJson(responseBody, "Score");
             
-            result.put("pluno", "ALI-" + (categoryId != null ? categoryId : System.currentTimeMillis()));
+            // 打印原始返回 JSON 用于调试
+            System.out.println("📋 阿里云原始返回 JSON: " + responseBody);
+            System.out.println("📋 解析结果：CategoryId=" + categoryId + ", CategoryName=" + categoryName + ", Score=" + score);
+            
+            // pluno: 使用 CategoryId 作为临时品号（阿里返回的原始识别结果）
+            result.put("sourcePluno", categoryId != null ? categoryId : null);
             result.put("productName", categoryName != null ? categoryName : "识别商品");
             result.put("category", categoryName != null ? categoryName : "通用商品");
             result.put("confidence", score != null ? Double.parseDouble(score) : 0.85);
