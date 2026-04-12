@@ -2,14 +2,14 @@ package com.report.controller;
 
 import com.report.dto.ProductRecognitionRequest;
 import com.report.dto.ProductRecognitionResult;
+import com.report.dto.ProductRecognitionResponse;
 import com.report.dto.ServiceResponse;
 import com.report.service.ProductRecognitionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 /**
  * 商品识别控制器
@@ -23,7 +23,7 @@ public class ProductRecognitionController {
     private ProductRecognitionService productRecognitionService;
     
     /**
-     * 识别商品
+     * 识别商品（返回多商品数组）
      */
     @PostMapping("/recognize")
     public Map<String, Object> recognizeProduct(@RequestParam("image") MultipartFile image) {
@@ -36,24 +36,48 @@ public class ProductRecognitionController {
                 return response;
             }
             
+            // 调用识别服务
             ProductRecognitionResult result = productRecognitionService.recognize(image);
             
-            if (result.getPluno() != null) {
-                response.put("success", true);
-                response.put("datas", result);
-                response.put("message", "识别成功");
-            } else {
-                response.put("success", false);
-                response.put("message", "未找到匹配的商品");
-            }
+            // 构建多商品响应数组（目前支持单商品，预留多商品扩展）
+            List<ProductRecognitionResponse> products = new ArrayList<>();
+            
+            ProductRecognitionResponse product = new ProductRecognitionResponse();
+            product.setPluno(result.getPluno());  // 可能为 null（未匹配到真实品号）
+            product.setProductName(result.getProductName());
+            product.setCategory(result.getCategory());
+            product.setConfidence(result.getConfidence());
+            product.setRecognitionSource(result.getRecognitionSource());
+            product.setMatchSource(result.getRecognitionSource());  // LOCAL_MATCH 或 ALIYUN
+            product.setQuantity(1);
+            product.setImageUrl(result.getSimilarProducts() != null ? null : null);  // 预留图片 URL
+            product.setRecognitionTime(System.currentTimeMillis());
+            
+            products.add(product);
+            
+            // 构建响应
+            response.put("success", true);
+            response.put("message", "识别成功，共识别到 " + products.size() + " 种商品");
+            response.put("productCount", products.size());
+            
+            Map<String, Object> datas = new HashMap<>();
+            datas.put("products", products);
+            datas.put("imageUrl", null);  // 预留
+            datas.put("recognitionTime", System.currentTimeMillis());
+            datas.put("success", true);
+            datas.put("message", "识别成功，共识别到 " + products.size() + " 种商品");
+            datas.put("quantity", 1);
+            
+            response.put("datas", datas);
+            
+            return response;
             
         } catch (Exception e) {
             e.printStackTrace();
             response.put("success", false);
             response.put("message", "识别失败：" + e.getMessage());
+            return response;
         }
-        
-        return response;
     }
     
     /**

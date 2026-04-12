@@ -347,7 +347,7 @@ const recognizeProduct = async (imageBlob) => {
         })
       }
       const productCount = response.datas.products?.length || response.productCount || 1
-      ElMessage.success(`识别成功，共识别到 ${productCount} 种商品`)
+      ElMessage.success(response.message || `识别成功，共识别到 ${productCount} 种商品`)
     } else {
       ElMessage.error('识别失败：' + (response.message || '未找到匹配商品'))
     }
