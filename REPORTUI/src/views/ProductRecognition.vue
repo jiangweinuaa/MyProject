@@ -167,7 +167,33 @@
           
           <el-descriptions :column="1" border size="small">
             <el-descriptions-item label="商品品号">
-              {{ product.pluno || '-' }}
+              <div class="pluno-edit">
+                <el-input 
+                  v-if="product.editing" 
+                  v-model="product.pluno" 
+                  size="small"
+                  placeholder="输入品号"
+                  style="width: 150px; margin-right: 5px"
+                />
+                <span v-else>{{ product.pluno || '-' }}</span>
+                <el-button 
+                  v-if="product.editing" 
+                  type="success" 
+                  size="small" 
+                  @click="savePlunoEdit(product)"
+                  :loading="product.submitting"
+                >
+                  保存
+                </el-button>
+                <el-button 
+                  v-else 
+                  type="primary" 
+                  size="small" 
+                  @click="editPluno(product)"
+                >
+                  修改
+                </el-button>
+              </div>
             </el-descriptions-item>
             <el-descriptions-item label="商品名称">
               {{ product.productName || '-' }}
@@ -184,6 +210,20 @@
               </el-tag>
             </el-descriptions-item>
           </el-descriptions>
+          
+          <!-- 提交到训练库 -->
+          <div class="submit-training-action" v-if="product.pluno">
+            <el-button 
+              type="warning" 
+              size="small" 
+              @click="submitToTraining(product)"
+              :loading="product.submitting"
+              :disabled="product.confidence > 0.8"
+            >
+              📚 提交到训练库
+            </el-button>
+            <span class="submit-hint" v-if="product.confidence > 0.8">（置信度高，无需提交）</span>
+          </div>
         </el-card>
       </div>
       
@@ -287,6 +327,13 @@ const recognizeProduct = async (imageBlob) => {
     
     if (response.success && response.datas) {
       recognitionResult.value = response.datas
+      // 为每个商品添加编辑状态
+      if (recognitionResult.value.products) {
+        recognitionResult.value.products.forEach(product => {
+          product.editing = false
+          product.submitting = false
+        })
+      }
       const productCount = response.datas.products?.length || response.productCount || 1
       ElMessage.success(`识别成功，共识别到 ${productCount} 种商品`)
     } else {
@@ -297,6 +344,53 @@ const recognizeProduct = async (imageBlob) => {
     ElMessage.error('识别失败：' + error.message)
   } finally {
     recognizing.value = false
+  }
+}
+
+// 编辑品号
+const editPluno = (product) => {
+  product.editing = true
+}
+
+// 保存品号修改
+const savePlunoEdit = (product) => {
+  product.editing = false
+  ElMessage.success('品号已更新')
+}
+
+// 提交到训练库
+const submitToTraining = async (product) => {
+  if (!product.pluno) {
+    ElMessage.warning('请先输入品号')
+    return
+  }
+  
+  product.submitting = true
+  
+  try {
+    const formData = new FormData()
+    formData.append('image', selectedImage.value.file)
+    formData.append('pluno', product.pluno)
+    formData.append('productName', product.productName || '')
+    formData.append('category', product.category || '')
+    
+    const response = await fetch('http://47.100.138.89:8110/api/product/submit-training', {
+      method: 'POST',
+      body: formData
+    }).then(res => res.json())
+    
+    if (response.success) {
+      ElMessage.success('提交成功！已添加到训练库')
+      // 标记为已提交
+      product.submitted = true
+    } else {
+      ElMessage.error('提交失败：' + (response.message || '未知错误'))
+    }
+    
+  } catch (error) {
+    ElMessage.error('提交失败：' + error.message)
+  } finally {
+    product.submitting = false
   }
 }
 
@@ -509,6 +603,28 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 600;
   color: #409EFF;
+}
+
+/* 品号编辑样式 */
+.pluno-edit {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* 提交到训练库样式 */
+.submit-training-action {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px dashed #ebeef5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.submit-hint {
+  font-size: 12px;
+  color: #909399;
 }
 
 /* 移动端优化 */
