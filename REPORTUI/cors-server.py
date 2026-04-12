@@ -37,8 +37,9 @@ class CORSHandler(http.server.SimpleHTTPRequestHandler):
 
 PORT = 8081
 
-socketserver.TCPServer.allow_reuse_address = True
+class ReuseAddrTCPServer(socketserver.TCPServer):
+    allow_reuse_address = True
 
-with socketserver.TCPServer(("", PORT), CORSHandler) as httpd:
+with ReuseAddrTCPServer(("", PORT), CORSHandler) as httpd:
     print(f"Serving at port {PORT}")
     httpd.serve_forever()

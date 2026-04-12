@@ -1,7 +1,10 @@
 package com.report.service.impl;
 
+import com.report.dao.ImageFeatureDAO;
+import com.report.dto.ImageFeature;
 import com.report.dto.ProductRecognitionRequest;
 import com.report.dto.ProductRecognitionResult;
+import com.report.service.ImageFeatureExtractor;
 import com.report.service.ProductRecognitionService;
 import com.report.util.AliyunVisionClient;
 import com.report.util.TencentCloudClient;
@@ -10,6 +13,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
 
 /**
@@ -26,6 +33,12 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
     
     @Autowired(required = false)
     private TencentCloudClient tencentCloudClient;
+    
+    @Autowired(required = false)
+    private ImageFeatureDAO imageFeatureDAO;
+    
+    @Autowired(required = false)
+    private ImageFeatureExtractor featureExtractor;
     
     @Override
     public ProductRecognitionResult recognize(MultipartFile image) {
@@ -337,6 +350,40 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 "system"
             );
             
+            // 【新增】提取并保存图像特征
+            boolean featureExtracted = false;
+            try {
+                System.out.println("🔍 开始提取图像特征...");
+                extractAndSaveFeatures(request.getPluno(), localImageUrl, ossImageUrl, filePath);
+                featureExtracted = true;
+            } catch (Exception e) {
+                System.err.println("⚠️ 特征提取失败：" + e.getMessage());
+                e.printStackTrace();
+                // 特征提取失败不影响主流程
+            }
+            
+            // 更新训练样本表的特征提取标记
+            if (featureExtracted) {
+                try {
+                    // 查询刚保存的特征 ID（使用 OSS_IMAGE_URL 查询）
+                    String featureIdSql = "SELECT FEATURE_ID FROM PRODUCT_IMAGE_FEATURES " +
+                        "WHERE PLUNO = ? AND OSS_IMAGE_URL = ? ORDER BY CREATED_TIME DESC";
+                    String featureId = jdbcTemplate.queryForObject(featureIdSql, String.class, 
+                        request.getPluno(), ossImageUrl);
+                    
+                    String updateSql = "UPDATE PRODUCT_TRAINING_SAMPLES SET " +
+                        "FEATURE_EXTRACTED = 'Y', " +
+                        "FEATURE_ID = ?, " +
+                        "FEATURE_EXTRACT_TIME = SYSDATE " +
+                        "WHERE SAMPLE_ID = ?";
+                    jdbcTemplate.update(updateSql, featureId, sampleId);
+                    System.out.println("✅ 训练样本特征提取标记已更新，FEATURE_ID=" + featureId);
+                } catch (Exception e) {
+                    System.err.println("⚠️ 更新特征提取标记失败：" + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+            
             // 更新商品特征表
             updateProductFeatures(request);
             
@@ -497,6 +544,42 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
             }
             
         } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 提取并保存图像特征
+     */
+    private void extractAndSaveFeatures(String pluno, String localImageUrl, String ossImageUrl, String filePath) {
+        try {
+            // 读取图片文件
+            byte[] imageData = Files.readAllBytes(Paths.get(filePath));
+            
+            // 提取特征向量
+            float[] features = featureExtractor.extractFeatures(imageData);
+            
+            if (features != null) {
+                // 保存特征
+                ImageFeature feature = new ImageFeature();
+                feature.setFeatureId(UUID.randomUUID().toString().replace("-", ""));
+                feature.setPluno(pluno);
+                feature.setImageUrl(localImageUrl);
+                feature.setOssImageUrl(ossImageUrl);
+                feature.setFeatureVector(features);
+                feature.setFeatureDimension(features.length);
+                feature.setModelVersion("resnet50-v1");
+                feature.setCreatedBy("system");
+                
+                imageFeatureDAO.saveFeature(feature);
+                
+                // 更新商品特征数量
+                imageFeatureDAO.updateFeatureCount(pluno);
+                
+                System.out.println("✅ 特征提取并保存成功");
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ 特征提取失败：" + e.getMessage());
             e.printStackTrace();
         }
     }
