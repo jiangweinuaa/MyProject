@@ -169,7 +169,7 @@
             <!-- 临时品号（识别结果）+ 匹配来源 -->
             <el-descriptions-item label="识别结果">
               <div class="pluno-row">
-                <span class="temp-pluno">{{ product.productName || '未知商品' }}</span>
+                <span class="temp-pluno">{{ product.sourcePluno || '未知商品' }}</span>
                 <el-tag size="small" :type="product.hasRealPluno ? 'success' : 'warning'">
                   {{ product.hasRealPluno ? '已匹配' : '未匹配' }}
                 </el-tag>

@@ -43,14 +43,16 @@ public class ProductRecognitionController {
             List<ProductRecognitionResponse> products = new ArrayList<>();
             
             ProductRecognitionResponse product = new ProductRecognitionResponse();
-            product.setPluno(result.getPluno());  // 可能为 null（未匹配到真实品号）
+            product.setPluno(result.getPluno());  // 匹配到的真实品号（可能为 null）
+            // sourcePluno: 阿里云返回的原始识别结果（商品名称），作为临时品号显示
+            product.setSourcePluno(result.getProductName());  
             product.setProductName(result.getProductName());
             product.setCategory(result.getCategory());
             product.setConfidence(result.getConfidence());
             product.setRecognitionSource(result.getRecognitionSource());
             product.setMatchSource(result.getRecognitionSource());  // LOCAL_MATCH 或 ALIYUN
             product.setQuantity(1);
-            product.setImageUrl(result.getSimilarProducts() != null ? null : null);  // 预留图片 URL
+            product.setImageUrl(null);  // 预留图片 URL
             product.setRecognitionTime(System.currentTimeMillis());
             
             products.add(product);
