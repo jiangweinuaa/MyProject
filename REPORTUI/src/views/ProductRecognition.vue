@@ -130,28 +130,62 @@
       @change="handleFileSelect"
     />
 
-    <!-- 识别结果 -->
+    <!-- 识别结果 - 多商品列表 -->
     <el-card class="result-card" shadow="hover" v-if="recognitionResult">
       <template #header>
         <div class="card-header">
           <span>✅ 识别结果</span>
-          <el-tag :type="recognitionResult.confidence > 0.8 ? 'success' : 'warning'">
-            置信度：{{ Math.round(recognitionResult.confidence * 100) }}%
+          <el-tag type="success">
+            共识别 {{ recognitionResult.products?.length || 0 }} 种商品
           </el-tag>
         </div>
       </template>
       
-      <el-descriptions :column="1" border>
-        <el-descriptions-item label="商品品号">
-          {{ recognitionResult.pluno }}
-        </el-descriptions-item>
-        <el-descriptions-item label="商品名称">
-          {{ recognitionResult.productName }}
-        </el-descriptions-item>
-        <el-descriptions-item label="商品类别">
-          {{ recognitionResult.category }}
-        </el-descriptions-item>
-      </el-descriptions>
+      <!-- 识别信息 -->
+      <el-alert
+        :title="recognitionResult.message || '识别成功'"
+        type="success"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 15px"
+      />
+      
+      <!-- 多商品列表 -->
+      <div class="product-list" v-if="recognitionResult.products && recognitionResult.products.length > 0">
+        <el-card 
+          v-for="(product, index) in recognitionResult.products" 
+          :key="index"
+          class="product-item"
+          shadow="hover"
+        >
+          <div class="product-item-header">
+            <span class="product-index">商品 {{ index + 1 }}</span>
+            <el-tag :type="product.confidence > 0.8 ? 'success' : (product.confidence > 0.5 ? 'warning' : 'danger')">
+              置信度：{{ Math.round(product.confidence * 100) }}%
+            </el-tag>
+          </div>
+          
+          <el-descriptions :column="1" border size="small">
+            <el-descriptions-item label="商品品号">
+              {{ product.pluno || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="商品名称">
+              {{ product.productName || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="商品类别">
+              {{ product.category || '-' }}
+            </el-descriptions-item>
+            <el-descriptions-item label="识别数量">
+              {{ product.quantity || 1 }}
+            </el-descriptions-item>
+            <el-descriptions-item label="匹配来源">
+              <el-tag size="small" type="info">
+                {{ product.matchSource || '未知' }}
+              </el-tag>
+            </el-descriptions-item>
+          </el-descriptions>
+        </el-card>
+      </div>
       
       <!-- 用户确认 -->
       <div class="confirm-actions">
@@ -162,26 +196,6 @@
           🔄 重新识别
         </el-button>
       </div>
-    </el-card>
-
-    <!-- 相似商品列表 -->
-    <el-card class="similar-card" shadow="hover" v-if="recognitionResult?.similarProducts?.length > 0">
-      <template #header>
-        <span>🔎 相似商品</span>
-      </template>
-      
-      <el-table :data="recognitionResult.similarProducts" style="width: 100%">
-        <el-table-column prop="pluno" label="品号" width="120" />
-        <el-table-column prop="productName" label="名称" />
-        <el-table-column prop="category" label="类别" width="100" />
-        <el-table-column label="相似度" width="100">
-          <template #default="{ row }">
-            <el-tag :type="row.similarity > 0.8 ? 'success' : 'primary'">
-              {{ Math.round(row.similarity * 100) }}%
-            </el-tag>
-          </template>
-        </el-table-column>
-      </el-table>
     </el-card>
   </div>
 </template>
@@ -273,7 +287,8 @@ const recognizeProduct = async (imageBlob) => {
     
     if (response.success && response.datas) {
       recognitionResult.value = response.datas
-      ElMessage.success('识别成功')
+      const productCount = response.datas.products?.length || response.productCount || 1
+      ElMessage.success(`识别成功，共识别到 ${productCount} 种商品`)
     } else {
       ElMessage.error('识别失败：' + (response.message || '未找到匹配商品'))
     }
@@ -470,8 +485,30 @@ onMounted(() => {
   justify-content: center;
 }
 
-.similar-card {
-  margin-top: 10px;
+/* 多商品列表样式 */
+.product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.product-item {
+  margin-bottom: 0;
+}
+
+.product-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #ebeef5;
+}
+
+.product-index {
+  font-size: 14px;
+  font-weight: 600;
+  color: #409EFF;
 }
 
 /* 移动端优化 */
