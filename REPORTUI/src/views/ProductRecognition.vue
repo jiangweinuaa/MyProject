@@ -166,35 +166,50 @@
           </div>
           
           <el-descriptions :column="1" border size="small">
-            <el-descriptions-item label="商品品号">
-              <div class="pluno-edit">
-                <el-input 
-                  v-if="product.editing" 
-                  v-model="product.pluno" 
-                  size="small"
-                  placeholder="输入品号"
-                  style="width: 150px; margin-right: 5px"
-                />
-                <span v-else>{{ product.pluno || '-' }}</span>
-                <el-button 
-                  v-if="product.editing" 
-                  type="success" 
-                  size="small" 
-                  @click="savePlunoEdit(product)"
-                  :loading="product.submitting"
-                >
-                  保存
-                </el-button>
-                <el-button 
-                  v-else 
-                  type="primary" 
-                  size="small" 
-                  @click="editPluno(product)"
-                >
-                  修改
-                </el-button>
+            <!-- 临时品号（识别结果）+ 匹配来源 -->
+            <el-descriptions-item label="临时品号">
+              <div class="pluno-row">
+                <span class="temp-pluno">{{ product.tempPluno || product.pluno || '-' }}</span>
+                <el-tag size="small" type="info" v-if="product.matchSource">
+                  {{ product.matchSource }}
+                </el-tag>
               </div>
             </el-descriptions-item>
+            
+            <!-- 真实品号（匹配结果）+ 修改按钮 -->
+            <el-descriptions-item label="真实品号">
+              <div class="pluno-row">
+                <div class="real-pluno-edit">
+                  <el-input 
+                    v-if="product.editing" 
+                    v-model="product.pluno" 
+                    size="small"
+                    placeholder="输入真实品号"
+                    style="width: 150px; margin-right: 5px"
+                  />
+                  <span v-else class="real-pluno">{{ product.pluno || '-' }}</span>
+                  <el-button 
+                    v-if="product.editing" 
+                    type="success" 
+                    size="small" 
+                    @click="savePlunoEdit(product)"
+                    :loading="product.submitting"
+                  >
+                    保存
+                  </el-button>
+                  <el-button 
+                    v-else 
+                    type="primary" 
+                    size="small" 
+                    @click="editPluno(product)"
+                    :disabled="!product.pluno"
+                  >
+                    修改
+                  </el-button>
+                </div>
+              </div>
+            </el-descriptions-item>
+            
             <el-descriptions-item label="商品名称">
               {{ product.productName || '-' }}
             </el-descriptions-item>
@@ -203,11 +218,6 @@
             </el-descriptions-item>
             <el-descriptions-item label="识别数量">
               {{ product.quantity || 1 }}
-            </el-descriptions-item>
-            <el-descriptions-item label="匹配来源">
-              <el-tag size="small" type="info">
-                {{ product.matchSource || '未知' }}
-              </el-tag>
             </el-descriptions-item>
           </el-descriptions>
           
@@ -221,6 +231,7 @@
             >
               📚 提交到训练库
             </el-button>
+            <span class="submit-hint" v-if="!product.pluno">（需先填写真实品号）</span>
           </div>
         </el-card>
       </div>
@@ -322,11 +333,13 @@ const recognizeProduct = async (imageBlob) => {
     
     if (response.success && response.datas) {
       recognitionResult.value = response.datas
-      // 为每个商品添加编辑状态
+      // 为每个商品添加编辑状态和临时品号
       if (recognitionResult.value.products) {
         recognitionResult.value.products.forEach(product => {
           product.editing = false
           product.submitting = false
+          // 保存临时品号（识别的原始结果）
+          product.tempPluno = product.pluno
         })
       }
       const productCount = response.datas.products?.length || response.productCount || 1
@@ -350,13 +363,14 @@ const editPluno = (product) => {
 // 保存品号修改
 const savePlunoEdit = (product) => {
   product.editing = false
-  ElMessage.success('品号已更新')
+  ElMessage.success('真实品号已更新')
 }
 
 // 提交到训练库
 const submitToTraining = async (product) => {
+  // 没有真实品号不允许提交
   if (!product.pluno) {
-    ElMessage.warning('请先输入品号')
+    ElMessage.warning('请先填写真实品号')
     return
   }
   
@@ -596,7 +610,26 @@ onMounted(() => {
 }
 
 /* 品号编辑样式 */
-.pluno-edit {
+.pluno-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.temp-pluno {
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #606266;
+}
+
+.real-pluno {
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #409EFF;
+  font-weight: 500;
+}
+
+.real-pluno-edit {
   display: flex;
   align-items: center;
   gap: 5px;
