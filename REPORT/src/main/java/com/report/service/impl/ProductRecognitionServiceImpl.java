@@ -68,10 +68,10 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                     result.setConfidence(confidence != null ? confidence : 0.85);
                     result.setRecognitionSource("LOCAL_MATCH");
                 } else {
-                    // 未匹配到本地商品，使用阿里云结果
-                    System.out.println("⚠️ 未匹配到本地商品，使用阿里云结果");
+                    // 未匹配到本地商品，使用阿里云结果（品号为空，表示没有真实品号）
+                    System.out.println("⚠️ 未匹配到本地商品，使用阿里云结果（无真实品号）");
                     
-                    result.setPluno("ALI-" + System.currentTimeMillis());
+                    result.setPluno(null);  // 【关键修改】品号为空，表示没有真实品号
                     result.setProductName(aliProductName != null ? aliProductName : "识别商品");
                     result.setCategory(aliCategoryName != null ? aliCategoryName : "通用商品");
                     result.setConfidence(confidence != null ? confidence : 0.85);

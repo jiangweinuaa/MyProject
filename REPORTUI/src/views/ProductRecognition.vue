@@ -167,9 +167,12 @@
           
           <el-descriptions :column="1" border size="small">
             <!-- 临时品号（识别结果）+ 匹配来源 -->
-            <el-descriptions-item label="临时品号">
+            <el-descriptions-item label="识别结果">
               <div class="pluno-row">
-                <span class="temp-pluno">{{ product.tempPluno || product.pluno || '-' }}</span>
+                <span class="temp-pluno">{{ product.productName || '未知商品' }}</span>
+                <el-tag size="small" :type="product.hasRealPluno ? 'success' : 'warning'">
+                  {{ product.hasRealPluno ? '已匹配' : '未匹配' }}
+                </el-tag>
                 <el-tag size="small" type="info" v-if="product.matchSource">
                   {{ product.matchSource }}
                 </el-tag>
@@ -187,13 +190,12 @@
                     placeholder="输入真实品号"
                     style="width: 150px; margin-right: 5px"
                   />
-                  <span v-else class="real-pluno">{{ product.pluno || '-' }}</span>
+                  <span v-else class="real-pluno">{{ product.pluno || '无' }}</span>
                   <el-button 
                     v-if="product.editing" 
                     type="success" 
                     size="small" 
                     @click="savePlunoEdit(product)"
-                    :loading="product.submitting"
                   >
                     保存
                   </el-button>
@@ -202,9 +204,8 @@
                     type="primary" 
                     size="small" 
                     @click="editPluno(product)"
-                    :disabled="!product.pluno"
                   >
-                    修改
+                    {{ product.hasRealPluno ? '修改' : '填写' }}
                   </el-button>
                 </div>
               </div>
@@ -335,18 +336,14 @@ const recognizeProduct = async (imageBlob) => {
     
     if (response.success && response.datas) {
       recognitionResult.value = response.datas
-      // 为每个商品添加编辑状态和临时品号
+      // 为每个商品添加编辑状态
       if (recognitionResult.value.products) {
         recognitionResult.value.products.forEach(product => {
           product.editing = false
           product.submitting = false
           product.submitted = false
-          // 保存临时品号（识别的原始结果）
-          product.tempPluno = product.pluno
-          // 标记是否有真实品号（匹配来源不是 ALIYUN 且品号不是临时生成的）
-          product.hasRealPluno = product.matchSource !== 'ALIYUN' && 
-                                  product.pluno && 
-                                  !product.pluno.startsWith('ALI-')
+          // 标记是否有真实品号（后端返回的 pluno 不为空即表示有真实品号）
+          product.hasRealPluno = !!product.pluno
         })
       }
       const productCount = response.datas.products?.length || response.productCount || 1
@@ -370,9 +367,9 @@ const editPluno = (product) => {
 // 保存品号修改
 const savePlunoEdit = (product) => {
   product.editing = false
-  // 用户手动修改后，标记为有真实品号
-  product.hasRealPluno = true
-  ElMessage.success('真实品号已更新')
+  // 用户手动填写/修改后，标记为有真实品号
+  product.hasRealPluno = !!product.pluno
+  ElMessage.success(product.hasRealPluno ? '真实品号已更新' : '已清空')
 }
 
 // 提交到训练库
