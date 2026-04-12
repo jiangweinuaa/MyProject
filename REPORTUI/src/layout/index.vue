@@ -145,7 +145,7 @@ const menus = [
   { path: '/stock-analysis', title: '商品库存分析', icon: 'Box' },
   { path: '/dcp-sale-qty', title: '商品销售明细', icon: 'List' },
   { path: '/api-doc', title: 'API 文档', icon: 'Document' },
-  { path: '/product-recognition', title: '商品识别', icon: 'Scan' },
+  { path: '/product-recognition', title: '商品识别', icon: 'Picture' },
   { path: '/product-training', title: '商品训练', icon: 'Camera' },
   { path: '/training-library', title: '训练库管理', icon: 'FolderOpened' },
   { path: '/sales-accuracy-analysis', title: '销售预估准确性', icon: 'TrendCharts' },
