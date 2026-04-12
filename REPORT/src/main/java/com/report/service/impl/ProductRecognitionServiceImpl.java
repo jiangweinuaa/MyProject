@@ -288,15 +288,15 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
             
             // 插入训练样本记录（包含 OSS_IMAGE_URL 字段）
             String sql = "INSERT INTO PRODUCT_TRAINING_SAMPLES " +
-                "(SAMPLE_ID, PLUNO, PRODUCT_NAME, IMAGE_URL, OSS_IMAGE_URL, METADATA, CREATED_TIME, CREATED_BY) " +
-                "VALUES (?, ?, ?, ?, ?, ?, SYSDATE, ?)";
+                "(SAMPLE_ID, PLUNO, PRODUCT_NAME, IMAGE_URL, OSS_IMAGE_URL, METADATA, CREATED_BY, CREATED_TIME) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, SYSDATE)";
             
             jdbcTemplate.update(sql, 
                 sampleId,
                 request.getPluno(),
                 request.getProductName(),
                 localImageUrl,
-                ossImageUrl,  // 【新增】OSS 图片 URL
+                ossImageUrl != null ? ossImageUrl : localImageUrl,  // OSS URL，如果为空则用本地 URL
                 request.getMetadata(),
                 "system"
             );

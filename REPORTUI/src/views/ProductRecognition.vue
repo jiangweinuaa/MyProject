@@ -228,10 +228,12 @@
               size="small" 
               @click="submitToTraining(product)"
               :loading="product.submitting"
+              :disabled="!product.hasRealPluno"
             >
               📚 提交到训练库
             </el-button>
-            <span class="submit-hint" v-if="!product.pluno">（需先填写真实品号）</span>
+            <span class="submit-hint" v-if="!product.hasRealPluno">（需先修改真实品号）</span>
+            <span class="submit-hint" v-if="product.submitted">（已提交）</span>
           </div>
         </el-card>
       </div>
@@ -338,8 +340,13 @@ const recognizeProduct = async (imageBlob) => {
         recognitionResult.value.products.forEach(product => {
           product.editing = false
           product.submitting = false
+          product.submitted = false
           // 保存临时品号（识别的原始结果）
           product.tempPluno = product.pluno
+          // 标记是否有真实品号（匹配来源不是 ALIYUN 且品号不是临时生成的）
+          product.hasRealPluno = product.matchSource !== 'ALIYUN' && 
+                                  product.pluno && 
+                                  !product.pluno.startsWith('ALI-')
         })
       }
       const productCount = response.datas.products?.length || response.productCount || 1
@@ -363,13 +370,15 @@ const editPluno = (product) => {
 // 保存品号修改
 const savePlunoEdit = (product) => {
   product.editing = false
+  // 用户手动修改后，标记为有真实品号
+  product.hasRealPluno = true
   ElMessage.success('真实品号已更新')
 }
 
 // 提交到训练库
 const submitToTraining = async (product) => {
-  // 没有真实品号不允许提交
-  if (!product.pluno) {
+  // 没有真实品号不允许提交（临时品号不算）
+  if (!product.hasRealPluno || !product.pluno) {
     ElMessage.warning('请先填写真实品号')
     return
   }
