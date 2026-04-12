@@ -624,13 +624,13 @@ onMounted(() => {
 
 .temp-pluno {
   font-family: 'Courier New', monospace;
-  font-size: 14px;
+  font-size: 15px;
   color: #606266;
 }
 
 .real-pluno {
   font-family: 'Courier New', monospace;
-  font-size: 14px;
+  font-size: 15px;
   color: #409EFF;
   font-weight: 500;
 }
