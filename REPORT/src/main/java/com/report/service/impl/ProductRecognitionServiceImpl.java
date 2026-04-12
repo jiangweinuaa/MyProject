@@ -4,6 +4,7 @@ import com.report.dto.ProductRecognitionRequest;
 import com.report.dto.ProductRecognitionResult;
 import com.report.service.ProductRecognitionService;
 import com.report.util.AliyunVisionClient;
+import com.report.util.TencentCloudClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -12,7 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.*;
 
 /**
- * 商品识别服务实现（简化版本）
+ * 商品识别服务实现（支持多平台）
  */
 @Service("productRecognitionService")
 public class ProductRecognitionServiceImpl implements ProductRecognitionService {
@@ -23,38 +24,41 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
     @Autowired
     private AliyunVisionClient aliyunVisionClient;
     
+    @Autowired(required = false)
+    private TencentCloudClient tencentCloudClient;
+    
     @Override
     public ProductRecognitionResult recognize(MultipartFile image) {
         ProductRecognitionResult result = new ProductRecognitionResult();
         result.setConfidence(0.0);
         
-        String ossImageUrl = null;  // 用于记录日志
-        
         try {
-            // 1. 先上传到 OSS（获取图片 URL）
-            try {
-                ossImageUrl = aliyunVisionClient.uploadImageToOSS(image, "recognize");
-                System.out.println("✅ 识别图片已上传到 OSS: " + ossImageUrl);
-            } catch (Exception e) {
-                System.err.println("⚠️ OSS 上传失败，使用临时 URL: " + e.getMessage());
-            }
+            // 1. 获取平台类型，决定调用哪个 API
+            String platform = getRecognitionPlatform();
+            System.out.println("🔍 识别平台类型：" + platform);
             
-            // 2. 调用阿里云商品识别 API
-            Map<String, Object> recognitionResult = aliyunVisionClient.recognizeProduct(
-                ossImageUrl != null ? ossImageUrl : "local-image"
-            );
+            Map<String, Object> recognitionResult = null;
+            
+            if ("TENCENT".equalsIgnoreCase(platform)) {
+                // 调用腾讯云商品识别 API（直接使用 MultipartFile）
+                recognitionResult = tencentCloudClient.recognizeProductFromMultipart(image);
+            } else {
+                // 默认调用阿里云商品识别 API（直接使用 MultipartFile）
+                recognitionResult = aliyunVisionClient.recognizeProductFromMultipart(image);
+            }
             
             // 3. 解析识别结果
             if (recognitionResult != null && Boolean.TRUE.equals(recognitionResult.get("success"))) {
-                String aliCategoryName = (String) recognitionResult.get("category");
-                String aliProductName = (String) recognitionResult.get("productName");
-                String aliCategoryId = (String) recognitionResult.get("sourcePluno");  // 阿里返回的 CategoryId
+                String categoryName = (String) recognitionResult.get("category");
+                String productName = (String) recognitionResult.get("productName");
+                String categoryId = (String) recognitionResult.get("sourcePluno");  // 阿里返回的 CategoryId，腾讯云为 null
                 Double confidence = (Double) recognitionResult.get("confidence");
+                String platformSource = (String) recognitionResult.get("platform");  // 识别平台
                 
-                System.out.println("🎯 阿里云识别结果：类目=" + aliCategoryName + ", CategoryId=" + aliCategoryId + ", 置信度=" + confidence);
+                System.out.println("🎯 识别结果：类目=" + categoryName + ", CategoryId=" + categoryId + ", 置信度=" + confidence + ", 平台=" + platformSource);
                 
                 // 4. 匹配本地训练库
-                String localPluno = matchLocalProduct(aliCategoryName, aliProductName);
+                String localPluno = matchLocalProduct(categoryName, productName);
                 
                 if (localPluno != null) {
                     // 匹配到本地商品
@@ -64,21 +68,21 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                     Map<String, Object> localProduct = getProductInfo(localPluno);
                     
                     result.setPluno(localPluno);
-                    result.setSourcePluno(aliCategoryId);  // 保存阿里返回的原始 CategoryId
-                    result.setProductName(localProduct != null ? (String) localProduct.get("PRODUCT_NAME") : aliProductName);
-                    result.setCategory(localProduct != null ? (String) localProduct.get("CATEGORY") : aliCategoryName);
+                    result.setSourcePluno(categoryId);  // 保存识别平台返回的原始 ID
+                    result.setProductName(localProduct != null ? (String) localProduct.get("PRODUCT_NAME") : productName);
+                    result.setCategory(localProduct != null ? (String) localProduct.get("CATEGORY") : categoryName);
                     result.setConfidence(confidence != null ? confidence : 0.85);
                     result.setRecognitionSource("LOCAL_MATCH");
                 } else {
-                    // 未匹配到本地商品，使用阿里云结果（品号为空，表示没有真实品号）
-                    System.out.println("⚠️ 未匹配到本地商品，使用阿里云结果（无真实品号）");
+                    // 未匹配到本地商品，使用识别平台结果（品号为空，表示没有真实品号）
+                    System.out.println("⚠️ 未匹配到本地商品，使用识别平台结果（无真实品号）");
                     
                     result.setPluno(null);  // 品号为空，表示没有真实品号
-                    result.setSourcePluno(aliCategoryId);  // 保存阿里返回的原始 CategoryId
-                    result.setProductName(aliProductName != null ? aliProductName : "识别商品");
-                    result.setCategory(aliCategoryName != null ? aliCategoryName : "通用商品");
+                    result.setSourcePluno(categoryId);  // 保存识别平台返回的原始 ID
+                    result.setProductName(productName != null ? productName : "识别商品");
+                    result.setCategory(categoryName != null ? categoryName : "通用商品");
                     result.setConfidence(confidence != null ? confidence : 0.85);
-                    result.setRecognitionSource("ALIYUN");
+                    result.setRecognitionSource(platformSource != null ? platformSource : platform);
                 }
                 
                 System.out.println("🎯 最终识别结果：品号=" + result.getPluno() + ", 来源=" + result.getRecognitionSource());
@@ -90,7 +94,7 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
         }
         
         // 【新增】5. 自动记录识别日志
-        logRecognition(result, ossImageUrl);
+        logRecognition(result);
         
         return result;
     }
@@ -98,9 +102,8 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
     /**
      * 自动记录识别日志
      * @param result 识别结果
-     * @param imageUrl 图片 URL
      */
-    private void logRecognition(ProductRecognitionResult result, String imageUrl) {
+    private void logRecognition(ProductRecognitionResult result) {
         if (jdbcTemplate == null) {
             return;
         }
@@ -119,7 +122,7 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
             
             jdbcTemplate.update(sql,
                 logId,
-                imageUrl != null ? imageUrl : "unknown",
+                "local-image",  // 不使用 OSS，使用本地标识
                 result.getSourcePluno(),      // RECOGNIZED_PLUNO: 阿里返回的 sourcePluno（CategoryId）
                 result.getProductName(),
                 result.getConfidence(),
@@ -207,6 +210,34 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
         } catch (Exception e) {
             System.err.println("查询商品信息失败：" + e.getMessage());
             return null;
+        }
+    }
+    
+    /**
+     * 获取识别平台类型
+     * @return 平台类型：ALI（默认）或 TENCENT
+     */
+    private String getRecognitionPlatform() {
+        if (jdbcTemplate == null) {
+            return "ALI";  // 默认使用阿里云
+        }
+        
+        try {
+            // 从 PRODUCT_APPKEY 表读取平台配置（专用配置记录）
+            String sql = "SELECT ACCESSKEYID FROM PRODUCT_APPKEY WHERE PLATFORM = 'RECOGNIZE_PLATFORM'";
+            List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
+            
+            if (list != null && !list.isEmpty()) {
+                String platform = (String) list.get(0).get("ACCESSKEYID");
+                System.out.println("📋 读取识别平台配置：" + platform);
+                return platform != null ? platform : "ALI";
+            }
+            
+            return "ALI";  // 默认使用阿里云
+            
+        } catch (Exception e) {
+            System.err.println("读取识别平台配置失败：" + e.getMessage());
+            return "ALI";  // 出错时使用阿里云
         }
     }
     
