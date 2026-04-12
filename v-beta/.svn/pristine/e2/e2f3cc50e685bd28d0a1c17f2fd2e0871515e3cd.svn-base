@@ -1,0 +1,808 @@
+﻿<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>com.dsc.spos</groupId>
+	<artifactId>DCP</artifactId>
+	<packaging>war</packaging>
+	<version>1.0-SNAPSHOT</version>
+	<name>SPos Webapp</name>
+	<url>http://maven.apache.org</url>
+	<dependencies>
+
+		<!-- quartz start -->
+		<!-- Quartz scheduler framework -->
+		
+				<!-- <dependency>
+            <groupId>jstl</groupId>
+            <artifactId>jstl</artifactId>
+            <version>1.2</version>
+        </dependency> -->
+
+        <dependency>
+            <groupId>javax.servlet.jsp</groupId>
+            <artifactId>jsp-api</artifactId>
+            <version>2.1</version>
+            <scope>provided</scope>
+        </dependency>
+		
+<!--		<dependency>-->
+<!--      		<groupId>org.slf4j</groupId>-->
+<!--      		<artifactId>slf4j-api</artifactId>-->
+<!--      		<version>1.7.25</version>-->
+<!--    	</dependency>-->
+    	
+<!--    	<dependency>-->
+<!--      		<groupId>org.apache.taglibs</groupId>-->
+<!--      		<artifactId>taglibs-standard-impl</artifactId>-->
+<!--      		<version>1.2.5</version>-->
+<!--    	</dependency>-->
+		
+		
+		<dependency>
+      		<groupId>org.springframework</groupId>
+      		<artifactId>spring-messaging</artifactId>
+      		<version>4.1.6.RELEASE</version>
+		</dependency>
+		
+		<dependency>
+   	 		<groupId>org.springframework</groupId>
+    		<artifactId>spring-websocket</artifactId>
+    		<version>4.1.6.RELEASE</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.quartz-scheduler</groupId>
+			<artifactId>quartz</artifactId>
+			<version>2.2.3</version>
+		</dependency>
+		<dependency>
+			<groupId>org.quartz-scheduler</groupId>
+			<artifactId>quartz-jobs</artifactId>
+			<version>2.2.3</version>
+		</dependency>
+		<!-- quartz end -->
+
+		<dependency>
+			<groupId>com.spreada</groupId>
+			<artifactId>ZHConverter</artifactId>
+			<version>1.0.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.google.code.gson</groupId>
+			<artifactId>gson</artifactId>
+			<version>2.2.4</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.json/org.json -->
+		<dependency>
+			<groupId>org.json</groupId>
+			<artifactId>org.json</artifactId>
+			<version>chargebee-1.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>redis.clients</groupId>
+			<artifactId>jedis</artifactId>
+			<version>2.9.0</version>
+		</dependency>
+
+		<!-- JDBC driver start -->
+		<!-- oracle -->
+		<!-- https://mvnrepository.com/artifact/ojdbc/ojdbc -->
+		<dependency>
+			<groupId>com.oracle</groupId>
+			<artifactId>ojdbc7</artifactId>
+			<version>12.1.0.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.9.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.codehaus.woodstox</groupId>
+			<artifactId>stax2-api</artifactId>
+			<version>4.0.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.fasterxml.jackson.dataformat</groupId>
+			<artifactId>jackson-dataformat-xml</artifactId>
+			<version>2.9.1</version>
+		</dependency>
+
+
+		<!-- MS SQL server -->
+		<!-- <dependency> <groupId>com.microsoft.sqlserver</groupId> <artifactId>sqljdbc4</artifactId> 
+			<version>4.0</version> </dependency> -->
+		<!-- Maria DB -->
+		<dependency>
+			<groupId>org.mariadb.jdbc</groupId>
+			<artifactId>mariadb-java-client</artifactId>
+			<version>1.4.2</version>
+		</dependency>
+		<!-- JDBC driver end -->
+
+		<!-- Cross Origin Resource Sharing (CORS) Filter -->
+		<dependency>
+			<groupId>com.thetransactioncompany</groupId>
+			<artifactId>cors-filter</artifactId>
+			<version>2.5</version>
+		</dependency>
+
+		<!-- CXF start -->
+		<dependency>
+			<groupId>org.apache.cxf</groupId>
+			<artifactId>cxf-rt-frontend-jaxws</artifactId>
+			<version>${cxf.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.cxf</groupId>
+			<artifactId>cxf-rt-transports-http</artifactId>
+			<version>${cxf.version}</version>
+		</dependency>
+		<!-- Jetty is needed if you're are not using the CXFServlet -->
+		<dependency>
+			<groupId>org.apache.cxf</groupId>
+			<artifactId>cxf-rt-transports-http-jetty</artifactId>
+			<version>${cxf.version}</version>
+		</dependency>
+		<!-- CXF end -->
+
+		<!-- cxf restful web service lib Start -->
+		<dependency>
+			<groupId>javax.ws.rs</groupId>
+			<artifactId>javax.ws.rs-api</artifactId>
+			<version>2.0-m15</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.cxf</groupId>
+			<artifactId>cxf-bundle-jaxrs</artifactId>
+			<version>${cxf.version}</version>
+		</dependency>
+		<!-- cxf restful web service lib end -->
+
+		<!-- Spring start -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context</artifactId>
+			<version>4.1.6.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-context-support</artifactId>
+			<version>4.1.6.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-web</artifactId>
+			<version>4.1.6.RELEASE</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-orm</artifactId>
+			<version>4.1.6.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-core</artifactId>
+			<version>4.3.10.Final</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-dbcp</groupId>
+			<artifactId>commons-dbcp</artifactId>
+			<version>1.4</version>
+		</dependency>
+		<!-- Spring end -->
+
+		<!-- external lib start -->
+		<!-- snaq dbpool start -->
+		<dependency>
+			<groupId>net.snaq</groupId>
+			<artifactId>dbpool</artifactId>
+			<version>7.0-jdk7</version>
+		</dependency>
+		<!-- snaq dbpool end -->
+		<!-- snaq cron4j start -->
+		<dependency>
+			<groupId>it.sauronsoftware.cron4j</groupId>
+			<artifactId>cron4j</artifactId>
+			<version>2.2.5</version>
+		</dependency>
+		<!-- snaq cron4j end -->
+		<!-- bouncycastle AES PaddingMode.PKCS7加密套件 start -->
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-jdk16</artifactId>
+			<version>1.46</version>
+		</dependency>
+		<!-- bouncycastle AES PaddingMode.PKCS7加密套件 end -->
+		<!-- XMLCipher 固要加這個 lib start -->
+		<dependency>
+			<groupId>org.apache.santuario</groupId>
+			<artifactId>xmlsec</artifactId>
+			<version>2.0.6</version>
+		</dependency>
+		<!-- XMLCipher 固要加這個 lib end -->
+		<!--ews-java-api是微软官方提供的供第三方来访问exchange webservice的java-api start (還會再用到 
+			commons-lang3-3.4.jar, joda-time-2.8.jar, 變成jar外掛時要注意) -->
+		<dependency>
+			<groupId>com.microsoft.ews-java-api</groupId>
+			<artifactId>ews-java-api</artifactId>
+			<version>2.0</version>
+		</dependency>
+		<!--ews-java-api是微软官方提供的供第三方来访问exchange webservice的java-api end (還會再用到 
+			commons-lang3-3.4.jar, joda-time-2.8.jar, 變成jar外掛時要注意) -->
+		<!-- axis1.4 for tiptopGP start -->
+		<dependency>
+			<groupId>org.apache.axis</groupId>
+			<artifactId>axis</artifactId>
+			<version>1.4</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.axis</groupId>
+			<artifactId>axis-jaxrpc</artifactId>
+			<version>1.4</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-logging</groupId>
+			<artifactId>commons-logging</artifactId>
+			<version>1.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-vfs2</artifactId>
+			<version>2.2</version>
+		</dependency>
+		<dependency>
+			<groupId>commons-discovery</groupId>
+			<artifactId>commons-discovery</artifactId>
+			<version>0.5</version>
+		</dependency>
+		<dependency>
+			<groupId>net.sourceforge.jexcelapi</groupId>
+			<artifactId>jxl</artifactId>
+			<version>2.6.12</version>
+		</dependency>
+
+		<dependency>
+			<groupId>wsdl4j</groupId>
+			<artifactId>wsdl4j</artifactId>
+			<version>1.6.3</version>
+		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>org.apache.poi</groupId>-->
+<!--			<artifactId>poi-ooxml</artifactId>-->
+<!--			<version>3.14</version>-->
+<!--		</dependency>-->
+
+		<dependency>
+			<groupId>me.ele.openapi</groupId>
+			<artifactId>eleme-java-ws-openapi</artifactId>
+			<version>1.0.2-RELEASE</version>
+		</dependency>
+
+		<dependency>
+			<groupId>me.ele.openapi</groupId>
+			<artifactId>eleme-openapi-sdk</artifactId>
+			<version>1.30.24</version>
+		</dependency>
+
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.11</version>
+			<scope>test</scope>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.springframework/spring-webmvc -->
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-webmvc</artifactId>
+			<version>4.1.6.RELEASE</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-test</artifactId>
+			<version>4.1.6.RELEASE</version>
+			<scope>test</scope>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/commons-fileupload/commons-fileupload -->
+		<dependency>
+			<groupId>commons-fileupload</groupId>
+			<artifactId>commons-fileupload</artifactId>
+			<version>1.3.2</version>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/javax.servlet/javax.servlet-api -->
+		<dependency>
+			<groupId>javax.servlet</groupId>
+			<artifactId>javax.servlet-api</artifactId>
+			<version>3.0.1</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.apache.httpcomponents/httpclient -->
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+			<version>4.5.5</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.10.2</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.squareup.okhttp3</groupId>
+			<artifactId>okhttp</artifactId>
+			<version>3.6.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.sun.mail</groupId>
+			<artifactId>javax.mail</artifactId>
+			<version>1.6.2</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-api</artifactId>
+			<version>2.17.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-core</artifactId>
+			<version>2.17.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-web</artifactId>
+			<version>2.17.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.lmax</groupId>
+			<artifactId>disruptor</artifactId>
+			<version>3.4.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>commons-net</groupId>
+			<artifactId>commons-net</artifactId>
+			<version>3.6</version>
+		</dependency>
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<version>42.2.12</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi</artifactId>
+			<version>4.1.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>4.1.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml-schemas</artifactId>
+			<version>4.1.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-collections4</artifactId>
+			<version>4.4</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.xmlbeans</groupId>
+			<artifactId>xmlbeans</artifactId>
+			<version>3.1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-compress</artifactId>
+			<version>1.20</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-math3</artifactId>
+			<version>3.6.1</version>
+		</dependency>
+
+		<!-- websocket 增加以下依赖 -->
+		<dependency>
+      		<groupId>org.springframework</groupId>
+      		<artifactId>spring-core</artifactId>
+      		<version>4.1.6.RELEASE</version>
+    	</dependency>
+    	
+		<dependency>
+      		<groupId>org.springframework</groupId>
+      		<artifactId>spring-beans</artifactId>
+      	<version>4.1.6.RELEASE</version>
+    	</dependency>
+    	
+    	<dependency>
+     		<groupId>org.springframework</groupId>
+      		<artifactId>spring-aop</artifactId>
+      		<version>4.1.6.RELEASE</version>
+    	</dependency>
+    
+    	<dependency>
+      		<groupId>org.slf4j</groupId>
+      		<artifactId>slf4j-api</artifactId>
+      		<version>1.7.25</version>
+    	</dependency>
+
+		<!-- <dependency>
+	  		<groupId>javax.servlet.jsp.jstl</groupId>
+	  		<artifactId>jstl</artifactId>
+	  		<version>1.2</version>
+		</dependency> -->
+		
+    	<dependency>
+      		<groupId>org.apache.taglibs</groupId>
+      		<artifactId>taglibs-standard-impl</artifactId>
+      		<version>1.2.5</version>
+    	</dependency>
+		<dependency>
+			<groupId>cn.hutool</groupId>
+			<artifactId>hutool-all</artifactId>
+			<version>5.4.3</version>
+		</dependency>
+
+		<!--企业微信SDK-->
+		<dependency>
+			<groupId>com.github.binarywang</groupId>
+			<artifactId>weixin-java-cp</artifactId>
+			<version>4.0.0</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.apache.httpcomponents</groupId>
+					<artifactId>httpclient</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.apache.httpcomponents</groupId>
+					<artifactId>httpmime</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.projectlombok/lombok -->
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<version>1.18.16</version>
+			<scope>provided</scope>
+		</dependency>
+
+		<!-- axis1.4 for tiptopGP end -->
+		<!-- external lib end -->
+
+		<dependency>
+			<groupId>com.alibaba</groupId>
+			<artifactId>fastjson</artifactId>
+			<version>1.2.83</version>
+		</dependency>
+		<dependency>
+			<groupId>net.lingala.zip4j</groupId>
+			<artifactId>zip4j</artifactId>
+			<version>2.11.2</version>
+		</dependency>
+
+		<!-- 本地lib begin -->
+		<dependency>
+			<groupId>org.apache</groupId>
+			<artifactId>oro</artifactId>
+			<version>2.0.8</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/apache-jakarta-oro-2.0.8.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml</groupId>
+			<artifactId>classmate</artifactId>
+			<version>1.1.0</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/classmate-1.1.0.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>com.thoughtworks</groupId>
+			<artifactId>xstream</artifactId>
+			<version>1.4.1</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/com.springsource.com.thoughtworks.xstream-1.4.1.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.apache</groupId>
+			<artifactId>commons.net</artifactId>
+			<version>1.4.1</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/com.springsource.org.apache.commons.net-1.4.1.jar</systemPath>
+		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>org.apache</groupId>-->
+<!--			<artifactId>commons.codec</artifactId>-->
+<!--			<version>1.10</version>-->
+<!--			<scope>system</scope>-->
+<!--				<systemPath>${project.basedir}/lib/commons-codec-1.10.jar</systemPath>-->
+<!--		</dependency>-->
+<!--		<dependency>-->
+<!--			<groupId>org.apache</groupId>-->
+<!--			<artifactId>commons.httpclient</artifactId>-->
+<!--			<version>3.1</version>-->
+<!--			<scope>system</scope>-->
+<!--			<systemPath>${project.basedir}/lib/commons-httpclient-3.1.jar</systemPath>-->
+<!--		</dependency>-->
+		<dependency>
+			<groupId>org.apache</groupId>
+			<artifactId>commons.lang</artifactId>
+			<version>2.6</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/commons-lang-2.6.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.apache</groupId>
+			<artifactId>commons.logging</artifactId>
+			<version>1.1.3</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/commons-logging-1.1.3.jar</systemPath>
+		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>org.apache</groupId>-->
+<!--			<artifactId>commons.logging</artifactId>-->
+<!--			<version>1.2</version>-->
+<!--			<scope>system</scope>-->
+<!--			<systemPath>${project.basedir}/lib/commons-logging-1.2.jar</systemPath>-->
+<!--		</dependency>-->
+		<dependency>
+			<groupId>org.apache</groupId>
+			<artifactId>commons.vfs2</artifactId>
+			<version>2.1-20150824</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/commons-vfs2-2.1-20150824.jar</systemPath>
+		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>org.apache</groupId>-->
+<!--			<artifactId>fastjson</artifactId>-->
+<!--			<version>1.2.51</version>-->
+<!--			<scope>system</scope>-->
+<!--			<systemPath>${project.basedir}/lib/fastjson-1.2.51.jar</systemPath>-->
+<!--		</dependency>-->
+		<dependency>
+			<groupId>com.google</groupId>
+			<artifactId>guava</artifactId>
+			<version>17.0</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/guava-17.0.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>validator</artifactId>
+			<version>5.2.4.Final</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/hibernate-validator-5.2.4.Final.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.apache</groupId>
+			<artifactId>http</artifactId>
+			<version>4.3.5</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/httpclient-4.3.5.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.apache</groupId>
+			<artifactId>httpcore</artifactId>
+			<version>4.3.2</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/httpcore-4.3.2.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.apache</groupId>
+			<artifactId>httpmime</artifactId>
+			<version>4.3.5</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/httpmime-4.3.5.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>javax</groupId>
+			<artifactId>el-api</artifactId>
+			<version>3.0.0</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/javax.el-api-3.0.0.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.jboss</groupId>
+			<artifactId>logging</artifactId>
+			<version>3.2.1.Final</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/jboss-logging-3.2.1.Final.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>com.jcraft</groupId>
+			<artifactId>jsch</artifactId>
+			<version>0.1.54</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/jsch-0.1.54.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.pentaho</groupId>
+			<artifactId>kettle5</artifactId>
+			<version>7.1.0.0-12</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/kettle5-log4j-plugin-7.1.0.0-12.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.pentaho</groupId>
+			<artifactId>kettle-core</artifactId>
+			<version>7.1.0.0-12</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/kettle-core-7.1.0.0-12.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.pentaho</groupId>
+			<artifactId>kettle-dbdialog</artifactId>
+			<version>7.1.0.0-12</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/kettle-dbdialog-7.1.0.0-12.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.pentaho</groupId>
+			<artifactId>kettle-engine</artifactId>
+			<version>7.1.0.0-12</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/kettle-engine-7.1.0.0-12.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.pentaho</groupId>
+			<artifactId>kettle-ui-swt</artifactId>
+			<version>7.1.0.0-12</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/kettle-ui-swt-7.1.0.0-12.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org</groupId>
+			<artifactId>ksoap2</artifactId>
+			<version>2.6.0</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/ksoap2-android-2.6.0-20131212.112636-1.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>com.dingtalk</groupId>
+			<artifactId>oapi</artifactId>
+			<version>1.0.0</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/lippi-oapi-encrpt.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>com.pentaho</groupId>
+			<artifactId>metastore</artifactId>
+			<version>7.1.0.0-12</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/metastore-7.1.0.0-12.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>o2o.openplatform</groupId>
+			<artifactId>sdk</artifactId>
+			<version>1.0.0-SNAPSHOT</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/o2o-openplatform-sdk-1.0.0-SNAPSHOT.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org.mozilla</groupId>
+			<artifactId>javascript</artifactId>
+			<version>1.7.2</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/org.mozilla.javascript-1.7.2.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>com.sankuai.sjst.platform</groupId>
+			<artifactId>developer-client</artifactId>
+			<version>1.10.0</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/platform.developer-client-1.10.0.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>org</groupId>
+			<artifactId>scannotation</artifactId>
+			<version>1.0.2</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/scannotation-1.0.2.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>com</groupId>
+			<artifactId>taobao-sdk-java</artifactId>
+			<version>auto_1479188381469-20191104</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/taobao-sdk-java-auto_1479188381469-20191104.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>javax.validation</groupId>
+			<artifactId>api</artifactId>
+			<version>1.1.0.Final</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/validation-api-1.1.0.Final.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>waimai_open_java_sdk_request</groupId>
+			<artifactId>waimai_open_java_sdk_request</artifactId>
+			<version>1.0.17-SNAPSHOT</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/waimai_open_java_sdk_request-1.0.17-SNAPSHOT-jar-with-dependencies.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>shangou_platform_open_sdk</groupId>
+			<artifactId>shangou_platform_open_sdk</artifactId>
+			<version>1.0.30.1-SNAPSHOT</version>
+			<scope>system</scope>
+			<systemPath>${project.basedir}/lib/shangou_platform_open_sdk-1.0.30.1-SNAPSHOT.jar</systemPath>
+		</dependency>
+		<!-- 本地lib end -->
+		<!-- JUNIT 测试时需要使用 -->
+		<dependency>
+			<groupId>org.apache.tomcat.embed</groupId>
+			<artifactId>tomcat-embed-websocket</artifactId>
+			<version>8.5.13</version>
+			<scope>test</scope>
+		</dependency>
+
+		 <dependency>
+			 <groupId>org.freemarker</groupId>
+			 <artifactId>freemarker</artifactId>
+			 <version>2.3.34</version>
+		 </dependency>
+
+
+	</dependencies>
+	<build>
+		<finalName>DCP</finalName>
+		<plugins>
+			<plugin>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<target>1.8</target>
+					<source>1.8</source>
+					<encoding>UTF-8</encoding>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>8</source>
+					<target>8</target>
+				</configuration>
+			</plugin>
+			<!-- 将lib本地jar包打包进war -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-war-plugin</artifactId>
+				<configuration>
+					<warName>${project.artifactId}</warName>
+					<webResources>
+						<resource>
+							<directory>src/lib/</directory>
+							<targetPath>WEB-INF/lib</targetPath>
+							<includes>
+								<include>**/*.jar</include>
+							</includes>
+						</resource>
+					</webResources>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+	<properties>
+		<cxf.version>2.7.11</cxf.version>
+	</properties>
+
+</project>

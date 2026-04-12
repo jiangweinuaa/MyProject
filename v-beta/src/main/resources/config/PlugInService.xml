@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<PluginServiceConfig>
+	<!-- POS类型 1:云POS 2:第三方POS -->
+	<Pos_Type value="0" />
+	<!-- DCP服务器(从) 1: 是 0:否 -->
+	<DCP_Slave value="0" />
+	<!-- 高德地图天气预报平台应用key值 -->
+	<Using_GAODEMAP_key
+			value="3d3444472e24f3a02474a15770fa6d2d" />
+	<!-- 指定定期清理 保留的日志天数 -->
+	<KeepLogsDay value="45" />
+	<!-- 分销系统接口地址 -->
+	<OMS_Url value="http://124.70.146.167/restful/service/I/IOpenApiRequestService/postRequest" />
+	<!-- 分销系统企业编号 -->
+	<OMS_Eid value="18" />
+	<!-- 分销对应的ERP企业编号 -->
+	<OMS_ERP_Eid value="99" />
+	<!-- 锐翔系统接口地址 -->
+	<RuiXiang_Url value="https://oms.ebake.net/API/WebApi/zj_v/ApiServers.ashx" />
+	<!-- 锐翔系统签名秘钥 -->
+	<RuiXiang_Secret value="20801eebd05b3bf3f8bd" />
+	<!-- 锐翔系统Appid -->
+	<RuiXiang_Appid value="000001" />
+	<!-- 锐翔系统企业编号 -->
+	<RuiXiang_Eid value="99" />
+	<!-- MES服务地址用于测试环境 -->
+	<MES_URL value="" />
+	<!-- 云中台服务地址用于测试环境 -->
+	<DCP_URL value="" />
+	<!-- 会员服务地址用于测试环境 -->
+	<CRM_URL value="" />
+	<!-- 支付服务地址用于测试环境 -->
+	<PAY_URL value="" />
+	<!-- 促销服务地址用于测试环境 -->
+	<PROM_URL value="" />
+	<!-- POS服务地址用于测试环境 -->
+	<POS_URL value="" />
+	<!-- 图片服务地址用于测试环境 -->
+	<PICTURE_URL value="" />
+	<!-- MES内网服务地址用于内部服务间调用 -->
+	<MES_INNER_URL value="http://localhost:8090/mesService/MES/services/invoke" />
+	<!-- 云中台内网服务地址用于内部服务间调用 -->
+	<DCP_INNER_URL value="" />
+	<!-- 会员内网服务地址用于内部服务间调用 -->
+	<CRM_INNER_URL value="" />
+	<!-- 支付内网服务地址用于内部服务间调用 -->
+	<PAY_INNER_URL value="" />
+	<!-- 促销内网服务地址用于内部服务间调用 -->
+	<PROM_INNER_URL value="http://localhost:8070/promService/openapi" />
+	<!-- POS内网服务地址用于内部服务间调用 -->
+	<POS_INNER_URL value="http://localhost:8060/posService/openapi" />
+	<!-- 图片内网服务地址用于内部服务间调用 -->
+	<PICTURE_INNER_URL value="http://localhost" />
+	<NewRetailTransferm>
+		<!-- 与新零售集成 -->
+		<waimaiHttpPost value=""></waimaiHttpPost>
+		<!-- 美团和聚宝盆配置， 如果采用聚宝盆 waimaiMTAPPID就配置成developerId并且waimaiMTIsJBP配置成Y -->
+		<waimaiMTIsJBP value=""></waimaiMTIsJBP>
+		<waimaiMTAPPID value=""></waimaiMTAPPID>
+		<waimaiMTSignKey value=""></waimaiMTSignKey>
+		<!-- 饿了么配置 -->
+		<waimaiELMAPPKey value=""></waimaiELMAPPKey>
+		<waimaiELMSecret value=""></waimaiELMSecret>
+		<waimaiELMSandbox value=""></waimaiELMSandbox>
+		<!-- 京东到家配置 -->
+		<waimaiJDDJAPPKey value=""></waimaiJDDJAPPKey>
+		<waimaiJDDJSecret value=""></waimaiJDDJSecret>
+		<waimaiJDDJToken value=""></waimaiJDDJToken>
+		<waimaiJDDJSandbox value=""></waimaiJDDJSandbox>
+	</NewRetailTransferm>
+
+	<!-- 2018-08-29 新增, 与微商城对接,参照新零售 -->
+	<MicroMarkTransferm>
+		<!-- 与微商城集成 -->
+		<!-- 请求地址 http://eliutong2.digiwin.com.cn/sposWeb/services/jaxrs/openapi/member -->
+		<MicroMarkHttpPost
+				value="http://retaildev.digiwin.com.cn/dcpService_3.0/DCP/services/invoke"></MicroMarkHttpPost>
+		<MicroMarkKey value="digiwin"></MicroMarkKey>
+		<MicroMarkSign value="digiwinkey"></MicroMarkSign>
+	</MicroMarkTransferm>
+
+	<!-- T100或TOPGP CROSS产品注册信息 -->
+	<T100Interface>
+		<!-- 门店可能会对应多套ERP,填写中台CROSS ERP产品注册信息 -->
+		<!-- 门店可能会对应多套ERP,填写中台CROSS ERP产品注册信息 -->
+		<ProdInterface>
+			<HostProd value="POSSERVER1">门店管理产品名称</HostProd>
+			<HostIP value="192.168.0.1">门店管理地址</HostIP>
+			<HostLang value="zh_CN"></HostLang>
+			<HostAcct value="tiptop"></HostAcct>
+			<HostID value="postst">门店管理标识符</HostID>
+			<ServiceProd value="T100">ERP产品名称</ServiceProd>
+			<ServiceIP value="192.0.0.1">ERP地址</ServiceIP>
+			<ServiceID value="topprd">ERP标识符</ServiceID>
+			<Key value="f5458f5c0f9022db743a7c0710145903"></Key>
+			<Type value="sync"></Type>
+			<HttpPost value="http://172.19.226.196:9990/CROSS/RESTful/">CROSS地址</HttpPost>
+			<eId value="99">企业编码</eId>
+			<WS_To_Cross value="1">1：经过中台CROSS(TOPGP/T100)
+				0：不经过中台CROSS(易成/CM/TIPTOP)
+			</WS_To_Cross>
+		</ProdInterface>
+		<ProdInterface>
+			<HostProd value="POSSERVER1">门店管理产品名称</HostProd>
+			<HostIP value="192.168.0.1">门店管理地址</HostIP>
+			<HostLang value="zh_CN"></HostLang>
+			<HostAcct value="tiptop"></HostAcct>
+			<HostID value="postst">门店管理标识符</HostID>
+			<ServiceProd value="T100">ERP产品名称</ServiceProd>
+			<ServiceIP value="192.0.0.1">ERP地址</ServiceIP>
+			<ServiceID value="topprd">ERP标识符</ServiceID>
+			<Key value="f5458f5c0f9022db743a7c0710145903"></Key>
+			<Type value="sync"></Type>
+			<HttpPost
+					value="http://203.65.162.252/web/ws/r/aws_restsrv?WSDL">CROSS地址</HttpPost>
+			<eId value="06">企业编码</eId>
+			<WS_To_Cross value="1">1：经过中台CROSS(TOPGP/T100)
+				0：不经过中台CROSS(易成/CM/TIPTOP)
+			</WS_To_Cross>
+		</ProdInterface>
+	</T100Interface>
+
+	<!-- POS门店作为服务端(注册在CROSS中台) -->
+	<ServiceInterface>
+		<OPSService value="pos.receiving.create">门店收货通知单新增</OPSService>
+		<OPSService value="pos.counting.create">盘点任务新增</OPSService>
+		<OPSService value="pos.return.update">门店退货出库更新</OPSService>
+		<OPSService value="pos.day.end.check">日结检查</OPSService>
+		<OPSService value="pos.adjust.create">库存调整单</OPSService>
+		<OPSService value="pos.up.error.log.get">门店单据上传ERP异常查询</OPSService>
+		<OPSService value="pos.transfer.create">调拨通知单</OPSService>
+	</ServiceInterface>
+	<!-- 要压缩的日志文件路径,可以添加多个 -->
+	<ZipLogFilePath>
+		<FilePath value="D:\Digiwin\Server-DCP\logs\SposWebLog">DCP-SposWebLog</FilePath>
+		<FilePath value="D:\Digiwin\Server-DCP\myLog">DCP-myLog</FilePath>
+		<FilePath value="D:\Digiwin\Server-DCP\log">DCP-myLog</FilePath>
+	</ZipLogFilePath>
+	<DataBaseConfig>
+		<!-- 门店管理DB資訊 -->
+		<DriverClassName value="${jdbc.driverClassName}" />
+		<ConnectString value="${jdbc.url}" />
+		<LoginUser value="${jdbc.username}" />
+		<LoginPawd value="${jdbc.password}" />
+	</DataBaseConfig>
+	<RefExternalJar refDir="./dsmlib">
+		<RefJar value="dbpool-7.0-jdk7.jar" />
+		<RefJar value="cron4j-2.2.5.jar" />
+	</RefExternalJar>
+	<ScheduleOfDirector
+			schPath="com.dsc.spos.schedule.task">
+		<!-- 下方 schecule pattern 暫時沒在用 -->
+		<!-- 系統面排程 -->
+		<ScheduleTask patterns="*/5 * * * *"
+					  value="TokenRevokedTaskImp" />
+		<ScheduleTask patterns="0 6 * * *|0 18 * * *"
+					  value="WeatherGetTaskImp" />
+	</ScheduleOfDirector>
+</PluginServiceConfig>

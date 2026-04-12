@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--日志级别以及优先级排序: OFF > FATAL > ERROR > WARN > INFO > DEBUG > TRACE > ALL -->
+<!--status="WARN" :用于设置log4j2自身内部日志的信息输出级别，默认是OFF -->
+<!--monitorInterval="30" :间隔秒数,自动检测配置文件的变更和重新配置本身 -->
+<Configuration status="OFF" monitorInterval="600">
+	<!--appenders:定义输出内容,输出格式,输出方式,日志保存策略等,常用其下三种标签[console,File,RollingFile] -->
+	<Appenders>
+		<!--console :控制台输出的配置 -->
+		<console name="Console" target="SYSTEM_OUT" >
+			<!--PatternLayout :输出日志的格式,LOG4J2定义了输出代码,详见第二部分 -->
+			<PatternLayout
+				pattern="[%d{yyyy-MM-dd HH:mm:ss:SSS}][%t][%p] - %l - %m%n"
+				charset="utf-8"
+			/>
+
+		</console>
+		<RollingFile name="RollingFileDebug"
+			fileName="${sys:catalina.home}/logs/SposWebLog/debug_log/debug.log"
+			filePattern="${sys:catalina.home}/logs/SposWebLog/debug_log/$${date:yyyy-MM-dd}/debug-%d{yyyy-MM-dd}-%i.log">
+			<Filters>
+				<ThresholdFilter level="INFO" onMatch="DENY"
+					onMismatch="NEUTRAL" />
+				<ThresholdFilter level="DEBUG" onMatch="ACCEPT"
+					onMismatch="DENY" />
+			</Filters>
+			<PatternLayout
+				pattern="[%d{yyyy-MM-dd HH:mm:ss:SSS}][%t][%p] - %l - %m%n" />
+			<Policies>
+				<SizeBasedTriggeringPolicy size="200 MB" />
+			</Policies>
+			<!-- DefaultRolloverStrategy属性如不设置，则默认为最多同一文件夹下7个文件，这里设置了500,超出后之前会被全部删除重新来 -->
+			<DefaultRolloverStrategy max="100000" />
+		</RollingFile>
+		<!-- ${sys:user.home} :项目路径 -->
+		<RollingFile name="RollingFileInfo"
+			fileName="${sys:catalina.home}/logs/SposWebLog/info_log/info.log"
+			filePattern="${sys:catalina.home}/logs/SposWebLog/info_log/$${date:yyyy-MM-dd}/info-%d{yyyy-MM-dd}-%i.log">
+			<!--ThresholdFilter :日志输出过滤 -->
+			<!-- ACCEPT（放行）、DENY（拒绝）、NEUTRAL（不做任何操作) -->
+			<!-- onMatch >= level onMatch指的是日志级别大于等于level时的操作 -->
+			<!-- onMismatch < levle onMismatch表示日志级别小于level时的操作, -->
+			<Filters>
+			<ThresholdFilter level="WARN" onMatch="DENY"
+					onMismatch="NEUTRAL" />
+				<ThresholdFilter level="info" onMatch="ACCEPT"
+					onMismatch="DENY" />
+			</Filters>
+			<PatternLayout
+				pattern="[%d{yyyy-MM-dd HH:mm:ss:SSS}] [%t][%p] - %l - %m%n" />
+			<!-- Policies :日志滚动策略 -->
+			<Policies>
+				<!-- SizeBasedTriggeringPolicy :文件大小滚动策略 -->
+				<SizeBasedTriggeringPolicy size="200 MB" />
+			</Policies>
+			<!-- DefaultRolloverStrategy属性如不设置，则默认为最多同一文件夹下7个文件，这里设置了500,超出后之前会被全部删除重新来 -->
+			<DefaultRolloverStrategy max="100000" />
+		</RollingFile>
+		<RollingFile name="RollingFileError"
+			fileName="${sys:catalina.home}/logs/SposWebLog/error_log/error.log"
+			filePattern="${sys:catalina.home}/logs/SposWebLog/error_log/$${date:yyyy-MM-dd}/error-%d{yyyy-MM-dd}-%i.log">
+			<Filters>
+				<ThresholdFilter level="error" onMatch="ACCEPT"
+					onMismatch="DENY" />
+			</Filters>
+			<PatternLayout
+				pattern="[%d{yyyy-MM-dd HH:mm:ss:SSS}] [%t][%p] - %l - %m%n" />
+			<Policies>
+				<SizeBasedTriggeringPolicy size="200 MB" />
+			</Policies>
+			<!-- DefaultRolloverStrategy属性如不设置，则默认为最多同一文件夹下7个文件，这里设置了500,超出后之前会被全部删除重新来 -->
+			<DefaultRolloverStrategy max="100000" />
+		</RollingFile>
+	</Appenders>
+	<!--然后定义logger，只有定义了logger并引入的appender，appender才会生效 -->
+	<loggers>
+		<!--过滤掉spring的一些无用的DEBUG信息 -->
+		<!--Logger节点用来单独指定日志的形式，name为包路径,比如要为org.springframework包下所有日志指定为INFO级别等。 -->
+		<logger name="org.springframework" level="ERROR"></logger>
+		<logger name="org.quartz-scheduler" level="ERROR"></logger>
+		<logger name="com.spreada" level="ERROR"></logger>
+		<logger name="com.google.code.gson" level="ERROR"></logger>
+		<logger name="org.json" level="ERROR"></logger>
+		<logger name="redis.clients" level="ERROR"></logger>
+		<logger name="com.oracle" level="ERROR"></logger>
+		<logger name="com.fasterxml.jackson.core" level="ERROR"></logger>
+		<logger name="org.codehaus.woodstox" level="ERROR"></logger>
+		<logger name="com.fasterxml.jackson.dataformat" level="ERROR"></logger>
+		<logger name="com.thetransactioncompany" level="ERROR"></logger>
+		<logger name="org.apache.cxf" level="ERROR"></logger>
+		<logger name="javax.ws.rs" level="ERROR"></logger>
+		<logger name="org.hibernate" level="ERROR"></logger>
+		<logger name="commons-dbcp" level="ERROR"></logger>
+		<logger name="net.snaq" level="ERROR"></logger>
+		<logger name="it.sauronsoftware.cron4j" level="ERROR"></logger>
+		<logger name="org.bouncycastle" level="ERROR"></logger>
+		<logger name="org.apache.santuario" level="ERROR"></logger>
+		<logger name="com.microsoft.ews-java-api" level="ERROR"></logger>
+		<logger name="org.apache.axis" level="ERROR"></logger>
+		<logger name="commons-logging" level="ERROR"></logger>
+		<logger name="org.apache.commons" level="ERROR"></logger>
+		<logger name="commons-discovery" level="ERROR"></logger>
+		<logger name="net.sourceforge.jexcelapi" level="ERROR"></logger>
+		<logger name="wsdl4j" level="ERROR"></logger>
+		<logger name="org.apache.poi" level="ERROR"></logger>
+		<logger name="me.ele.openapi" level="ERROR"></logger>
+		<logger name="junit" level="ERROR"></logger>
+		<logger name="commons-fileupload" level="ERROR"></logger>
+		<logger name="javax.servlet" level="ERROR"></logger>
+		<logger name="org.apache.httpcomponents" level="ERROR"></logger>
+		<logger name="org.jsoup" level="ERROR"></logger>
+		<logger name="com.squareup.okhttp3" level="ERROR"></logger>
+		<logger name="com.sun.mail" level="ERROR"></logger>
+		<logger name="org.apache.logging.log4j" level="ERROR"></logger>
+		<logger name="com.lmax" level="ERROR"></logger>
+		
+		<!-- Root节点用来指定项目的根日志，如果没有单独指定Logger，那么就会默认使用该Root日志输出 -->
+		<root level="all">
+			<appender-ref ref="Console" />
+			<appender-ref ref="RollingFileDebug" />
+			<appender-ref ref="RollingFileInfo" />
+			<appender-ref ref="RollingFileError" />
+		</root>
+		<!--AsyncLogger :异步日志,LOG4J有三种日志模式,全异步日志,混合模式,同步日志,性能从高到底,线程越多效率越高,也可以避免日志卡死线程情况发生 -->
+		<!--additivity="false" : additivity设置事件是否在root logger输出，为了避免重复输出，可以在Logger 
+			标签下设置additivity为”false” -->
+		<AsyncLogger name="AsyncLogger" includeLocation="true"
+			additivity="false">
+			<appender-ref ref="RollingFileDebug" />
+			<appender-ref ref="RollingFileInfo" />
+			<appender-ref ref="RollingFileError" />
+		</AsyncLogger>
+	</loggers>
+</Configuration>

@@ -1,0 +1,57 @@
+#org.quartz.scheduler.instanceName = MyScheduler
+#org.quartz.threadPool.threadCount = 3
+#org.quartz.jobStore.class = org.quartz.simpl.RAMJobStore
+#org.quartz.plugin.jobInitializer.class =org.quartz.plugins.xml.XMLSchedulingDataProcessorPlugin 
+#org.quartz.plugin.jobInitializer.fileNames = jobSchedule.xml
+#org.quartz.plugin.jobInitializer.failOnFileNotFound = true
+
+
+#============================================================================
+# Configure Main Scheduler Properties  
+#============================================================================
+
+org.quartz.scheduler.instanceName = MyScheduler
+org.quartz.scheduler.instanceId = AUTO
+
+#============================================================================
+# Configure ThreadPool  
+#============================================================================
+
+org.quartz.threadPool.class = org.quartz.simpl.SimpleThreadPool 
+org.quartz.threadPool.threadCount = 0
+org.quartz.threadPool.threadPriority = 5
+
+#============================================================================
+# Configure JobStore  
+#============================================================================
+
+org.quartz.jobStore.misfireThreshold = 60000
+
+#org.quartz.jobStore.class = org.quartz.simpl.RAMJobStore
+#org.quartz.jobStore.class=org.quartz.impl.jdbcjobstore.JobStoreTX 
+#org.quartz.jobStore.driverDelegateClass=org.quartz.impl.jdbcjobstore.oracle.OracleDelegate 
+#org.quartz.jobStore.driverDelegateClass=org.quartz.impl.jdbcjobstore.oracle.OracleDelegate
+#org.quartz.jobStore.useProperties = false
+#org.quartz.jobStore.dataSource = quartzDS
+#org.quartz.jobStore.tablePrefix = QRTZ_
+
+org.quartz.jobStore.class=org.quartz.impl.jdbcjobstore.JobStoreTX
+org.quartz.jobStore.driverDelegateClass=org.quartz.impl.jdbcjobstore.oracle.OracleDelegate
+#org.quartz.jobStore.driverDelegateClass=org.quartz.impl.jdbcjobstore.oracle.WebLogicOracleDelegate
+org.quartz.jobStore.useProperties=false
+org.quartz.jobStore.dataSource=quartzDS
+org.quartz.jobStore.tablePrefix=QRTZ_
+
+org.quartz.jobStore.isClustered=false
+org.quartz.jobStore.clusterCheckinInterval = 20000
+
+#============================================================================
+# Configure Datasources  
+#============================================================================
+
+org.quartz.dataSource.quartzDS.driver = oracle.jdbc.driver.OracleDriver
+org.quartz.dataSource.quartzDS.URL = jdbc:oracle:thin:@172.16.70.158:1521:pos
+org.quartz.dataSource.quartzDS.user = c##postest
+org.quartz.dataSource.quartzDS.password = ds_pos1
+org.quartz.dataSource.quartzDS.maxConnections = 5
+org.quartz.dataSource.quartzDS.validationQuery=SELECT 0 FROM DUAL

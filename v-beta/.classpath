@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8">
+		<attributes>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="src" output="target/classes" path="src/main/java">
+		<attributes>
+			<attribute name="optional" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry excluding="**" kind="src" output="target/classes" path="src/main/resources">
+		<attributes>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="src" output="target/test-classes" path="src/test/java">
+		<attributes>
+			<attribute name="test" value="true"/>
+			<attribute name="optional" value="true"/>
+			<attribute name="maven.pomderived" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="con" path="org.eclipse.m2e.MAVEN2_CLASSPATH_CONTAINER">
+		<attributes>
+			<attribute name="maven.pomderived" value="true"/>
+			<attribute name="org.eclipse.jst.component.dependency" value="/WEB-INF/lib"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="lib/guava-17.0.jar"/>
+	<classpathentry kind="lib" path="lib/jsch-0.1.54.jar"/>
+	<classpathentry kind="lib" path="lib/kettle-core-7.1.0.0-12.jar"/>
+	<classpathentry kind="lib" path="lib/kettle-dbdialog-7.1.0.0-12.jar"/>
+	<classpathentry kind="lib" path="lib/kettle-engine-7.1.0.0-12.jar"/>
+	<classpathentry kind="lib" path="lib/kettle-ui-swt-7.1.0.0-12.jar"/>
+	<classpathentry kind="lib" path="lib/kettle5-log4j-plugin-7.1.0.0-12.jar"/>
+	<classpathentry kind="lib" path="lib/metastore-7.1.0.0-12.jar"/>
+	<classpathentry kind="lib" path="lib/scannotation-1.0.2.jar"/>
+	<classpathentry kind="lib" path="lib/commons-lang-2.6.jar"/>
+	<classpathentry kind="lib" path="lib/commons-logging-1.1.3.jar"/>
+	<classpathentry kind="lib" path="lib/commons-vfs2-2.1-20150824.jar"/>
+	<classpathentry kind="lib" path="lib/classmate-1.1.0.jar"/>
+	<classpathentry kind="lib" path="lib/fastjson-1.2.6.jar"/>
+	<classpathentry kind="lib" path="lib/hibernate-validator-5.2.4.Final.jar"/>
+	<classpathentry kind="lib" path="lib/httpclient-4.3.5.jar"/>
+	<classpathentry kind="lib" path="lib/httpcore-4.3.2.jar"/>
+	<classpathentry kind="lib" path="lib/httpmime-4.3.5.jar"/>
+	<classpathentry kind="lib" path="lib/javax.el-api-3.0.0.jar"/>
+	<classpathentry kind="lib" path="lib/jboss-logging-3.2.1.Final.jar"/>
+	<classpathentry kind="lib" path="lib/org.mozilla.javascript-1.7.2.jar"/>
+	<classpathentry kind="lib" path="lib/validation-api-1.1.0.Final.jar"/>
+	<classpathentry kind="lib" path="lib/o2o-openplatform-sdk-1.0.0-SNAPSHOT-sources.jar"/>
+	<classpathentry kind="lib" path="lib/o2o-openplatform-sdk-1.0.0-SNAPSHOT.jar" sourcepath="lib/o2o-openplatform-sdk-1.0.0-SNAPSHOT-sources.jar"/>
+	<classpathentry kind="lib" path="lib/apache-jakarta-oro-2.0.8.jar"/>
+	<classpathentry kind="lib" path="lib/com.springsource.org.apache.commons.net-1.4.1.jar"/>
+	<classpathentry kind="lib" path="lib/ksoap2-android-2.6.0-20131212.112636-1.jar"/>
+	<classpathentry kind="lib" path="lib/waimai_open_java_sdk_request-1.0.17-SNAPSHOT-jar-with-dependencies.jar" sourcepath="lib/waimai_open_java_sdk_request-1.0.17-SNAPSHOT-sources.jar"/>
+	<classpathentry kind="lib" path="lib/waimai_open_java_sdk_request-1.0.17-SNAPSHOT-sources.jar"/>
+	<classpathentry kind="lib" path="lib/platform.developer-client-1.10.0-sources.jar"/>
+	<classpathentry kind="lib" path="lib/platform.developer-client-1.10.0.jar" sourcepath="lib/platform.developer-client-1.10.0-sources.jar"/>
+	<classpathentry kind="lib" path="lib/taobao-sdk-java-auto_1479188381469-20191104-source.jar"/>
+	<classpathentry kind="lib" path="lib/taobao-sdk-java-auto_1479188381469-20191104.jar"/>
+	<classpathentry kind="lib" path="lib/lippi-oapi-encrpt.jar"/>
+	<classpathentry kind="lib" path="lib/com.springsource.com.thoughtworks.xstream-1.4.1.jar"/>
+	<classpathentry kind="output" path="target/classes"/>
+</classpath>

@@ -1,0 +1,22 @@
+package com.dsc.spos.json.cust.req;
+
+
+import com.dsc.spos.json.JsonBasicReq;
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
+public class DCP_EmployeeQueryReq extends JsonBasicReq {
+
+
+    private Request request;
+
+    @Getter
+    @Setter
+    public class Request {
+        private String status;
+        private String keytxt;
+    }
+
+}
