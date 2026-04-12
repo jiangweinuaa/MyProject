@@ -173,8 +173,8 @@
                 <el-tag size="small" :type="product.hasRealPluno ? 'success' : 'warning'">
                   {{ product.hasRealPluno ? '已匹配' : '未匹配' }}
                 </el-tag>
-                <el-tag size="small" type="info" v-if="product.matchSource">
-                  {{ product.matchSource }}
+                <el-tag size="small" type="info" v-if="product.matchSource === 'ALIYUN'">
+                  阿里云识别
                 </el-tag>
               </div>
             </el-descriptions-item>
