@@ -1,5 +1,6 @@
 package com.report.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import javax.imageio.ImageIO;
@@ -9,16 +10,21 @@ import java.io.IOException;
 
 /**
  * 图像特征提取服务
- * 使用颜色直方图提取图像特征向量
- * 支持商品区域提取（边缘检测 + 轮廓提取）
+ * 支持多种特征提取算法：
+ * - HISTOGRAM: 颜色直方图（768 维）
+ * - HISTOGRAM_GRID: 空间划分直方图（6912 维，3x3 网格）
+ * - RESNET50: 深度学习特征（512 维，待实现）
  */
 @Service
 public class ImageFeatureExtractor {
     
+    @Autowired(required = false)
+    private RecognitionConfigService configService;
+    
     /**
-     * 提取图像特征向量
+     * 提取图像特征向量（根据配置选择算法）
      * @param imageData 图片二进制数据
-     * @return 768 维特征向量（RGB 各 256 维直方图）
+     * @return 特征向量（维度取决于算法）
      */
     public float[] extractFeatures(byte[] imageData) {
         try {
@@ -30,56 +36,44 @@ public class ImageFeatureExtractor {
                 return null;
             }
             
-            // 【配置化】是否启用显著性检测 ROI 提取
-            boolean enableROI = true;  // 默认启用
+            // 【配置化】读取特征提取算法
+            String algorithm = configService != null ? 
+                configService.getConfig("FEATURE_ALGORITHM", "HISTOGRAM") : "HISTOGRAM";
             
-            // 【方案 B】尝试提取商品 ROI 区域
-            BufferedImage roiImage = null;
-            if (enableROI) {
-                roiImage = extractProductROI(image);
-            }
-            
-            // 如果 ROI 提取失败，使用原图
+            // 提取 ROI 区域
+            BufferedImage roiImage = extractProductROI(image);
             if (roiImage == null) {
                 roiImage = image;
-                if (enableROI) {
-                    System.out.println("⚠️ ROI 提取失败，使用整图");
-                }
             }
             
-            // 【关键】统一缩放到固定尺寸（1024x1024），消除尺寸影响，保留更多细节
-            BufferedImage resizedImage = resizeImage(roiImage, 1024, 1024);
+            // 根据算法选择特征提取方式
+            String actualAlgorithm;  // 实际使用的算法
+            float[] features;
             
-            // 提取颜色直方图特征（RGB 各 256 维，共 768 维）
-            float[] features = new float[768];
-            
-            int width = resizedImage.getWidth();
-            int height = resizedImage.getHeight();
-            int[] histograms = new int[768];
-            
-            // 统计每个像素的 RGB 值
-            for (int y = 0; y < height; y++) {
-                for (int x = 0; x < width; x++) {
-                    int rgb = resizedImage.getRGB(x, y);
-                    int r = (rgb >> 16) & 0xFF;
-                    int g = (rgb >> 8) & 0xFF;
-                    int b = rgb & 0xFF;
-                    
-                    histograms[r]++;
-                    histograms[256 + g]++;
-                    histograms[512 + b]++;
-                }
+            switch (algorithm) {
+                case "HISTOGRAM_GRID":
+                    features = extractHistogramGrid(roiImage, 3);  // 3x3 网格
+                    actualAlgorithm = "HISTOGRAM_GRID";
+                    break;
+                case "RESNET50":
+                    features = extractResNet50Features(roiImage);  // 深度学习（待实现）
+                    if (features == null) {
+                        // ResNet50 未实现，降级到 HISTOGRAM
+                        features = extractHistogram(roiImage);
+                        actualAlgorithm = "HISTOGRAM";
+                        System.out.println("⚠️ 已降级使用 HISTOGRAM 算法");
+                    } else {
+                        actualAlgorithm = "RESNET50";
+                    }
+                    break;
+                case "HISTOGRAM":
+                default:
+                    features = extractHistogram(roiImage);  // 默认颜色直方图
+                    actualAlgorithm = "HISTOGRAM";
+                    break;
             }
             
-            // 归一化
-            int totalPixels = width * height;
-            for (int i = 0; i < 768; i++) {
-                features[i] = (float) histograms[i] / totalPixels;
-            }
-            
-            System.out.println("✅ 颜色直方图特征提取成功，维度：" + features.length + 
-                ", 原始尺寸=" + roiImage.getWidth() + "x" + roiImage.getHeight() +
-                ", 缩放后=" + width + "x" + height);
+            System.out.println("✅ 特征提取成功，算法=" + actualAlgorithm + ", 维度=" + features.length);
             return features;
             
         } catch (IOException e) {
@@ -87,6 +81,115 @@ public class ImageFeatureExtractor {
             e.printStackTrace();
             return null;
         }
+    }
+    
+    /**
+     * 提取颜色直方图特征（RGB 各 256 维，共 768 维）
+     * @param image 图片
+     * @return 768 维特征向量
+     */
+    private float[] extractHistogram(BufferedImage image) {
+        // 【关键】统一缩放到固定尺寸（1024x1024），消除尺寸影响
+        BufferedImage resizedImage = resizeImage(image, 1024, 1024);
+        
+        float[] features = new float[768];
+        int width = resizedImage.getWidth();
+        int height = resizedImage.getHeight();
+        int[] histograms = new int[768];
+        
+        // 统计每个像素的 RGB 值
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int rgb = resizedImage.getRGB(x, y);
+                int r = (rgb >> 16) & 0xFF;
+                int g = (rgb >> 8) & 0xFF;
+                int b = rgb & 0xFF;
+                
+                histograms[r]++;
+                histograms[256 + g]++;
+                histograms[512 + b]++;
+            }
+        }
+        
+        // 归一化
+        int totalPixels = width * height;
+        for (int i = 0; i < 768; i++) {
+            features[i] = (float) histograms[i] / totalPixels;
+        }
+        
+        return features;
+    }
+    
+    /**
+     * 提取空间划分直方图特征（3x3 网格，共 6912 维）
+     * @param image 图片
+     * @param gridSize 网格大小（3 表示 3x3）
+     * @return 6912 维特征向量（9×768）
+     */
+    private float[] extractHistogramGrid(BufferedImage image, int gridSize) {
+        // 统一缩放到 1024x1024
+        BufferedImage resizedImage = resizeImage(image, 1024, 1024);
+        
+        int width = resizedImage.getWidth();
+        int height = resizedImage.getHeight();
+        int gridW = width / gridSize;
+        int gridH = height / gridSize;
+        
+        // 每个网格 768 维，总共 gridSize×gridSize×768 维
+        float[] features = new float[gridSize * gridSize * 768];
+        
+        for (int row = 0; row < gridSize; row++) {
+            for (int col = 0; col < gridSize; col++) {
+                // 提取每个网格的直方图
+                int[] gridHist = new int[768];
+                
+                int startX = col * gridW;
+                int startY = row * gridH;
+                int endX = (col == gridSize - 1) ? width : (col + 1) * gridW;
+                int endY = (row == gridSize - 1) ? height : (row + 1) * gridH;
+                
+                // 统计网格内的 RGB 直方图
+                for (int y = startY; y < endY; y++) {
+                    for (int x = startX; x < endX; x++) {
+                        int rgb = resizedImage.getRGB(x, y);
+                        int r = (rgb >> 16) & 0xFF;
+                        int g = (rgb >> 8) & 0xFF;
+                        int b = rgb & 0xFF;
+                        
+                        gridHist[r]++;
+                        gridHist[256 + g]++;
+                        gridHist[512 + b]++;
+                    }
+                }
+                
+                // 归一化并拼接到总特征向量
+                int gridPixels = (endX - startX) * (endY - startY);
+                int featureOffset = (row * gridSize + col) * 768;
+                
+                for (int i = 0; i < 768; i++) {
+                    features[featureOffset + i] = (float) gridHist[i] / gridPixels;
+                }
+            }
+        }
+        
+        return features;
+    }
+    
+    /**
+     * 提取 ResNet50 深度学习特征（512 维）
+     * @param image 图片
+     * @return 512 维特征向量（未实现时返回 null）
+     */
+    private float[] extractResNet50Features(BufferedImage image) {
+        // TODO: 待实现深度学习特征提取
+        // 需要集成 DJL (Deep Java Library)
+        // 1. 加载 ResNet50 预训练模型
+        // 2. 图片预处理（224x224，归一化）
+        // 3. 模型推理
+        // 4. 提取全连接层前的特征（512 维）
+        
+        System.out.println("⚠️ ResNet50 特征提取暂未实现，将降级使用颜色直方图");
+        return null;  // 返回 null，由调用方处理降级
     }
     
     /**

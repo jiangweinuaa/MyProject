@@ -80,6 +80,10 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 System.out.println("🎯 识别结果：类目=" + categoryName + ", CategoryId=" + categoryId + ", 置信度=" + confidence + ", 平台=" + platformSource);
                 
                 // 4. 匹配本地训练库（使用特征向量匹配）
+                // 【修复】先提取特征，获取实际使用的算法
+                String actualAlgorithm = extractAndGetAlgorithm(image);
+                result.setFeatureAlgorithm(actualAlgorithm);
+                
                 MatchResult matchResult = matchLocalProduct(image, categoryName, productName);
                 
                 if (matchResult != null && matchResult.getPluno() != null) {
@@ -165,12 +169,12 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
             // 计算识别耗时（从开始到现在的毫秒数）
             long recognitionTime = System.currentTimeMillis();
             
-            // 插入识别日志（包含匹配方式、相似度和特征 ID）
+            // 插入识别日志（包含匹配方式、相似度、特征 ID 和算法）
             String sql = "INSERT INTO PRODUCT_RECOGNITION_LOGS " +
                 "(LOG_ID, IMAGE_URL, RECOGNIZED_PLUNO, RECOGNIZED_NAME, CONFIDENCE, " +
                 "USERCONFIRMEDPLUNO, IS_CORRECT, RECOGNITION_TIME, DEVICE_TYPE, USER_ID, " +
-                "MATCH_TYPE, VECTOR_SIMILARITY, MATCHED_FEATURE_ID, CREATED_TIME) " +
-                "VALUES (?, ?, ?, ?, ?, ?, 'U', ?, 'WEB', 'system', ?, ?, ?, SYSDATE)";
+                "MATCH_TYPE, VECTOR_SIMILARITY, MATCHED_FEATURE_ID, FEATURE_ALGORITHM, CREATED_TIME) " +
+                "VALUES (?, ?, ?, ?, ?, ?, 'U', ?, 'WEB', 'system', ?, ?, ?, ?, SYSDATE)";
             
             jdbcTemplate.update(sql,
                 logId,
@@ -182,7 +186,8 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 recognitionTime,
                 result.getMatchType(),        // 匹配方式：VECTOR/NAME_EXACT/NAME_FUZZY/CATEGORY
                 result.getVectorSimilarity(), // 向量相似度
-                result.getMatchedFeatureId()  // 匹配到的特征 ID
+                result.getMatchedFeatureId(), // 匹配到的特征 ID
+                result.getFeatureAlgorithm()  // 使用的特征算法
             );
             
             System.out.println("📝 识别日志已记录：" + logId + 
@@ -195,6 +200,44 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
             System.err.println("记录识别日志失败：" + e.getMessage());
             e.printStackTrace();
             // 日志记录失败不影响识别结果
+        }
+    }
+    
+    /**
+     * 提取特征并获取实际使用的算法
+     * @param imageFile 图片文件
+     * @return 实际使用的算法名称
+     */
+    private String extractAndGetAlgorithm(MultipartFile imageFile) {
+        if (featureExtractor == null) {
+            return "HISTOGRAM";
+        }
+        
+        try {
+            // 读取配置
+            String configuredAlgorithm = configService != null ? 
+                configService.getConfig("FEATURE_ALGORITHM", "HISTOGRAM") : "HISTOGRAM";
+            
+            // 提取特征（ImageFeatureExtractor 会处理降级逻辑）
+            byte[] imageBytes = imageFile.getBytes();
+            float[] features = featureExtractor.extractFeatures(imageBytes);
+            
+            // 根据特征维度判断实际使用的算法
+            if (features != null) {
+                if (features.length == 512) {
+                    return "RESNET50";
+                } else if (features.length == 6912) {
+                    return "HISTOGRAM_GRID";
+                } else {
+                    return "HISTOGRAM";
+                }
+            }
+            
+            return configuredAlgorithm;
+            
+        } catch (Exception e) {
+            System.err.println("⚠️ 提取特征失败：" + e.getMessage());
+            return "HISTOGRAM";
         }
     }
     
