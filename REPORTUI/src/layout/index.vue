@@ -19,6 +19,7 @@
           v-for="menu in menus"
           :key="menu.path"
           :index="menu.path"
+          @click="handleMenuClick(menu)"
         >
           <el-icon><component :is="menu.icon" /></el-icon>
           <span>{{ menu.title }}</span>
@@ -48,7 +49,6 @@
           background-color="#304156"
           text-color="#bfcbd9"
           active-text-color="#409EFF"
-          router
           @select="handleMobileMenuSelect"
         >
           <el-menu-item
@@ -105,13 +105,26 @@
         <router-view />
       </el-main>
     </el-container>
+    
+    <!-- 智问对话框 -->
+    <el-dialog
+      v-model="smartQueryVisible"
+      title="🤖 智问"
+      width="600px"
+      :close-on-click-modal="false"
+    >
+      <SmartQuery />
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, defineAsyncComponent } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElDialog } from 'element-plus'
+
+// 异步加载智问组件
+const SmartQuery = defineAsyncComponent(() => import('@/views/SmartQuery.vue'))
 import { logout } from '@/api/auth'
 // 导入所有菜单图标
 import {
@@ -127,6 +140,7 @@ import {
   TrendCharts,
   ShoppingCart,
   Star,
+  ChatDotRound,
   Fold,
   Expand
 } from '@element-plus/icons-vue'
@@ -148,6 +162,7 @@ const menus = [
   { path: '/product-recognition', title: '商品识别', icon: 'Picture' },
   { path: '/training-library', title: '训练库管理', icon: 'FolderOpened' },
   { path: '/retrain', title: '商品重新训练', icon: 'RefreshRight' },
+  { path: '/smart-query', title: '🤖 智问', icon: 'ChatDotRound' },
   { path: '/sales-accuracy-analysis', title: '销售预估准确性', icon: 'TrendCharts' },
   { path: '/goods-forecast-accuracy', title: '单品预估准确性', icon: 'ShoppingCart' },
   { path: '/selection-simulator', title: '甄选模拟', icon: 'Star' },
@@ -197,6 +212,9 @@ const currentTitle = computed(() => {
 const sidebarCollapse = ref(false)
 const mobileDrawerVisible = ref(false)
 
+// 智问对话框
+const smartQueryVisible = ref(false)
+
 // 判断是否为移动端
 const isMobile = ref(false)
 
@@ -220,9 +238,21 @@ const handleMenuSelect = (index) => {
   router.push(index)
 }
 
+// 菜单点击处理
+const handleMenuClick = (menu) => {
+  console.log('菜单点击:', menu)
+  router.push(menu.path)
+}
+
 // 移动端菜单选择后关闭抽屉
-const handleMobileMenuSelect = () => {
+const handleMobileMenuSelect = (index) => {
+  router.push(index)
   mobileDrawerVisible.value = false
+}
+
+// 显示智问对话框
+const showSmartQuery = () => {
+  smartQueryVisible.value = true
 }
 
 // 监听窗口大小变化
@@ -467,6 +497,11 @@ onUnmounted(() => {
 .header-right {
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+
+.smart-query-btn {
+  margin-right: 10px;
 }
 
 .user-info {

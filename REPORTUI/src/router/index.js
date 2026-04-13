@@ -62,6 +62,12 @@ const routes = [
         meta: { title: '训练库管理', icon: 'FolderOpened' }
       },
       {
+        path: '/smart-query',
+        name: 'SmartQuery',
+        component: () => import('@/views/SmartQuery.vue'),
+        meta: { title: '🤖 智问', icon: 'ChatDotRound' }
+      },
+      {
         path: '/retrain',
         name: 'Retrain',
         component: () => import('@/views/Retrain.vue'),

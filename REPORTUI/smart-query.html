@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智问 - REPORT</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: #f5f5f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .chat-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            background: white;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+        }
+        
+        .chat-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }
+        
+        .chat-header h1 {
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+        
+        .chat-header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .message.user {
+            align-items: flex-end;
+        }
+        
+        .message.bot {
+            align-items: flex-start;
+        }
+        
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+        
+        .message.user .message-content {
+            background: #409EFF;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message.bot .message-content {
+            background: #f0f0f0;
+            color: #333;
+            border-bottom-left-radius: 4px;
+        }
+        
+        .sql-block {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin-bottom: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
+        .message-time {
+            font-size: 12px;
+            color: #999;
+            margin-top: 5px;
+        }
+        
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .input-wrapper {
+            display: flex;
+            gap: 10px;
+        }
+        
+        #question-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        #question-input:focus {
+            border-color: #409EFF;
+        }
+        
+        #send-btn {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        #send-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        #send-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .loading-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #409EFF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .welcome-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        
+        .welcome-message h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .example-questions {
+            margin-top: 20px;
+        }
+        
+        .example-questions button {
+            display: inline-block;
+            margin: 5px;
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border: 1px solid #e0e0e0;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .example-questions button:hover {
+            background: #409EFF;
+            color: white;
+            border-color: #409EFF;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>🤖 智问</h1>
+            <p>用自然语言查询数据</p>
+        </div>
+        
+        <div class="chat-messages" id="chat-messages">
+            <div class="welcome-message">
+                <h2>你好！我是智问助手 👋</h2>
+                <p>可以用自然语言查询数据，试试问我：</p>
+                <div class="example-questions">
+                    <button onclick="askExample('今天销售额是多少？')">今天销售额是多少？</button>
+                    <button onclick="askExample('本月销售额是多少？')">本月销售额是多少？</button>
+                    <button onclick="askExample('哪个商品卖得最好？')">哪个商品卖得最好？</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chat-input">
+            <div class="input-wrapper">
+                <input 
+                    type="text" 
+                    id="question-input" 
+                    placeholder="问我：今天销售额是多少？"
+                    @keyup.enter="send"
+                >
+                <button id="send-btn" onclick="send()">发送</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://47.100.138.89:8110/api/nl-query/query';
+        
+        function now() {
+            const d = new Date();
+            return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+        }
+        
+        function addMessage(content, type, sql = '') {
+            const messagesDiv = document.getElementById('chat-messages');
+            const welcomeDiv = messagesDiv.querySelector('.welcome-message');
+            if (welcomeDiv) {
+                welcomeDiv.style.display = 'none';
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            let html = `<div class="message-content">`;
+            if (sql) {
+                html += `<div class="sql-block">${escapeHtml(sql)}</div>`;
+            }
+            html += `<div>${formatContent(content)}</div>`;
+            html += `</div>`;
+            html += `<div class="message-time">${now()}</div>`;
+            
+            messageDiv.innerHTML = html;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function addLoading() {
+            const messagesDiv = document.getElementById('chat-messages');
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message bot';
+            loadingDiv.id = 'loading-message';
+            loadingDiv.innerHTML = `
+                <div class="message-content">
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                        <span>AI 思考中...</span>
+                    </div>
+                </div>
+            `;
+            messagesDiv.appendChild(loadingDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+        
+        function removeLoading() {
+            const loadingDiv = document.getElementById('loading-message');
+            if (loadingDiv) {
+                loadingDiv.remove();
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function formatContent(content) {
+            // 检测是否是表格格式
+            if (content.includes('|') && content.includes('---')) {
+                return `<pre style="background: white; padding: 10px; border-radius: 4px; overflow-x: auto;">${escapeHtml(content)}</pre>`;
+            }
+            return escapeHtml(content);
+        }
+        
+        function askExample(question) {
+            document.getElementById('question-input').value = question;
+            send();
+        }
+        
+        async function send() {
+            const input = document.getElementById('question-input');
+            const sendBtn = document.getElementById('send-btn');
+            const question = input.value.trim();
+            
+            if (!question) return;
+            
+            // 添加用户消息
+            addMessage(question, 'user');
+            input.value = '';
+            input.disabled = true;
+            sendBtn.disabled = true;
+            
+            // 添加加载动画
+            addLoading();
+            
+            try {
+                const params = new URLSearchParams();
+                params.append('question', question);
+                
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: params
+                });
+                
+                const data = await response.json();
+                removeLoading();
+                
+                if (data.success) {
+                    let content = '';
+                    
+                    if (data.data && data.data.length > 0) {
+                        // 表格形式展示
+                        const headers = Object.keys(data.data[0]);
+                        content += '| ' + headers.join(' | ') + ' |\\n';
+                        content += '| ' + headers.map(() => '---').join(' | ') + ' |\\n';
+                        
+                        data.data.forEach(row => {
+                            const values = headers.map(h => row[h] !== null ? row[h] : '');
+                            content += '| ' + values.join(' | ') + ' |\\n';
+                        });
+                    } else {
+                        content = '暂无数据';
+                    }
+                    
+                    addMessage(content, 'bot', data.sql);
+                } else {
+                    addMessage('❌ ' + (data.message || '查询失败'), 'bot');
+                }
+                
+            } catch (error) {
+                removeLoading();
+                console.error('请求失败:', error);
+                addMessage('❌ 请求失败：' + error.message + '\\n\\n请检查：\\n1. 后端服务是否启动\\n2. API Key 是否配置\\n3. 网络连接是否正常', 'bot');
+            } finally {
+                input.disabled = false;
+                sendBtn.disabled = false;
+                input.focus();
+            }
+        }
+        
+        // 初始化
+        document.getElementById('question-input').focus();
+    </script>
+</body>
+</html>
