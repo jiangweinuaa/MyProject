@@ -246,8 +246,22 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 } else {
                     // 相似度太低（< 0.60），特征库中没有相似商品
                     System.out.println("⚠️ 相似度太低 (" + similarity + " < " + MIN_SIMILARITY + ")，特征库中无相似商品");
-                    // 尝试名称匹配
-                    return matchLocalProductByName(categoryName, productName);
+                    // 尝试名称匹配，但**保留向量信息用于记录**
+                    MatchResult nameMatch = matchLocalProductByName(categoryName, productName);
+                    
+                    if (nameMatch != null) {
+                        // 名称匹配成功，返回名称匹配结果，但记录向量信息
+                        System.out.println("✅ 名称匹配成功：PLUNO=" + nameMatch.getPluno() + ", 向量相似度=" + similarity);
+                        return new MatchResult(
+                            nameMatch.getPluno(),
+                            nameMatch.getMatchType(),  // NAME_EXACT/NAME_FUZZY/CATEGORY
+                            similarity,  // 保留向量相似度
+                            featureId    // 保留特征 ID
+                        );
+                    } else {
+                        // 名称匹配也失败
+                        return null;
+                    }
                 }
             } else {
                 System.out.println("⚠️ 特征库为空，使用名称匹配");
