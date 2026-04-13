@@ -753,6 +753,16 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
             float[] features = featureExtractor.extractFeatures(imageData);
             
             if (features != null) {
+                // 【修复】根据特征维度确定真实的模型版本
+                String modelVersion;
+                if (features.length == 512) {
+                    modelVersion = "RESNET50-v1";
+                } else if (features.length == 6912) {
+                    modelVersion = "HISTOGRAM_GRID-3x3";
+                } else {
+                    modelVersion = "HISTOGRAM-v1";
+                }
+                
                 // 保存特征
                 ImageFeature feature = new ImageFeature();
                 feature.setFeatureId(UUID.randomUUID().toString().replace("-", ""));
@@ -761,7 +771,7 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 feature.setOssImageUrl(ossImageUrl);
                 feature.setFeatureVector(features);
                 feature.setFeatureDimension(features.length);
-                feature.setModelVersion("resnet50-v1");
+                feature.setModelVersion(modelVersion);  // 【修复】记录真实模型版本
                 feature.setCreatedBy("system");
                 
                 imageFeatureDAO.saveFeature(feature);
@@ -769,7 +779,7 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 // 更新商品特征数量
                 imageFeatureDAO.updateFeatureCount(pluno);
                 
-                System.out.println("✅ 特征提取并保存成功");
+                System.out.println("✅ 特征提取并保存成功，模型版本=" + modelVersion);
             }
         } catch (Exception e) {
             System.err.println("⚠️ 特征提取失败：" + e.getMessage());
