@@ -21,6 +21,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 商品识别服务实现（支持多平台）
@@ -708,6 +710,289 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
         status.put("progress", 0);
         status.put("status", "pending");
         return status;
+    }
+    
+    // 批量训练任务管理
+    private final Map<String, RetrainTask> retrainTasks = new ConcurrentHashMap<>();
+    
+    /**
+     * 批量重新训练所有商品特征
+     */
+    @Override
+    public String retrainAllFeatures() {
+        String taskId = UUID.randomUUID().toString().replace("-", "");
+        
+        RetrainTask task = new RetrainTask();
+        task.taskId = taskId;
+        task.status = "RUNNING";
+        task.total = 0;
+        task.processed = 0;
+        task.success = 0;
+        task.failed = 0;
+        task.startTime = System.currentTimeMillis();
+        
+        retrainTasks.put(taskId, task);
+        
+        // 异步执行训练任务
+        CompletableFuture.runAsync(() -> {
+            try {
+                // 1. 查询所有训练样本
+                String sql = "SELECT SAMPLE_ID, PLUNO, PRODUCT_NAME, OSS_IMAGE_URL, FEATURE_EXTRACTED, FEATURE_ID " +
+                    "FROM PRODUCT_TRAINING_SAMPLES " +
+                    "WHERE OSS_IMAGE_URL IS NOT NULL " +
+                    "ORDER BY PLUNO, CREATED_TIME";
+                
+                List<Map<String, Object>> samples = jdbcTemplate.queryForList(sql);
+                task.total = samples.size();
+                
+                System.out.println("🔄 开始批量训练，共 " + task.total + " 个样本");
+                
+                // 2. 逐个处理样本
+                for (Map<String, Object> sample : samples) {
+                    if (!"RUNNING".equals(task.status)) {
+                        break;  // 任务被取消
+                    }
+                    
+                    String sampleId = (String) sample.get("SAMPLE_ID");
+                    String pluno = (String) sample.get("PLUNO");
+                    String ossImageUrl = (String) sample.get("OSS_IMAGE_URL");
+                    String featureId = (String) sample.get("FEATURE_ID");
+                    
+                    try {
+                        // 3. 从 OSS 下载图片
+                        byte[] imageData = aliyunVisionClient.downloadImageFromOSS(ossImageUrl);
+                        
+                        if (imageData == null || imageData.length == 0) {
+                            task.failed++;
+                            task.processed++;
+                            System.err.println("⚠️ 下载 OSS 图片失败：" + ossImageUrl);
+                            continue;
+                        }
+                        
+                        // 4. 提取特征
+                        float[] features = featureExtractor.extractFeatures(imageData);
+                        
+                        if (features == null) {
+                            task.failed++;
+                            task.processed++;
+                            System.err.println("⚠️ 特征提取失败：" + pluno);
+                            continue;
+                        }
+                        
+                        // 5. 更新 PRODUCT_IMAGE_FEATURES 表
+                        if (featureId != null && !featureId.trim().isEmpty()) {
+                            updateFeatureVector(featureId, features);
+                        } else {
+                            // 如果没有 featureId，创建新记录
+                            featureId = createNewFeature(pluno, features, ossImageUrl);
+                        }
+                        
+                        // 6. 更新 PRODUCT_TRAINING_SAMPLES 表
+                        updateSampleFeatureExtracted(sampleId, featureId);
+                        
+                        task.success++;
+                        task.processed++;
+                        
+                        System.out.println("✅ 训练成功：" + pluno + ", 特征维度=" + features.length);
+                        
+                    } catch (Exception e) {
+                        task.failed++;
+                        task.processed++;
+                        System.err.println("❌ 训练失败：" + pluno + ", " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+                
+                // 7. 任务完成
+                task.status = "COMPLETED";
+                task.endTime = System.currentTimeMillis();
+                task.duration = task.endTime - task.startTime;
+                
+                System.out.println("✅ 批量训练完成，总计=" + task.total + 
+                    ", 成功=" + task.success + ", 失败=" + task.failed + 
+                    ", 耗时=" + (task.duration / 1000) + "秒");
+                
+            } catch (Exception e) {
+                task.status = "FAILED";
+                task.endTime = System.currentTimeMillis();
+                System.err.println("❌ 批量训练异常：" + e.getMessage());
+                e.printStackTrace();
+            }
+        });
+        
+        return taskId;
+    }
+    
+    /**
+     * 获取批量训练进度
+     */
+    @Override
+    public Map<String, Object> getRetrainProgress(String taskId) {
+        RetrainTask task = retrainTasks.get(taskId);
+        
+        if (task == null) {
+            return Map.of(
+                "success", false,
+                "message", "任务不存在"
+            );
+        }
+        
+        int progress = task.total > 0 ? (int)(task.processed * 100.0 / task.total) : 0;
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("taskId", task.taskId);
+        result.put("status", task.status);
+        result.put("total", task.total);
+        result.put("processed", task.processed);
+        result.put("success", task.success);
+        result.put("failed", task.failed);
+        result.put("progress", progress);
+        result.put("startTime", task.startTime);
+        result.put("endTime", task.endTime != null ? task.endTime : 0);
+        result.put("duration", task.duration != null ? task.duration : 0);
+        
+        return result;
+    }
+    
+    /**
+     * 取消批量训练任务
+     */
+    @Override
+    public Map<String, Object> cancelRetrainTask(String taskId) {
+        RetrainTask task = retrainTasks.get(taskId);
+        
+        if (task == null) {
+            return Map.of(
+                "success", false,
+                "message", "任务不存在"
+            );
+        }
+        
+        if ("RUNNING".equals(task.status)) {
+            task.status = "CANCELLED";
+            return Map.of(
+                "success", true,
+                "message", "任务已取消"
+            );
+        }
+        
+        return Map.of(
+            "success", false,
+            "message", "任务已结束，无法取消"
+        );
+    }
+    
+    /**
+     * 更新特征向量
+     */
+    private void updateFeatureVector(String featureId, float[] features) {
+        String sql = "UPDATE PRODUCT_IMAGE_FEATURES SET " +
+            "FEATURE_VECTOR = ?, " +
+            "FEATURE_DIMENSION = ?, " +
+            "MODEL_VERSION = ?, " +
+            "CREATED_TIME = SYSDATE " +
+            "WHERE FEATURE_ID = ?";
+        
+        try {
+            // float[] 转 byte[]
+            byte[] featureBytes = new byte[features.length * 4];
+            java.nio.ByteBuffer buffer = java.nio.ByteBuffer.wrap(featureBytes);
+            buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+            for (float f : features) {
+                buffer.putFloat(f);
+            }
+            
+            // 确定模型版本
+            String modelVersion;
+            if (features.length == 512) {
+                modelVersion = "RESNET50-v1";
+            } else if (features.length == 6912) {
+                modelVersion = "HISTOGRAM_GRID-3x3";
+            } else {
+                modelVersion = "HISTOGRAM-v1";
+            }
+            
+            jdbcTemplate.update(sql, featureBytes, features.length, modelVersion, featureId);
+            
+        } catch (Exception e) {
+            System.err.println("❌ 更新特征向量失败：" + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 创建新的特征记录
+     */
+    private String createNewFeature(String pluno, float[] features, String ossImageUrl) {
+        String newFeatureId = UUID.randomUUID().toString().replace("-", "");
+        
+        String sql = "INSERT INTO PRODUCT_IMAGE_FEATURES (" +
+            "FEATURE_ID, PLUNO, OSS_IMAGE_URL, FEATURE_VECTOR, FEATURE_DIMENSION, " +
+            "MODEL_VERSION, CREATED_TIME, CREATED_BY) " +
+            "VALUES (?, ?, ?, ?, ?, ?, SYSDATE, 'system')";
+        
+        try {
+            // float[] 转 byte[]
+            byte[] featureBytes = new byte[features.length * 4];
+            java.nio.ByteBuffer buffer = java.nio.ByteBuffer.wrap(featureBytes);
+            buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);
+            for (float f : features) {
+                buffer.putFloat(f);
+            }
+            
+            // 确定模型版本
+            String modelVersion;
+            if (features.length == 512) {
+                modelVersion = "RESNET50-v1";
+            } else if (features.length == 6912) {
+                modelVersion = "HISTOGRAM_GRID-3x3";
+            } else {
+                modelVersion = "HISTOGRAM-v1";
+            }
+            
+            jdbcTemplate.update(sql, newFeatureId, pluno, ossImageUrl, featureBytes, features.length, modelVersion);
+            
+            return newFeatureId;
+            
+        } catch (Exception e) {
+            System.err.println("❌ 创建特征记录失败：" + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    /**
+     * 更新训练样本的特征提取标记
+     */
+    private void updateSampleFeatureExtracted(String sampleId, String featureId) {
+        String sql = "UPDATE PRODUCT_TRAINING_SAMPLES SET " +
+            "FEATURE_EXTRACTED = 'Y', " +
+            "FEATURE_ID = ?, " +
+            "FEATURE_EXTRACT_TIME = SYSDATE " +
+            "WHERE SAMPLE_ID = ?";
+        
+        try {
+            jdbcTemplate.update(sql, featureId, sampleId);
+        } catch (Exception e) {
+            System.err.println("❌ 更新训练样本标记失败：" + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * 批量训练任务
+     */
+    private static class RetrainTask {
+        String taskId;
+        String status;  // RUNNING, COMPLETED, FAILED, CANCELLED
+        int total;
+        int processed;
+        int success;
+        int failed;
+        Long startTime;
+        Long endTime;
+        Long duration;
     }
     
     /**

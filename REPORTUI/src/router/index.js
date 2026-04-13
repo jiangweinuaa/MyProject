@@ -68,6 +68,12 @@ const routes = [
         meta: { title: '训练库管理', icon: 'FolderOpened' }
       },
       {
+        path: '/retrain',
+        name: 'Retrain',
+        component: () => import('@/views/Retrain.vue'),
+        meta: { title: '商品重新训练', icon: 'RefreshRight' }
+      },
+      {
         path: '/sales-accuracy-analysis',
         name: 'SalesAccuracyAnalysis',
         component: () => import('@/views/SalesAccuracyAnalysis.vue'),

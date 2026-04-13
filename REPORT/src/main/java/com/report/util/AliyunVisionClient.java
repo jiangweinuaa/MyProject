@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -455,6 +456,47 @@ public class AliyunVisionClient {
             result.put("pluno", null);
             result.put("confidence", 0.0);
             return result;
+        }
+    }
+    
+    /**
+     * 从 OSS 下载图片
+     * @param ossImageUrl OSS 图片 URL
+     * @return 图片二进制数据
+     */
+    public byte[] downloadImageFromOSS(String ossImageUrl) {
+        try {
+            System.out.println("📥 从 OSS 下载图片：" + ossImageUrl);
+            
+            URL url = new URL(ossImageUrl);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(30000);
+            
+            int responseCode = conn.getResponseCode();
+            if (responseCode != 200) {
+                System.err.println("❌ 下载 OSS 图片失败，HTTP 响应码：" + responseCode);
+                return null;
+            }
+            
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            byte[] buffer = new byte[4096];
+            int bytesRead;
+            
+            while ((bytesRead = conn.getInputStream().read(buffer)) != -1) {
+                baos.write(buffer, 0, bytesRead);
+            }
+            
+            byte[] imageData = baos.toByteArray();
+            System.out.println("✅ OSS 图片下载成功，大小：" + imageData.length + " 字节");
+            
+            return imageData;
+            
+        } catch (Exception e) {
+            System.err.println("❌ 下载 OSS 图片异常：" + e.getMessage());
+            e.printStackTrace();
+            return null;
         }
     }
 }

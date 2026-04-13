@@ -60,4 +60,24 @@ public interface ProductRecognitionService {
      * @return 任务状态
      */
     Map<String, Object> getTrainingStatus(String taskId);
+    
+    /**
+     * 批量重新训练所有商品特征
+     * @return 任务 ID
+     */
+    String retrainAllFeatures();
+    
+    /**
+     * 获取批量训练进度
+     * @param taskId 任务 ID
+     * @return 进度信息
+     */
+    Map<String, Object> getRetrainProgress(String taskId);
+    
+    /**
+     * 取消批量训练任务
+     * @param taskId 任务 ID
+     * @return 操作结果
+     */
+    Map<String, Object> cancelRetrainTask(String taskId);
 }
