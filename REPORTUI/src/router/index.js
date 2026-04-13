@@ -11,7 +11,7 @@ const routes = [
   {
     path: '/',
     component: Layout,
-    redirect: '/sales-analysis',
+    redirect: '/product-recognition',
     children: [
       {
         path: '/sales-analysis',
