@@ -30,13 +30,21 @@ public class ImageFeatureExtractor {
                 return null;
             }
             
+            // 【配置化】是否启用显著性检测 ROI 提取
+            boolean enableROI = true;  // 默认启用
+            
             // 【方案 B】尝试提取商品 ROI 区域
-            BufferedImage roiImage = extractProductROI(image);
+            BufferedImage roiImage = null;
+            if (enableROI) {
+                roiImage = extractProductROI(image);
+            }
             
             // 如果 ROI 提取失败，使用原图
             if (roiImage == null) {
                 roiImage = image;
-                System.out.println("⚠️ ROI 提取失败，使用整图");
+                if (enableROI) {
+                    System.out.println("⚠️ ROI 提取失败，使用整图");
+                }
             }
             
             // 【关键】统一缩放到固定尺寸（1024x1024），消除尺寸影响，保留更多细节
@@ -82,7 +90,8 @@ public class ImageFeatureExtractor {
     }
     
     /**
-     * 提取商品 ROI 区域（边缘检测 + 轮廓提取）
+     * 提取商品 ROI 区域（显著性检测）
+     * 找到图片中最突出的区域（最不像背景的部分）
      * @param image 原始图片
      * @return 裁剪后的商品区域图片，失败返回 null
      */
@@ -92,7 +101,7 @@ public class ImageFeatureExtractor {
             int height = image.getHeight();
             
             // 1. 转灰度图
-            BufferedImage grayImage = new BufferedImage(width, height, BufferedImage.TYPE_BYTE_GRAY);
+            int[] grayPixels = new int[width * height];
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
                     int rgb = image.getRGB(x, y);
@@ -101,26 +110,23 @@ public class ImageFeatureExtractor {
                     int b = rgb & 0xFF;
                     // 灰度公式：0.299R + 0.587G + 0.114B
                     int gray = (int)(0.299 * r + 0.587 * g + 0.114 * b);
-                    grayImage.setRGB(x, y, (gray << 16) | (gray << 8) | gray);
+                    grayPixels[y * width + x] = gray;
                 }
             }
             
-            // 2. 高斯模糊去噪（3x3 简单模糊）
-            BufferedImage blurredImage = gaussianBlur(grayImage, 3);
+            // 2. 计算显著性图（对比度 + 边缘密度）
+            float[] saliencyMap = computeSaliencyMap(grayPixels, width, height);
             
-            // 3. Canny 边缘检测
-            boolean[][] edges = cannyEdgeDetection(blurredImage);
-            
-            // 4. 找最大轮廓（商品边界）
-            Rectangle productRect = findLargestContour(edges, width, height);
+            // 3. 找到显著性最高的区域
+            Rectangle productRect = findSalientRegion(saliencyMap, width, height);
             
             if (productRect == null) {
                 return null;
             }
             
-            // 5. 裁剪商品区域（添加 5% 边距）
-            int marginX = (int)(productRect.width * 0.05);
-            int marginY = (int)(productRect.height * 0.05);
+            // 4. 裁剪商品区域（添加 10% 边距）
+            int marginX = (int)(productRect.width * 0.10);
+            int marginY = (int)(productRect.height * 0.10);
             int cropX = Math.max(0, productRect.x - marginX);
             int cropY = Math.max(0, productRect.y - marginY);
             int cropW = Math.min(width - cropX, productRect.width + 2 * marginX);
@@ -131,12 +137,152 @@ public class ImageFeatureExtractor {
                 return null;
             }
             
+            System.out.println("✅ ROI 提取成功：显著性区域=" + cropX + "," + cropY + "," + cropW + "x" + cropH);
             return image.getSubimage(cropX, cropY, cropW, cropH);
             
         } catch (Exception e) {
             System.err.println("⚠️ ROI 提取失败：" + e.getMessage());
             return null;
         }
+    }
+    
+    /**
+     * 计算显著性图（对比度 + 边缘密度）
+     * @param grayPixels 灰度像素数组
+     * @param width 图片宽度
+     * @param height 图片高度
+     * @return 显著性值数组（0-1，越大越显著）
+     */
+    private float[] computeSaliencyMap(int[] grayPixels, int width, int height) {
+        float[] saliency = new float[width * height];
+        
+        // 计算全局平均灰度
+        float globalAvg = 0;
+        for (int pixel : grayPixels) {
+            globalAvg += pixel;
+        }
+        globalAvg /= grayPixels.length;
+        
+        // 对每个像素计算显著性
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int idx = y * width + x;
+                int centerGray = grayPixels[idx];
+                
+                // 1. 对比度显著性（与全局平均的差异）
+                float contrastSaliency = Math.abs(centerGray - globalAvg) / 255.0f;
+                
+                // 2. 边缘密度显著性（与周围像素的差异）
+                float edgeSaliency = 0;
+                int count = 0;
+                int radius = 3;
+                
+                for (int dy = -radius; dy <= radius; dy++) {
+                    for (int dx = -radius; dx <= radius; dx++) {
+                        if (dx == 0 && dy == 0) continue;
+                        
+                        int nx = x + dx;
+                        int ny = y + dy;
+                        
+                        if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                            int neighborGray = grayPixels[ny * width + nx];
+                            edgeSaliency += Math.abs(centerGray - neighborGray);
+                            count++;
+                        }
+                    }
+                }
+                
+                if (count > 0) {
+                    edgeSaliency /= count;
+                    edgeSaliency /= 255.0f;  // 归一化到 0-1
+                }
+                
+                // 3. 综合显著性（对比度 + 边缘）
+                saliency[idx] = 0.6f * contrastSaliency + 0.4f * edgeSaliency;
+            }
+        }
+        
+        // 归一化到 0-1
+        float maxSaliency = 0;
+        for (float s : saliency) {
+            maxSaliency = Math.max(maxSaliency, s);
+        }
+        
+        if (maxSaliency > 0) {
+            for (int i = 0; i < saliency.length; i++) {
+                saliency[i] /= maxSaliency;
+            }
+        }
+        
+        return saliency;
+    }
+    
+    /**
+     * 找到显著性最高的区域
+     * @param saliencyMap 显著性图
+     * @param width 图片宽度
+     * @param height 图片高度
+     * @return 显著性区域的包围盒
+     */
+    private Rectangle findSalientRegion(float[] saliencyMap, int width, int height) {
+        // 1. 二值化显著性图（阈值 0.5）
+        boolean[][] significant = new boolean[width][height];
+        float threshold = 0.5f;
+        
+        int significantCount = 0;
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                float s = saliencyMap[y * width + x];
+                if (s > threshold) {
+                    significant[x][y] = true;
+                    significantCount++;
+                }
+            }
+        }
+        
+        // 如果显著性像素太少，降低阈值
+        if (significantCount < width * height * 0.05) {
+            threshold = 0.3f;
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    float s = saliencyMap[y * width + x];
+                    if (s > threshold) {
+                        significant[x][y] = true;
+                    }
+                }
+            }
+        }
+        
+        // 2. 找最大连通区域（简单方法：找所有显著性像素的包围盒）
+        int minX = width, maxX = 0;
+        int minY = height, maxY = 0;
+        boolean found = false;
+        
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                if (significant[x][y]) {
+                    minX = Math.min(minX, x);
+                    maxX = Math.max(maxX, x);
+                    minY = Math.min(minY, y);
+                    maxY = Math.max(maxY, y);
+                    found = true;
+                }
+            }
+        }
+        
+        if (!found) {
+            return null;
+        }
+        
+        int rectWidth = maxX - minX + 1;
+        int rectHeight = maxY - minY + 1;
+        
+        // 如果包围盒太小，说明没有明显显著区域
+        if (rectWidth < width * 0.2 || rectHeight < height * 0.2) {
+            return null;
+        }
+        
+        return new Rectangle(minX, minY, rectWidth, rectHeight);
     }
     
     /**

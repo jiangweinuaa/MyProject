@@ -6,6 +6,7 @@ import com.report.dto.MatchResult;
 import com.report.dto.ProductRecognitionRequest;
 import com.report.dto.ProductRecognitionResult;
 import com.report.service.FeatureSearchService;
+import com.report.service.RecognitionConfigService;
 import com.report.service.ImageFeatureExtractor;
 import com.report.service.ProductRecognitionService;
 import com.report.util.AliyunVisionClient;
@@ -44,6 +45,9 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
     
     @Autowired(required = false)
     private FeatureSearchService featureSearchService;
+    
+    @Autowired(required = false)
+    private RecognitionConfigService configService;
     
     @Override
     public ProductRecognitionResult recognize(MultipartFile image) {
@@ -215,17 +219,23 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 
                 System.out.println("✅ 特征匹配成功：PLUNO=" + pluno + ", 相似度=" + similarity + ", 特征 ID=" + featureId);
                 
-                // 【关键修复】设置最低相似度阈值，避免强行匹配不相关商品
-                final double MIN_SIMILARITY = 0.60;  // 最低相似度阈值
+                // 【配置化】从配置表读取阈值（每次识别前刷新配置）
+                if (configService != null) {
+                    configService.refreshConfig();  // 重新加载配置
+                }
+                double highThreshold = configService != null ? 
+                    configService.getDoubleConfig("VECTOR_HIGH_THRESHOLD", 0.85) : 0.85;
+                double minThreshold = configService != null ? 
+                    configService.getDoubleConfig("VECTOR_MIN_THRESHOLD", 0.60) : 0.60;
                 
-                if (similarity > 0.85) {
+                if (similarity > highThreshold) {
                     // 向量匹配成功（高置信度）
-                    System.out.println("✅ 向量匹配成功：PLUNO=" + pluno + ", 相似度=" + similarity);
+                    System.out.println("✅ 向量匹配成功：PLUNO=" + pluno + ", 相似度=" + similarity + " (阈值=" + highThreshold + ")");
                     return MatchResult.vectorMatch(pluno, similarity, featureId);
                     
-                } else if (similarity >= MIN_SIMILARITY) {
-                    // 相似度中等（0.60-0.85），尝试名称匹配
-                    System.out.println("⚠️ 相似度中等 (" + similarity + ")，尝试名称匹配");
+                } else if (similarity >= minThreshold) {
+                    // 相似度中等（minThreshold-highThreshold），尝试名称匹配
+                    System.out.println("⚠️ 相似度中等 (" + similarity + ", 阈值范围=" + minThreshold + "-" + highThreshold + ")，尝试名称匹配");
                     MatchResult nameMatch = matchLocalProductByName(categoryName, productName);
                     
                     if (nameMatch != null) {
@@ -244,8 +254,8 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                     }
                     
                 } else {
-                    // 相似度太低（< 0.60），特征库中没有相似商品
-                    System.out.println("⚠️ 相似度太低 (" + similarity + " < " + MIN_SIMILARITY + ")，特征库中无相似商品");
+                    // 相似度太低（< minThreshold），特征库中没有相似商品
+                    System.out.println("⚠️ 相似度太低 (" + similarity + " < " + minThreshold + ")，特征库中无相似商品");
                     // 尝试名称匹配，但**保留向量信息用于记录**
                     MatchResult nameMatch = matchLocalProductByName(categoryName, productName);
                     
