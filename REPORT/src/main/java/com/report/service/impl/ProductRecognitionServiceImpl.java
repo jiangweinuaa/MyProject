@@ -95,7 +95,19 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                     result.setSourcePluno(categoryId);  // 保存识别平台返回的原始 ID
                     result.setProductName(localProduct != null ? (String) localProduct.get("PRODUCT_NAME") : productName);
                     result.setCategory(localProduct != null ? (String) localProduct.get("CATEGORY") : categoryName);
-                    result.setConfidence(confidence != null ? confidence : 0.85);
+                    
+                    // 【优化】CONFIDENCE 取值逻辑：
+                    // 1. 有向量相似度 → 使用向量相似度
+                    // 2. 无向量相似度（名称匹配） → 使用阿里云置信度
+                    // 3. 阿里云也未返回 → 使用默认值 0.85
+                    if (matchResult.getVectorSimilarity() != null) {
+                        result.setConfidence(matchResult.getVectorSimilarity());
+                    } else if (confidence != null) {
+                        result.setConfidence(confidence);
+                    } else {
+                        result.setConfidence(0.85);
+                    }
+                    
                     result.setRecognitionSource("LOCAL_MATCH");
                     // 【修复】VECTOR_FALLBACK 实际是名称匹配成功，但记录了向量相似度
                     if ("VECTOR_FALLBACK".equals(matchResult.getMatchType())) {
