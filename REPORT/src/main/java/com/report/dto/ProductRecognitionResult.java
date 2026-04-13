@@ -15,6 +15,7 @@ public class ProductRecognitionResult {
     private String recognitionSource;      // 识别来源：ALIYUN(阿里云) / LOCAL(本地)
     private String matchType;              // 匹配方式：VECTOR(向量匹配)/NAME_EXACT(名称精确)/NAME_FUZZY(名称模糊)/CATEGORY(类目匹配)
     private Double vectorSimilarity;       // 向量相似度（仅向量匹配时有值）
+    private String matchedFeatureId;       // 匹配到的特征 ID（PRODUCT_IMAGE_FEATURES 表主键）
     private List<SimilarProduct> similarProducts;  // 相似商品列表
     
     /**
@@ -115,5 +116,13 @@ public class ProductRecognitionResult {
     
     public void setVectorSimilarity(Double vectorSimilarity) {
         this.vectorSimilarity = vectorSimilarity;
+    }
+    
+    public String getMatchedFeatureId() {
+        return matchedFeatureId;
+    }
+    
+    public void setMatchedFeatureId(String matchedFeatureId) {
+        this.matchedFeatureId = matchedFeatureId;
     }
 }

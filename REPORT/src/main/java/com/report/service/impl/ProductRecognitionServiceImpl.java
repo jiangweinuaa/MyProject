@@ -95,6 +95,7 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                     result.setRecognitionSource("LOCAL_MATCH");
                     result.setMatchType(matchResult.getMatchType());
                     result.setVectorSimilarity(matchResult.getVectorSimilarity());
+                    result.setMatchedFeatureId(matchResult.getFeatureId());
                 } else {
                     // 未匹配到本地商品，使用识别平台结果（品号为空，表示没有真实品号）
                     System.out.println("⚠️ 未匹配到本地商品，使用识别平台结果（无真实品号）");
@@ -136,12 +137,12 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
             // 计算识别耗时（从开始到现在的毫秒数）
             long recognitionTime = System.currentTimeMillis();
             
-            // 插入识别日志（包含匹配方式和相似度）
+            // 插入识别日志（包含匹配方式、相似度和特征 ID）
             String sql = "INSERT INTO PRODUCT_RECOGNITION_LOGS " +
                 "(LOG_ID, IMAGE_URL, RECOGNIZED_PLUNO, RECOGNIZED_NAME, CONFIDENCE, " +
                 "USERCONFIRMEDPLUNO, IS_CORRECT, RECOGNITION_TIME, DEVICE_TYPE, USER_ID, " +
-                "MATCH_TYPE, VECTOR_SIMILARITY, CREATED_TIME) " +
-                "VALUES (?, ?, ?, ?, ?, ?, 'U', ?, 'WEB', 'system', ?, ?, SYSDATE)";
+                "MATCH_TYPE, VECTOR_SIMILARITY, MATCHED_FEATURE_ID, CREATED_TIME) " +
+                "VALUES (?, ?, ?, ?, ?, ?, 'U', ?, 'WEB', 'system', ?, ?, ?, SYSDATE)";
             
             jdbcTemplate.update(sql,
                 logId,
@@ -152,7 +153,8 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 result.getPluno(),            // USERCONFIRMEDPLUNO: 匹配到的真实品号
                 recognitionTime,
                 result.getMatchType(),        // 匹配方式：VECTOR/NAME_EXACT/NAME_FUZZY/CATEGORY
-                result.getVectorSimilarity()  // 向量相似度
+                result.getVectorSimilarity(), // 向量相似度
+                result.getMatchedFeatureId()  // 匹配到的特征 ID
             );
             
             System.out.println("📝 识别日志已记录：" + logId + 
@@ -197,12 +199,13 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 Map<String, Object> topMatch = similarProducts.get(0);
                 double similarity = (Double) topMatch.get("similarity");
                 String pluno = (String) topMatch.get("pluno");
+                String featureId = (String) topMatch.get("featureId");
                 
-                System.out.println("✅ 特征匹配成功：PLUNO=" + pluno + ", 相似度=" + similarity);
+                System.out.println("✅ 特征匹配成功：PLUNO=" + pluno + ", 相似度=" + similarity + ", 特征 ID=" + featureId);
                 
                 // 相似度阈值（可以根据实际情况调整）
                 if (similarity > 0.85) {
-                    return MatchResult.vectorMatch(pluno, similarity);
+                    return MatchResult.vectorMatch(pluno, similarity, featureId);
                 } else {
                     System.out.println("⚠️ 相似度低于阈值，使用名称匹配");
                     return matchLocalProductByName(categoryName, productName);
