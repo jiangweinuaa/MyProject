@@ -80,4 +80,11 @@ public interface ProductRecognitionService {
      * @return 操作结果
      */
     Map<String, Object> cancelRetrainTask(String taskId);
+    
+    /**
+     * 获取指定商品的识别准确率
+     * @param pluno 商品品号
+     * @return 准确率统计
+     */
+    Map<String, Object> getProductAccuracy(String pluno);
 }

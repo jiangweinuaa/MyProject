@@ -675,13 +675,41 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 stats.put("lastTrainingDate", "未训练");
             }
             
-            // 当前模型准确率
+            // 计算平均相似度（图片质量指标）
             try {
-                String accuracySql = "SELECT NVL(ACCURACY, 0) AS ACCURACY FROM MODEL_VERSIONS WHERE IS_ACTIVE = 'Y'";
-                Double accuracy = jdbcTemplate.queryForObject(accuracySql, Double.class);
-                stats.put("accuracy", accuracy != null ? Math.round(accuracy * 10000) / 100.0 : 0);
+                String sql = "SELECT " +
+                    "ROUND(AVG(VECTOR_SIMILARITY), 4) AS AVG_SIMILARITY, " +
+                    "COUNT(*) AS TOTAL " +
+                    "FROM PRODUCT_RECOGNITION_LOGS " +
+                    "WHERE VECTOR_SIMILARITY IS NOT NULL";
+                
+                List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
+                
+                if (list != null && !list.isEmpty()) {
+                    Map<String, Object> row = list.get(0);
+                    Number avgSim = (Number) row.get("AVG_SIMILARITY");
+                    Number total = (Number) row.get("TOTAL");
+                    
+                    // 平均相似度作为准确率显示（0-100）
+                    stats.put("accuracy", avgSim != null ? Math.round(avgSim.doubleValue() * 10000) / 100.0 : 0);
+                    stats.put("totalRecognitions", total != null ? total.intValue() : 0);
+                    stats.put("correctRecognitions", 0);
+                    stats.put("avgSimilarity", avgSim != null ? avgSim.doubleValue() : 0);
+                    
+                    System.out.println("📊 平均相似度：" + avgSim + " (总数：" + total + ")");
+                } else {
+                    stats.put("accuracy", 0);
+                    stats.put("totalRecognitions", 0);
+                    stats.put("correctRecognitions", 0);
+                    stats.put("avgSimilarity", 0);
+                }
+                
             } catch (Exception e) {
+                System.err.println("⚠️ 计算相似度失败：" + e.getMessage());
                 stats.put("accuracy", 0);
+                stats.put("totalRecognitions", 0);
+                stats.put("correctRecognitions", 0);
+                stats.put("avgSimilarity", 0);
             }
             
             stats.put("success", true);
@@ -710,6 +738,61 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
         status.put("progress", 0);
         status.put("status", "pending");
         return status;
+    }
+    
+    /**
+     * 获取指定商品的平均相似度（图片质量指标）
+     * @param pluno 商品品号
+     * @return 相似度统计
+     */
+    public Map<String, Object> getProductAccuracy(String pluno) {
+        Map<String, Object> result = new HashMap<>();
+        
+        if (jdbcTemplate == null || pluno == null) {
+            result.put("accuracy", 0);
+            result.put("total", 0);
+            result.put("correct", 0);
+            result.put("avgSimilarity", 0);
+            return result;
+        }
+        
+        try {
+            String sql = "SELECT " +
+                "ROUND(AVG(VECTOR_SIMILARITY), 4) AS AVG_SIMILARITY, " +
+                "COUNT(*) AS TOTAL " +
+                "FROM PRODUCT_RECOGNITION_LOGS " +
+                "WHERE VECTOR_SIMILARITY IS NOT NULL " +
+                "AND USERCONFIRMEDPLUNO = ?";
+            
+            List<Map<String, Object>> list = jdbcTemplate.queryForList(sql, pluno);
+            
+            if (list != null && !list.isEmpty()) {
+                Map<String, Object> row = list.get(0);
+                Number avgSim = (Number) row.get("AVG_SIMILARITY");
+                Number total = (Number) row.get("TOTAL");
+                
+                // 平均相似度作为准确率显示（0-100）
+                result.put("accuracy", avgSim != null ? Math.round(avgSim.doubleValue() * 10000) / 100.0 : 0);
+                result.put("total", total != null ? total.intValue() : 0);
+                result.put("correct", 0);
+                result.put("avgSimilarity", avgSim != null ? avgSim.doubleValue() : 0);
+                
+            } else {
+                result.put("accuracy", 0);
+                result.put("total", 0);
+                result.put("correct", 0);
+                result.put("avgSimilarity", 0);
+            }
+            
+        } catch (Exception e) {
+            System.err.println("⚠️ 查询商品相似度失败：" + e.getMessage());
+            result.put("accuracy", 0);
+            result.put("total", 0);
+            result.put("correct", 0);
+            result.put("avgSimilarity", 0);
+        }
+        
+        return result;
     }
     
     // 批量训练任务管理

@@ -127,4 +127,14 @@ public class ProductRecognitionController {
     public Map<String, Object> getTrainingStats() {
         return productRecognitionService.getTrainingStats();
     }
+    
+    /**
+     * 获取指定商品的识别准确率
+     * @param pluno 商品品号
+     * @return 准确率统计
+     */
+    @GetMapping("/product-accuracy")
+    public Map<String, Object> getProductAccuracy(@RequestParam String pluno) {
+        return productRecognitionService.getProductAccuracy(pluno);
+    }
 }

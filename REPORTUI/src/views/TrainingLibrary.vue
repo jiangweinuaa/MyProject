@@ -109,6 +109,11 @@
                 📷 {{ row.IMAGE_COUNT }}
               </el-tag>
             </div>
+            <div class="stat-item" v-if="row.accuracy !== undefined">
+              <el-tag :type="getAccuracyType(row.accuracy)" size="small">
+                🎯 {{ row.accuracy }}%
+              </el-tag>
+            </div>
           </div>
           
           <div class="product-quality">
@@ -256,6 +261,9 @@ const loadData = async () => {
     if (response.success) {
       tableData.value = response.data || []
       pagination.totalRecords = response.totalRecords || 0
+      
+      // 加载每个商品的识别准确率
+      loadProductAccuracies()
     } else {
       ElMessage.error('加载数据失败：' + response.message)
       tableData.value = []
@@ -268,6 +276,36 @@ const loadData = async () => {
     pagination.totalRecords = 0
   } finally {
     loading.value = false
+  }
+}
+
+// 加载所有商品的识别准确率
+const loadProductAccuracies = async () => {
+  try {
+    // 并发请求所有商品的准确率
+    const promises = tableData.value.map(async (row) => {
+      const pluno = row.PLUNO || row.pluno
+      if (!pluno) return
+      
+      try {
+        const response = await fetch(`http://47.100.138.89:8110/api/product/product-accuracy?pluno=${encodeURIComponent(pluno)}`, {
+          method: 'GET'
+        }).then(res => res.json())
+        
+        if (response) {
+          row.accuracy = response.accuracy || 0
+          row.accuracyTotal = response.total || 0
+          row.accuracyCorrect = response.correct || 0
+        }
+      } catch (error) {
+        console.warn(`加载商品 ${pluno} 准确率失败:`, error)
+      }
+    })
+    
+    await Promise.all(promises)
+    
+  } catch (error) {
+    console.error('加载准确率失败:', error)
   }
 }
 
@@ -362,6 +400,14 @@ const getCategoryType = (category) => {
     '其他': 'info'
   }
   return types[category] || 'info'
+}
+
+// 根据准确率返回标签类型
+const getAccuracyType = (accuracy) => {
+  if (accuracy >= 90) return 'success'
+  if (accuracy >= 70) return 'primary'
+  if (accuracy >= 50) return 'warning'
+  return 'danger'
 }
 
 // 格式化时间
