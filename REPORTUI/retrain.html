@@ -325,7 +325,7 @@
         // 加载统计数据
         async function loadStats() {
             try {
-                const response = await fetch('http://47.99.153.144:8110/api/training/stats');
+                const response = await fetch('http://47.100.138.89:8110/api/training/stats');
                 const data = await response.json();
                 
                 if (data.success) {
@@ -344,7 +344,7 @@
             }
             
             try {
-                const response = await fetch('http://47.99.153.144:8110/api/training/retrain-all', {
+                const response = await fetch('http://47.100.138.89:8110/api/training/retrain-all', {
                     method: 'POST'
                 });
                 const data = await response.json();
@@ -374,7 +374,7 @@
             if (!taskId) return;
             
             try {
-                const response = await fetch(`http://47.99.153.144:8110/api/training/retrain-progress/${taskId}`);
+                const response = await fetch(`http://47.100.138.89:8110/api/training/retrain-progress/${taskId}`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -460,7 +460,7 @@
             }
             
             try {
-                const response = await fetch(`http://47.99.153.144:8110/api/training/retrain-cancel/${taskId}`, {
+                const response = await fetch(`http://47.100.138.89:8110/api/training/retrain-cancel/${taskId}`, {
                     method: 'POST'
                 });
                 const data = await response.json();

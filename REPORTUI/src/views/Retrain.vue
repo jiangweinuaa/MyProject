@@ -1,7 +1,7 @@
 <template>
   <div class="retrain-container">
     <iframe 
-      src="http://47.99.153.144:8081/retrain.html" 
+      src="http://47.100.138.89:8081/retrain.html" 
       frameborder="0" 
       class="retrain-iframe"
     ></iframe>
