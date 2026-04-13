@@ -2,8 +2,10 @@ package com.report.service.impl;
 
 import com.report.dao.ImageFeatureDAO;
 import com.report.dto.ImageFeature;
+import com.report.dto.MatchResult;
 import com.report.dto.ProductRecognitionRequest;
 import com.report.dto.ProductRecognitionResult;
+import com.report.service.FeatureSearchService;
 import com.report.service.ImageFeatureExtractor;
 import com.report.service.ProductRecognitionService;
 import com.report.util.AliyunVisionClient;
@@ -40,6 +42,9 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
     @Autowired(required = false)
     private ImageFeatureExtractor featureExtractor;
     
+    @Autowired(required = false)
+    private FeatureSearchService featureSearchService;
+    
     @Override
     public ProductRecognitionResult recognize(MultipartFile image) {
         ProductRecognitionResult result = new ProductRecognitionResult();
@@ -70,22 +75,26 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 
                 System.out.println("🎯 识别结果：类目=" + categoryName + ", CategoryId=" + categoryId + ", 置信度=" + confidence + ", 平台=" + platformSource);
                 
-                // 4. 匹配本地训练库
-                String localPluno = matchLocalProduct(categoryName, productName);
+                // 4. 匹配本地训练库（使用特征向量匹配）
+                MatchResult matchResult = matchLocalProduct(image, categoryName, productName);
                 
-                if (localPluno != null) {
+                if (matchResult != null && matchResult.getPluno() != null) {
                     // 匹配到本地商品
-                    System.out.println("✅ 匹配到本地商品：PLUNO=" + localPluno);
+                    System.out.println("✅ 匹配到本地商品：PLUNO=" + matchResult.getPluno() + 
+                        ", 匹配方式=" + matchResult.getMatchType() + 
+                        (matchResult.getVectorSimilarity() != null ? ", 相似度=" + matchResult.getVectorSimilarity() : ""));
                     
                     // 查询本地商品信息
-                    Map<String, Object> localProduct = getProductInfo(localPluno);
+                    Map<String, Object> localProduct = getProductInfo(matchResult.getPluno());
                     
-                    result.setPluno(localPluno);
+                    result.setPluno(matchResult.getPluno());
                     result.setSourcePluno(categoryId);  // 保存识别平台返回的原始 ID
                     result.setProductName(localProduct != null ? (String) localProduct.get("PRODUCT_NAME") : productName);
                     result.setCategory(localProduct != null ? (String) localProduct.get("CATEGORY") : categoryName);
                     result.setConfidence(confidence != null ? confidence : 0.85);
                     result.setRecognitionSource("LOCAL_MATCH");
+                    result.setMatchType(matchResult.getMatchType());
+                    result.setVectorSimilarity(matchResult.getVectorSimilarity());
                 } else {
                     // 未匹配到本地商品，使用识别平台结果（品号为空，表示没有真实品号）
                     System.out.println("⚠️ 未匹配到本地商品，使用识别平台结果（无真实品号）");
@@ -127,11 +136,12 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
             // 计算识别耗时（从开始到现在的毫秒数）
             long recognitionTime = System.currentTimeMillis();
             
-            // 插入识别日志
+            // 插入识别日志（包含匹配方式和相似度）
             String sql = "INSERT INTO PRODUCT_RECOGNITION_LOGS " +
                 "(LOG_ID, IMAGE_URL, RECOGNIZED_PLUNO, RECOGNIZED_NAME, CONFIDENCE, " +
-                "USERCONFIRMEDPLUNO, IS_CORRECT, RECOGNITION_TIME, DEVICE_TYPE, USER_ID, CREATED_TIME) " +
-                "VALUES (?, ?, ?, ?, ?, ?, 'U', ?, 'WEB', 'system', SYSDATE)";
+                "USERCONFIRMEDPLUNO, IS_CORRECT, RECOGNITION_TIME, DEVICE_TYPE, USER_ID, " +
+                "MATCH_TYPE, VECTOR_SIMILARITY, CREATED_TIME) " +
+                "VALUES (?, ?, ?, ?, ?, ?, 'U', ?, 'WEB', 'system', ?, ?, SYSDATE)";
             
             jdbcTemplate.update(sql,
                 logId,
@@ -140,12 +150,16 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 result.getProductName(),
                 result.getConfidence(),
                 result.getPluno(),            // USERCONFIRMEDPLUNO: 匹配到的真实品号
-                recognitionTime
+                recognitionTime,
+                result.getMatchType(),        // 匹配方式：VECTOR/NAME_EXACT/NAME_FUZZY/CATEGORY
+                result.getVectorSimilarity()  // 向量相似度
             );
             
             System.out.println("📝 识别日志已记录：" + logId + 
                 ", 识别品号=" + result.getSourcePluno() + 
-                ", 匹配品号=" + result.getPluno());
+                ", 匹配品号=" + result.getPluno() +
+                ", 匹配方式=" + result.getMatchType() +
+                (result.getVectorSimilarity() != null ? ", 相似度=" + result.getVectorSimilarity() : ""));
             
         } catch (Exception e) {
             System.err.println("记录识别日志失败：" + e.getMessage());
@@ -155,12 +169,63 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
     }
     
     /**
-     * 匹配本地训练库商品
+     * 匹配本地训练库商品（使用特征向量相似度匹配）
+     * @param imageFile 上传的图片文件
      * @param categoryName 阿里云识别的类目名称
      * @param productName 阿里云识别的商品名称
-     * @return 匹配的本地 PLUNO，未匹配返回 null
+     * @return MatchResult 包含匹配品号、匹配方式和相似度，未匹配返回 null
      */
-    private String matchLocalProduct(String categoryName, String productName) {
+    private MatchResult matchLocalProduct(MultipartFile imageFile, String categoryName, String productName) {
+        if (jdbcTemplate == null || featureSearchService == null || featureExtractor == null) {
+            return null;
+        }
+        
+        try {
+            // 1. 提取上传图片的特征向量
+            byte[] imageBytes = imageFile.getBytes();
+            float[] queryFeatures = featureExtractor.extractFeatures(imageBytes);
+            
+            if (queryFeatures == null) {
+                System.out.println("⚠️ 特征提取失败，使用名称匹配");
+                return matchLocalProductByName(categoryName, productName);
+            }
+            
+            // 2. 使用特征向量检索最相似的商品
+            List<Map<String, Object>> similarProducts = featureSearchService.searchSimilarProducts(queryFeatures, 1);
+            
+            if (similarProducts != null && !similarProducts.isEmpty()) {
+                Map<String, Object> topMatch = similarProducts.get(0);
+                double similarity = (Double) topMatch.get("similarity");
+                String pluno = (String) topMatch.get("pluno");
+                
+                System.out.println("✅ 特征匹配成功：PLUNO=" + pluno + ", 相似度=" + similarity);
+                
+                // 相似度阈值（可以根据实际情况调整）
+                if (similarity > 0.85) {
+                    return MatchResult.vectorMatch(pluno, similarity);
+                } else {
+                    System.out.println("⚠️ 相似度低于阈值，使用名称匹配");
+                    return matchLocalProductByName(categoryName, productName);
+                }
+            } else {
+                System.out.println("⚠️ 特征库为空，使用名称匹配");
+                return matchLocalProductByName(categoryName, productName);
+            }
+            
+        } catch (Exception e) {
+            System.err.println("特征匹配失败：" + e.getMessage());
+            e.printStackTrace();
+            return matchLocalProductByName(categoryName, productName);
+        }
+    }
+    
+    /**
+     * 匹配本地训练库商品（使用名称匹配，备用方案）
+     * @param categoryName 阿里云识别的类目名称
+     * @param productName 阿里云识别的商品名称
+     * @return MatchResult 包含匹配品号和匹配方式，未匹配返回 null
+     */
+    private MatchResult matchLocalProductByName(String categoryName, String productName) {
         if (jdbcTemplate == null) {
             return null;
         }
@@ -171,7 +236,9 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 String sql = "SELECT PLUNO FROM PRODUCT_FEATURES WHERE PRODUCT_NAME = ?";
                 List<Map<String, Object>> list = jdbcTemplate.queryForList(sql, productName);
                 if (list != null && !list.isEmpty()) {
-                    return (String) list.get(0).get("PLUNO");
+                    String pluno = (String) list.get(0).get("PLUNO");
+                    System.out.println("✅ 名称精确匹配成功：PLUNO=" + pluno);
+                    return MatchResult.nameExactMatch(pluno);
                 }
             }
             
@@ -180,7 +247,9 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 String sql = "SELECT PLUNO FROM PRODUCT_FEATURES WHERE PRODUCT_NAME LIKE ?";
                 List<Map<String, Object>> list = jdbcTemplate.queryForList(sql, "%" + productName + "%");
                 if (list != null && !list.isEmpty()) {
-                    return (String) list.get(0).get("PLUNO");
+                    String pluno = (String) list.get(0).get("PLUNO");
+                    System.out.println("✅ 名称模糊匹配成功：PLUNO=" + pluno);
+                    return MatchResult.nameFuzzyMatch(pluno);
                 }
             }
             
@@ -189,10 +258,13 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 String sql = "SELECT PLUNO FROM PRODUCT_FEATURES WHERE CATEGORY = ?";
                 List<Map<String, Object>> list = jdbcTemplate.queryForList(sql, categoryName);
                 if (list != null && !list.isEmpty()) {
-                    return (String) list.get(0).get("PLUNO");
+                    String pluno = (String) list.get(0).get("PLUNO");
+                    System.out.println("✅ 类目匹配成功：PLUNO=" + pluno + ", 类目=" + categoryName);
+                    return MatchResult.categoryMatch(pluno);
                 }
             }
             
+            System.out.println("⚠️ 所有匹配策略都失败了");
             return null;
             
         } catch (Exception e) {

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 import javax.sql.rowset.serial.SerialBlob;
 import java.sql.Blob;
 import java.sql.SQLException;
+import java.nio.ByteOrder;
 import java.util.List;
 import java.util.Map;
 
@@ -34,6 +35,7 @@ public class ImageFeatureDAO {
             float[] features = feature.getFeatureVector();
             byte[] featureBytes = new byte[features.length * 4];
             java.nio.ByteBuffer buffer = java.nio.ByteBuffer.wrap(featureBytes);
+            buffer.order(java.nio.ByteOrder.LITTLE_ENDIAN);  // 统一使用 LITTLE_ENDIAN
             for (float f : features) {
                 buffer.putFloat(f);
             }
