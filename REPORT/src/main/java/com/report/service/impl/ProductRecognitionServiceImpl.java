@@ -93,9 +93,14 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                     result.setCategory(localProduct != null ? (String) localProduct.get("CATEGORY") : categoryName);
                     result.setConfidence(confidence != null ? confidence : 0.85);
                     result.setRecognitionSource("LOCAL_MATCH");
-                    result.setMatchType(matchResult.getMatchType());
-                    result.setVectorSimilarity(matchResult.getVectorSimilarity());
-                    result.setMatchedFeatureId(matchResult.getFeatureId());
+                    // 【修复】VECTOR_FALLBACK 实际是名称匹配成功，但记录了向量相似度
+                    if ("VECTOR_FALLBACK".equals(matchResult.getMatchType())) {
+                        result.setMatchType("NAME_EXACT");  // 实际匹配置信度
+                    } else {
+                        result.setMatchType(matchResult.getMatchType());
+                    }
+                    result.setVectorSimilarity(matchResult.getVectorSimilarity());  // 始终记录向量相似度
+                    result.setMatchedFeatureId(matchResult.getFeatureId());  // 始终记录特征 ID
                 } else {
                     // 未匹配到本地商品，使用识别平台结果（品号为空，表示没有真实品号）
                     System.out.println("⚠️ 未匹配到本地商品，使用识别平台结果（无真实品号）");
@@ -106,6 +111,13 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                     result.setCategory(categoryName != null ? categoryName : "通用商品");
                     result.setConfidence(confidence != null ? confidence : 0.85);
                     result.setRecognitionSource(platformSource != null ? platformSource : platform);
+                    
+                    // 【修复】记录匹配失败原因
+                    if (matchResult == null) {
+                        result.setMatchType("NO_TRAINING_DATA");  // 特征库为空
+                    } else {
+                        result.setMatchType("NO_MATCH");  // 所有策略都失败
+                    }
                 }
                 
                 System.out.println("🎯 最终识别结果：品号=" + result.getPluno() + ", 来源=" + result.getRecognitionSource());
@@ -203,11 +215,38 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
                 
                 System.out.println("✅ 特征匹配成功：PLUNO=" + pluno + ", 相似度=" + similarity + ", 特征 ID=" + featureId);
                 
-                // 相似度阈值（可以根据实际情况调整）
+                // 【关键修复】设置最低相似度阈值，避免强行匹配不相关商品
+                final double MIN_SIMILARITY = 0.60;  // 最低相似度阈值
+                
                 if (similarity > 0.85) {
+                    // 向量匹配成功（高置信度）
+                    System.out.println("✅ 向量匹配成功：PLUNO=" + pluno + ", 相似度=" + similarity);
                     return MatchResult.vectorMatch(pluno, similarity, featureId);
+                    
+                } else if (similarity >= MIN_SIMILARITY) {
+                    // 相似度中等（0.60-0.85），尝试名称匹配
+                    System.out.println("⚠️ 相似度中等 (" + similarity + ")，尝试名称匹配");
+                    MatchResult nameMatch = matchLocalProductByName(categoryName, productName);
+                    
+                    if (nameMatch != null) {
+                        // 名称匹配成功，返回名称匹配结果，但记录向量信息
+                        System.out.println("✅ 名称匹配成功：PLUNO=" + nameMatch.getPluno() + ", 匹配方式=" + nameMatch.getMatchType());
+                        return new MatchResult(
+                            nameMatch.getPluno(),
+                            "VECTOR_FALLBACK",
+                            similarity,
+                            featureId
+                        );
+                    } else {
+                        // 名称匹配失败，返回 null（不强行匹配）
+                        System.out.println("⚠️ 名称匹配也失败，不强行匹配");
+                        return null;
+                    }
+                    
                 } else {
-                    System.out.println("⚠️ 相似度低于阈值，使用名称匹配");
+                    // 相似度太低（< 0.60），特征库中没有相似商品
+                    System.out.println("⚠️ 相似度太低 (" + similarity + " < " + MIN_SIMILARITY + ")，特征库中无相似商品");
+                    // 尝试名称匹配
                     return matchLocalProductByName(categoryName, productName);
                 }
             } else {
