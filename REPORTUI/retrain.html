@@ -242,7 +242,7 @@
         <div class="stats">
             <div class="stat-card">
                 <div class="stat-value" id="totalSamples">-</div>
-                <div class="stat-label">训练样本总数</div>
+                <div class="stat-label">训练商品总数</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="extractedFeatures">-</div>
@@ -281,7 +281,7 @@
             
             <div class="progress-info">
                 <div class="progress-item">
-                    <div class="progress-item-label">总样本数</div>
+                    <div class="progress-item-label">总图片数</div>
                     <div class="progress-item-value" id="progressTotal">0</div>
                 </div>
                 <div class="progress-item">
@@ -320,6 +320,15 @@
         // 页面加载时获取统计数据
         window.onload = function() {
             loadStats();
+            console.log('页面已加载，初始化完成');
+        };
+        
+        // 页面卸载时清理轮询
+        window.onbeforeunload = function() {
+            if (pollingInterval) {
+                clearInterval(pollingInterval);
+                pollingInterval = null;
+            }
         };
         
         // 加载统计数据
@@ -328,10 +337,10 @@
                 const response = await fetch('http://47.100.138.89:8110/api/training/stats');
                 const data = await response.json();
                 
-                if (data.success) {
-                    document.getElementById('totalSamples').textContent = data.productCount || 0;
-                    // 这里需要根据实际 API 调整
-                }
+                // 使用 productCount 作为训练样本总数
+                document.getElementById('totalSamples').textContent = data.productCount !== undefined ? data.productCount : 0;
+                document.getElementById('extractedFeatures').textContent = data.productCount !== undefined ? data.productCount : 0;
+                document.getElementById('pendingFeatures').textContent = '0';
             } catch (error) {
                 console.error('加载统计数据失败:', error);
             }
@@ -397,7 +406,7 @@
             
             document.getElementById('progressTotal').textContent = data.total || 0;
             document.getElementById('progressProcessed').textContent = data.processed || 0;
-            document.getElementById('progressSuccess').textContent = data.success || 0;
+            document.getElementById('progressSuccess').textContent = data.trainSuccess || 0;
             document.getElementById('progressFailed').textContent = data.failed || 0;
             
             // 更新耗时
@@ -439,8 +448,8 @@
             document.getElementById('btnCancel').style.display = 'none';
             
             if (data.status === 'COMPLETED') {
-                addLog('✅ 训练完成！成功：' + data.success + ', 失败：' + data.failed, 'success');
-                alert('训练完成！\n成功：' + data.success + '\n失败：' + data.failed + '\n耗时：' + (data.duration / 1000) + '秒');
+                addLog('✅ 训练完成！成功：' + data.trainSuccess + ', 失败：' + data.failed, 'success');
+                alert('训练完成！\n成功：' + data.trainSuccess + '\n失败：' + data.failed + '\n耗时：' + (data.duration / 1000) + '秒');
             } else if (data.status === 'FAILED') {
                 addLog('❌ 训练失败', 'error');
                 alert('训练失败！');

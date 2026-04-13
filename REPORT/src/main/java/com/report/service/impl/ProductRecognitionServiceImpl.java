@@ -845,7 +845,7 @@ public class ProductRecognitionServiceImpl implements ProductRecognitionService 
         result.put("status", task.status);
         result.put("total", task.total);
         result.put("processed", task.processed);
-        result.put("success", task.success);
+        result.put("trainSuccess", task.success);  // 改名避免冲突
         result.put("failed", task.failed);
         result.put("progress", progress);
         result.put("startTime", task.startTime);

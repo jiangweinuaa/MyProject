@@ -2,11 +2,13 @@ package com.report.controller;
 
 import com.report.service.ProductRecognitionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * 训练库管理 Controller
@@ -27,16 +29,13 @@ public class TrainingLibraryManagementController {
     public Map<String, Object> retrainAllFeatures() {
         System.out.println("🔄 开始批量重新训练所有商品特征...");
         
-        // 异步执行训练任务
-        CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
-            return productRecognitionService.retrainAllFeatures();
-        });
+        // 同步执行训练任务（直接调用服务）
+        String taskId = productRecognitionService.retrainAllFeatures();
         
-        Map<String, Object> result = Map.of(
-            "success", true,
-            "message", "批量训练任务已启动",
-            "taskId", future.toString()
-        );
+        Map<String, Object> result = new HashMap<>();
+        result.put("success", true);
+        result.put("message", "批量训练任务已启动");
+        result.put("taskId", taskId);
         
         return result;
     }

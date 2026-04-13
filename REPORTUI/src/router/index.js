@@ -56,12 +56,6 @@ const routes = [
         meta: { title: '商品识别', icon: 'Picture' }
       },
       {
-        path: '/product-training',
-        name: 'ProductTraining',
-        component: () => import('@/views/ProductTraining.vue'),
-        meta: { title: '商品训练', icon: 'Camera' }
-      },
-      {
         path: '/training-library',
         name: 'TrainingLibrary',
         component: () => import('@/views/TrainingLibrary.vue'),
