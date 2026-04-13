@@ -4,6 +4,7 @@ import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.model.PutObjectRequest;
 import com.aliyun.oss.model.PutObjectResult;
+import com.report.dao.ProductOssFileDAO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
@@ -15,6 +16,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import javax.crypto.Mac;
@@ -30,6 +32,9 @@ public class AliyunVisionClient {
     
     @Autowired
     private AliyunConfigUtil configUtil;
+    
+    @Autowired(required = false)
+    private ProductOssFileDAO ossFileDAO;
     
     /**
      * 获取 OSS Bucket 名称（从数据库读取）
@@ -56,13 +61,58 @@ public class AliyunVisionClient {
     }
     
     /**
-     * 上传图片到阿里云 OSS
+     * 上传图片到阿里云 OSS（带去重功能）
      * @param file 图片文件
      * @param pluno 商品品号
      * @return OSS 图片 URL
      * @throws IOException 上传失败时抛出异常
      */
     public String uploadImageToOSS(MultipartFile file, String pluno) throws IOException {
+        try {
+            // 1. 计算文件 MD5 Hash
+            byte[] fileBytes = file.getBytes();
+            String fileHash = calculateMD5(fileBytes);
+            
+            // 2. 查询去重表（如果 DAO 可用）
+            if (ossFileDAO != null) {
+                String existingUrl = ossFileDAO.findExistingUrl(fileHash);
+                if (existingUrl != null) {
+                    System.out.println("✅ 文件已存在，使用缓存 URL: " + existingUrl);
+                    return existingUrl;
+                }
+            }
+            
+            // 3. 文件不存在，上传 OSS
+            String ossUrl = uploadToOSS(file, pluno, fileBytes);
+            
+            // 4. 保存记录到去重表（如果 DAO 可用）
+            if (ossFileDAO != null) {
+                ossFileDAO.saveFileRecord(
+                    fileHash, 
+                    ossUrl, 
+                    file.getOriginalFilename(),
+                    fileBytes.length,
+                    pluno
+                );
+            }
+            
+            return ossUrl;
+            
+        } catch (IOException e) {
+            System.err.println("OSS 上传失败：" + e.getMessage());
+            throw e;
+        }
+    }
+    
+    /**
+     * 实际上传到 OSS 的方法
+     * @param file 图片文件
+     * @param pluno 商品品号
+     * @param fileBytes 文件字节数组
+     * @return OSS 图片 URL
+     * @throws IOException 上传失败时抛出异常
+     */
+    private String uploadToOSS(MultipartFile file, String pluno, byte[] fileBytes) throws IOException {
         String accessKeyId = configUtil.getAccessKeyId();
         String accessKeySecret = configUtil.getAccessKeySecret();
         String ossBucket = getOssBucket();
@@ -91,7 +141,7 @@ public class AliyunVisionClient {
             PutObjectRequest putObjectRequest = new PutObjectRequest(
                 ossBucket, 
                 objectKey, 
-                new ByteArrayInputStream(file.getBytes())
+                new ByteArrayInputStream(fileBytes)
             );
             PutObjectResult result = ossClient.putObject(putObjectRequest);
             
@@ -107,6 +157,30 @@ public class AliyunVisionClient {
         } finally {
             // 关闭 OSS 客户端
             ossClient.shutdown();
+        }
+    }
+    
+    /**
+     * 计算文件的 MD5 Hash 值
+     * @param fileBytes 文件字节数组
+     * @return MD5 Hash 字符串（32 位十六进制）
+     */
+    private String calculateMD5(byte[] fileBytes) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] digest = md.digest(fileBytes);
+            
+            StringBuilder sb = new StringBuilder();
+            for (byte b : digest) {
+                sb.append(String.format("%02x", b));
+            }
+            
+            return sb.toString();
+            
+        } catch (Exception e) {
+            System.err.println("❌ 计算 MD5 失败：" + e.getMessage());
+            // 如果 MD5 计算失败，使用时间戳 + 长度作为备选
+            return "fallback_" + System.currentTimeMillis() + "_" + fileBytes.length;
         }
     }
     
