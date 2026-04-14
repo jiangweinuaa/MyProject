@@ -28,7 +28,8 @@
           :class="['message', msg.type]"
         >
           <div class="message-content">
-            <pre v-if="msg.sql" class="sql-block">{{ msg.sql }}</pre>
+            <!-- SQL 代码块已隐藏 -->
+            <!-- <pre v-if="msg.sql" class="sql-block">{{ msg.sql }}</pre> -->
             
             <!-- 图表区域（自动显示多个图表） -->
             <div class="chart-section" v-if="shouldShowChart(msg)">
@@ -36,6 +37,13 @@
               <MetricCard 
                 v-if="hasChartType(msg, 'metric')" 
                 :data="msg.data" 
+              />
+              
+              <!-- 饼图（放在柱状图前面） -->
+              <PieChart 
+                v-if="hasChartType(msg, 'pie')" 
+                :data="extractChartData(msg, 'ratio')"
+                :height="300"
               />
               
               <!-- 对比柱状图 -->
@@ -56,13 +64,6 @@
               <BarChart 
                 v-if="hasChartType(msg, 'bar')" 
                 :data="extractChartData(msg)"
-                :height="300"
-              />
-              
-              <!-- 饼图 -->
-              <PieChart 
-                v-if="hasChartType(msg, 'pie')" 
-                :data="extractChartData(msg, 'ratio')"
                 :height="300"
               />
               
@@ -238,16 +239,16 @@ export default {
         
         console.log('图表检测：hasRatioColumn=', hasRatioColumn, 'rowCount=', rowCount)
         
-        // 有占比列 + <=6 行 → 饼图（行数太多时饼图不好看）
-        if (hasRatioColumn && rowCount <= 6) {
+        // 有占比列 → 饼图（放宽行数限制到 30 行）
+        if (hasRatioColumn && rowCount <= 30) {
           result.push('pie')
-          console.log('图表检测：饼图（占比分析）')
+          console.log('图表检测：饼图（占比分析，' + rowCount + '行）')
         }
         
         // 柱状图限制行数（太多时显示不下）
-        if (rowCount <= 20) {
+        if (rowCount <= 50) {
           result.push('bar')
-          console.log('图表检测：柱状图（金额对比）')
+          console.log('图表检测：柱状图（金额对比，' + rowCount + '行）')
         }
       }
       
@@ -515,19 +516,19 @@ export default {
 }
 
 .chat-header {
-  padding: 20px;
+  padding: 10px 20px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   text-align: center;
 }
 
 .chat-header h1 {
-  font-size: 24px;
-  margin-bottom: 5px;
+  font-size: 18px;
+  margin-bottom: 3px;
 }
 
 .chat-header p {
-  font-size: 14px;
+  font-size: 12px;
   opacity: 0.9;
 }
 
@@ -574,7 +575,6 @@ export default {
 
 .message-content {
   display: inline-block;
-  max-width: 70%;
   padding: 12px 16px;
   border-radius: 12px;
   line-height: 1.5;
@@ -591,9 +591,10 @@ export default {
   background: #409EFF;
   color: white;
   border-bottom-right-radius: 4px;
+  max-width: 70%;
 }
 
-/* 机器人消息靠左显示，可以占满宽度 */
+/* 机器人消息靠左显示，占满宽度 */
 .message.bot {
   align-items: flex-start;
 }
@@ -602,6 +603,7 @@ export default {
   background: white;
   color: #333;
   border-bottom-left-radius: 4px;
+  width: 100%;
   max-width: 100%;
 }
 

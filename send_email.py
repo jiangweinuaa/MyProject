@@ -38,38 +38,39 @@ if not SMTP_PASSWORD:
     print("错误：未找到 SMTP 授权码，请在 .email_config 文件中配置")
     exit(1)
 
-# PPT 文件路径
-ppt_path = "/home/admin/.openclaw/workspace/智问泳道图_图形版.pptx"
-
-# Prompt 日志文件路径
-prompt_log_path = "/home/admin/.openclaw/workspace/prompt_log.txt"
-
-# AISQLService.java 文件路径
-aisql_service_path = "/home/admin/.openclaw/workspace/AISQLService.java"
+# SQL 文件路径
+sql_file_path = "/home/admin/.openclaw/workspace/AI_NL_QUERY_TABLES.sql"
 
 # 创建邮件
 msg = MIMEMultipart()
 msg['From'] = EMAIL_FROM
 msg['To'] = EMAIL_TO
-msg['Subject'] = "智问系统核心流程 PPT"
+msg['Subject'] = "智问对话日志系统 - 数据库表结构 SQL 脚本"
 
 # 邮件正文
 body = """
 您好！
 
-附件包含以下文件：
+附件是智问对话日志系统的数据库表结构 SQL 脚本。
 
-1. prompt_log.txt - 智问系统最近一次 AI 调用的完整 Prompt 日志
-2. 智问泳道图.pptx - 智问系统核心流程泳道图 PPT
-3. AISQLService.java - 智问系统 AI SQL 生成服务源代码
+📋 包含内容：
+1. AI_NL_QUERY_LOG - 智问对话日志表
+2. AI_NL_QUERY_SESSION - 智问会话表
+3. V_AI_NL_QUERY_DAILY_STATS - 按天统计视图
+4. V_AI_NL_QUERY_QUESTION_STATS - 按问题类型统计视图
 
-配置说明：
-- 角色定义来源：AI_PROMPT_REQUIREMENTS 表（CATEGORY = 'ROLE'）
-- 要求列表来源：AI_PROMPT_REQUIREMENTS 表（CATEGORY != 'ROLE'）
-- 模型配置来源：PRODUCT_APPKEY 表（ACCESSKEYID 字段存储模型名称）
-- 数据库表结构：AI_TABLE_FILTER 表配置的表
-- 缓存机制：60 秒 TTL
-- 刷新方式：/api/prompt-config/refresh 接口
+📊 主要功能：
+- 记录每次对话的用户问题、生成的 SQL、执行状态
+- 记录是否重试、原始 SQL、最终 SQL
+- 记录执行时间、响应时间等性能指标
+- 按天统计成功率、平均响应时间
+- 按问题类型统计（销售查询、库存查询等）
+
+📝 执行步骤：
+1. 使用 SQL Developer 或其他 Oracle 客户端
+2. 打开附件 AI_NL_QUERY_TABLES.sql
+3. 按 F5 执行脚本
+4. 验证表和视图是否创建成功
 
 祝好！
 龙虾 AI 助手 🦞
@@ -77,22 +78,10 @@ body = """
 
 msg.attach(MIMEText(body, 'plain', 'utf-8'))
 
-# 添加 Prompt 日志附件
-with open(prompt_log_path, 'rb') as f:
-    part = MIMEApplication(f.read(), Name="prompt_log.txt")
-    part['Content-Disposition'] = 'attachment; filename="prompt_log.txt"'
-    msg.attach(part)
-
-# 添加 PPT 附件
-with open(ppt_path, 'rb') as f:
-    part = MIMEApplication(f.read(), Name="智问泳道图.pptx")
-    part['Content-Disposition'] = 'attachment; filename="智问泳道图.pptx"'
-    msg.attach(part)
-
-# 添加 AISQLService.java 附件
-with open(aisql_service_path, 'rb') as f:
-    part = MIMEApplication(f.read(), Name="AISQLService.java")
-    part['Content-Disposition'] = 'attachment; filename="AISQLService.java"'
+# 添加 SQL 文件附件
+with open(sql_file_path, 'rb') as f:
+    part = MIMEApplication(f.read(), Name="AI_NL_QUERY_TABLES.sql")
+    part['Content-Disposition'] = 'attachment; filename="AI_NL_QUERY_TABLES.sql"'
     msg.attach(part)
 
 # 发送邮件

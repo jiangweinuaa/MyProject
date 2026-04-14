@@ -66,10 +66,29 @@ export default {
       
       console.log('饼图数据：', this.data)
       
-      const seriesData = this.data.data.map(item => ({
+      // 处理数据：Top 6 + 其他
+      const rawData = this.data.data.map(item => ({
         name: item[this.data.xAxis],
         value: item[this.data.series]
       }))
+      
+      // 按值排序
+      rawData.sort((a, b) => b.value - a.value)
+      
+      // 取 Top 6，其余汇总为"其他"
+      let seriesData
+      if (rawData.length > 6) {
+        const top6 = rawData.slice(0, 6)
+        const others = rawData.slice(6)
+        const othersTotal = others.reduce((sum, item) => sum + item.value, 0)
+        
+        seriesData = [
+          ...top6,
+          { name: '其他', value: othersTotal }
+        ]
+      } else {
+        seriesData = rawData
+      }
       
       const option = {
         title: {

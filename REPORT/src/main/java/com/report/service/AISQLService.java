@@ -25,6 +25,9 @@ public class AISQLService {
     @Autowired
     private SchemaService schemaService;
     
+    @Autowired
+    private AIModelService aiModelService;
+    
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(120, TimeUnit.SECONDS)
@@ -64,37 +67,31 @@ public class AISQLService {
     private Map<String, String> getAIModelConfig() {
         Map<String, String> config = new HashMap<>();
         
-        try {
-            String sql = "SELECT ACCESSKEYID, ACCESSKEYSECRET FROM PRODUCT_APPKEY WHERE PLATFORM = 'ALI_QWEN'";
-            List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
-            
-            if (list != null && !list.isEmpty()) {
-                Map<String, Object> row = list.get(0);
-                String model = (String) row.get("ACCESSKEYID");
-                String apiKey = (String) row.get("ACCESSKEYSECRET");
-                
-                if (model != null && !model.trim().isEmpty()) {
-                    config.put("model", model);
-                } else {
-                    config.put("model", "qwen-plus");
-                }
-                
-                // 根据模型类型设置 API 端点
-                String apiEndpoint = getAPIEndpoint(model);
-                config.put("apiEndpoint", apiEndpoint);
-                config.put("apiKey", apiKey);
-            } else {
-                config.put("model", "qwen-plus");
-                config.put("apiEndpoint", "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation");
-                config.put("apiKey", "");
-            }
-            
-        } catch (Exception e) {
-            System.err.println("⚠️ 读取 AI 模型配置失败：" + e.getMessage());
-            config.put("model", "qwen-plus");
-            config.put("apiEndpoint", "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation");
-            config.put("apiKey", "");
+        String sql = "SELECT ACCESSKEYID, ACCESSKEYSECRET FROM PRODUCT_APPKEY WHERE PLATFORM = 'ALI_QWEN'";
+        List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
+        
+        if (list == null || list.isEmpty()) {
+            throw new RuntimeException("PRODUCT_APPKEY 表中没有配置 ALI_QWEN 的 API Key");
         }
+        
+        Map<String, Object> row = list.get(0);
+        String model = (String) row.get("ACCESSKEYID");
+        String apiKey = (String) row.get("ACCESSKEYSECRET");
+        
+        if (model == null || model.trim().isEmpty()) {
+            throw new RuntimeException("PRODUCT_APPKEY 表中 ACCESSKEYID 为空");
+        }
+        
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            throw new RuntimeException("PRODUCT_APPKEY 表中 ACCESSKEYSECRET 为空");
+        }
+        
+        config.put("model", model);
+        config.put("apiKey", apiKey);
+        
+        // 根据模型类型设置 API 端点
+        String apiEndpoint = getAPIEndpoint(model);
+        config.put("apiEndpoint", apiEndpoint);
         
         return config;
     }
@@ -105,26 +102,26 @@ public class AISQLService {
      * @return API 端点 URL
      */
     private String getAPIEndpoint(String model) {
-        // 根据模型类型选择不同的 API 端点
-        // 参考：https://help.aliyun.com/zh/model-studio/developer-reference/tongyi-qianwen-llm
-        
-        if (model == null) {
-            return "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
+        if (model == null || model.trim().isEmpty()) {
+            throw new RuntimeException("模型名称为空");
         }
         
         // qwen-plus 使用纯文本模型端点
-        if ("qwen-plus".equals(model)) {
+        if ("qwen-plus".equalsIgnoreCase(model)) {
             return "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
         }
         
         // qwen3 开头的模型使用多模态模型端点
-        if (model.startsWith("qwen3")) {
+        if (model.toLowerCase().startsWith("qwen3")) {
             return "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
         }
         
         // 其他未知模型默认使用多模态端点
         return "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
     }
+    
+    // 模型切换消息
+    private String modelSwitchMessage = null;
     
     /**
      * 根据自然语言生成 SQL
@@ -151,6 +148,15 @@ public class AISQLService {
         sql = cleanSQL(sql);
         
         return sql;
+    }
+    
+    /**
+     * 获取模型切换消息（如果有）
+     */
+    public String getModelSwitchMessage() {
+        String msg = modelSwitchMessage;
+        modelSwitchMessage = null; // 清除
+        return msg;
     }
     
     /**
@@ -334,6 +340,13 @@ public class AISQLService {
      * 调用 AI API（OpenAI 兼容模式）
      */
     private String callAI(String prompt) {
+        return callAIWithRetry(prompt, false);
+    }
+    
+    /**
+     * 调用 AI API（支持重试和模型切换）
+     */
+    private String callAIWithRetry(String prompt, boolean isRetry) {
         try {
             // 从数据库获取模型配置
             Map<String, String> config = getAIModelConfig();
@@ -375,11 +388,33 @@ public class AISQLService {
             
             // 发送请求
             try (Response response = httpClient.newCall(request).execute()) {
+                int statusCode = response.code();
+                System.out.println("📡 HTTP 状态码：" + statusCode);
+                
                 if (!response.isSuccessful()) {
                     String errorBody = response.body() != null ? response.body().string() : "无响应内容";
-                    System.err.println("❌ API 调用失败：" + response.code());
+                    System.err.println("❌ API 调用失败：" + statusCode);
                     System.err.println("错误响应：" + errorBody);
-                    throw new IOException("API 调用失败：" + response.code() + " - " + errorBody);
+                    
+                    // 检查是否返回 403（token 耗尽）
+                    if (statusCode == 403) {
+                        System.err.println("⚠️ 模型 " + model + " token 耗尽（403），尝试切换模型...");
+                        
+                        try {
+                            // 切换模型（自动获取下一个可用模型）
+                            String switchMsg = aiModelService.switchModel(model);
+                            System.out.println("✅ " + switchMsg);
+                            
+                            // 重试调用（使用新模型）
+                            return callAIWithRetry(prompt, true);
+                        } catch (RuntimeException e) {
+                            System.err.println("❌ " + e.getMessage());
+                            throw e;
+                        }
+                    }
+                    
+                    // 其他错误直接抛出
+                    throw new IOException("API 调用失败：" + statusCode + " - " + errorBody);
                 }
                 
                 String responseBody = response.body().string();
