@@ -1,0 +1,201 @@
+========================================
+智问系统 - 最近一次 AI 调用 Prompt 日志
+========================================
+
+日志时间：2026-04-14 09:53:45
+日志位置：/home/admin/.openclaw/workspace/REPORT/logs/app.log (行号：43138)
+用户问题：本月销售额是多少？
+
+========================================
+【完整 Prompt 内容】
+========================================
+
+你是一个专业的 Oracle SQL 专家，请根据以下数据库表结构，将用户的自然语言问题转换为 Oracle 11g 的 SQL 查询。
+
+## 数据库表结构
+
+### 表：DCP_GOODS（商品信息表）
+
+| 字段名 | 类型 | 长度 | 注释 | 可空 |
+|--------|------|------|------|------|
+| EID | NVARCHAR2 | 144 | 企业 ID | N |
+| PLUNO | NVARCHAR2 | 144 | 品号 | N |
+| PLUTYPE | NVARCHAR2 | 144 | 商品类型：NORMAL FEATURE PACKAGE | N |
+| SPLITTYPE | NVARCHAR2 | 144 | 分摊方式 FIXEDPRICE 固定单价 FIXEDPERCENT 固定比例 AMTPERCENT 金额比例 | Y |
+| ATTRGROUPID | NVARCHAR2 | 144 | 属性分组 ID | Y |
+| CATEGORY | NVARCHAR2 | 144 | 商品分类编码 | N |
+| BRAND | NVARCHAR2 | 144 | 品牌 | Y |
+| SERIES | NVARCHAR2 | 144 | 系列 | Y |
+| WARMTYPE | NVARCHAR2 | 144 | 温层：NORMAL-常温 COLD-冷藏 FREEZE-冷冻 | Y |
+| SHORTCUT_CODE | NVARCHAR2 | 144 | 快捷码 | Y |
+| VIRTUAL | NVARCHAR2 | 3 | 是否虚拟商品：N 否 Y-是 | N |
+| OPENPRICE | NVARCHAR2 | 3 | 是否开价商品：N 否 Y-是 | N |
+| ISWEIGHT | NVARCHAR2 | 3 | 是否可称重:N-不可 Y-可 | N |
+| STOCKMANAGETYPE | NUMBER | 22 | 库存管理方式：1-库存不足允许出库 2-库存不足禁止出库 3-库存不足给与警告 | N |
+| TAXCODE | NVARCHAR2 | 144 | 税别编码 | Y |
+| MEMO | NVARCHAR2 | 1146 | 备注 | Y |
+| STATUS | NUMBER | 22 | 状态：-1 未启用 100 已启用 0 已禁用 | N |
+| BASEUNIT | NVARCHAR2 | 144 | 基准单位编码 | N |
+| PRICE | NUMBER | 22 | 标准零售价 (销售单位) | Y |
+| SUPPRICE | NUMBER | 22 | 标准要货价 (要货单位) | Y |
+| SUNIT | NVARCHAR2 | 144 | 销售单位编码 | N |
+| BOM_UNIT | NVARCHAR2 | 144 | 配方单位编码 | N |
+| PROD_UNIT | NVARCHAR2 | 144 | 生产单位编码 | N |
+| PUNIT | NVARCHAR2 | 144 | 要货单位编码 | N |
+| PURUNIT | NVARCHAR2 | 144 | 采购单位编码 | N |
+| CUNIT | NVARCHAR2 | 144 | 盘点单位编码 | N |
+| WUNIT | NVARCHAR2 | 144 | 库存单位编码 | N |
+| ISBATCH | NVARCHAR2 | 3 | 是否启用批次管理:N-不启用 Y-启用 | N |
+| SHELFLIFE | NUMBER | 22 | 保质期 (天) | Y |
+| STOCKINVALIDDAY | NUMBER | 22 | 进货效期 (天) | Y |
+| STOCKOUTVALIDDAY | NUMBER | 22 | 退货效期 (天) | Y |
+| CHECKVALIDDAY | NUMBER | 22 | 复检效期 (天) | Y |
+| CREATEOPID | NVARCHAR2 | 144 | 创建人 ID | Y |
+| CREATEOPNAME | NVARCHAR2 | 288 | 创建人名称 | Y |
+| CREATETIME | DATE | 7 | 创建时间 | Y |
+| LASTMODIOPID | NVARCHAR2 | 144 | 最后修改人 ID | Y |
+| LASTMODIOPNAME | NVARCHAR2 | 288 | 最后修改人名称 | Y |
+| LASTMODITIME | DATE | 7 | 最后修改时间 | Y |
+| TRAN_TIME | NVARCHAR2 | 90 | 最后传输时间 | Y |
+| ISHOLIDAY | NVARCHAR2 | 3 | 是否节假日商品 | Y |
+| RESTRICTSHOP | NUMBER | 22 | 适用门店：0-通用 1-指定公司或指定门店专用 | Y |
+| PACKAGETYPE | NUMBER | 22 | 套餐类型：0-固定套餐 1-普通选配套餐 2-宴席议价套餐 | Y |
+| MAINBARCODE | NVARCHAR2 | 144 | 主条码 | Y |
+| MAXORDERSPEC | NVARCHAR2 | 144 | 最大补货规格 | Y |
+| REDISUPDATESUCCESS | NVARCHAR2 | 3 | 同步缓存是否成功 Y/N  | Y |
+| HOLIDAYENDDATE | NVARCHAR2 | 24 | 节日活动结束日期 | Y |
+| HOLIDAYBEGINDATE | NVARCHAR2 | 24 | 节日活动开始日期 | Y |
+| HOLIDAYBILLNO | NVARCHAR2 | 192 | 节日活动单号 | Y |
+| ISHOTGOODS | NVARCHAR2 | 3 | 是否爆品（Y/N） | Y |
+| OWN_GOODS | NVARCHAR2 | 3 | 自有商品：N-否；Y-是 | Y |
+| ISDOUBLEGOODS | NVARCHAR2 | 3 | 是否双拼商品 Y/N | Y |
+| PERCENTAGE_COMM | NUMBER | 22 | 分销专用：员工提成比例 | Y |
+| SPECPRICE | NUMBER | 22 | 默认特价价格，大于 0 时 ETL 生成特价活动 | Y |
+| SPECPROM | NVARCHAR2 | 3 | 是否用特价参与促销活动 Y/N，赋值给 USEFAVORABLEPRICE | Y |
+| WEIGHPLU | NVARCHAR2 | 30 | 称重 PLU | Y |
+| WEIGHPLUTYPE | NVARCHAR2 | 30 | 称重条码计价方式（计重/计数）暂只支持记重 | Y |
+| SELFBUILTSHOPID | NVARCHAR2 | 144 | 自建门店 | Y |
+| SUPPLIER | NVARCHAR2 | 30 | 主供应商 | Y |
+| PROD_SHOP | NVARCHAR2 | 3 | 门店生产 (Y/N)【ZJ】 | Y |
+| PROD_HQ | NVARCHAR2 | 3 | 工厂生产 (Y/N)【ZJ】 | Y |
+| PROD_OEM | NVARCHAR2 | 3 | 代工生产 (Y/N)【ZJ】 | Y |
+| SPEC | NVARCHAR2 | 600 | 规格 | Y |
+| PLUID | NVARCHAR2 | 96 | 创建商品的唯一标识（用于服务） | Y |
+| ETL_DATETIME | DATE | 7 |  | Y |
+| ISSHOWHEADINVENTORY | NUMBER | 22 | 是否显示总部库存（空或者 0：不显示；1 表示显示） | Y |
+| ONSHELFDATE | DATE | 7 | 预计上架日期【作废】 | Y |
+| RUNIT | NVARCHAR2 | 144 | 退货单位 | Y |
+| ISSENSITIVE | NVARCHAR2 | 3 | 是否敏感料 Y/N | Y |
+| ISCOMBINEBATCH | NVARCHAR2 | 3 | 是否合并配料 Y/N | Y |
+| MATERIALPROPERTIES | NVARCHAR2 | 3 | 原料属性 0 干料 1 湿料 2 添加剂 | Y |
+| PICKUNIT | NVARCHAR2 | 144 | 领料单位编码 | Y |
+| SETTLEMENTPRICE | NUMBER | 22 | 标准产值单价 (生产单位) | Y |
+| PURCHASEDAY | NUMBER | 22 | 采购前置天数 | Y |
+| GOODSTYPE | NVARCHAR2 | 30 | 是否需要生产 (1-不需要；2-需要) | Y |
+| PRODUCER | NVARCHAR2 | 765 | 产地 | Y |
+| STORAGECON | NVARCHAR2 | 765 | 储存条件 | Y |
+| MANUFACTURER | NVARCHAR2 | 765 | 生产商名称 | Y |
+| HOTLINE | NVARCHAR2 | 765 | 热线 | Y |
+| INGRETABLE | NVARCHAR2 | 765 | 配料表 | Y |
+| NETCONTENT | NVARCHAR2 | 60 | 净含量 | Y |
+| FOODPROLICNUM | NVARCHAR2 | 765 | 食品生产许可证编号 | Y |
+| EATINGMETHOD | NVARCHAR2 | 765 | 食用方式 | Y |
+| EXSTANDARD | NVARCHAR2 | 765 | 执行标准 | Y |
+| PROPADDRESS | NVARCHAR2 | 765 | 产址 | Y |
+| COMMISSIONRATIO | NUMBER | 22 | 分销提成比例 | Y |
+| TESTMARKETDAYS | NUMBER | 22 | 新品试销天数 | Y |
+| ISMESBATCH | NVARCHAR2 | 3 | MES 是否启用批次 N/Y | Y |
+| SHELFLIFEN | NVARCHAR2 | 96 | 保质期 (小时)，热点打印使用，易成传输 | Y |
+| TESTMARKETSALEQTY | NUMBER | 22 | 新品销售目标销售量 | Y |
+| TESTMARKETSALEAMT | NUMBER | 22 | 新品销售目标销售额 | Y |
+| TESTMARKETGROSSAMT | NUMBER | 22 | 新品销售目标毛利额 | Y |
+| MANUFNO | NVARCHAR2 | 30 | 生产商编号 | Y |
+| PERCENTAGE_EXTE | NUMBER | 22 | 分销专用：外部分销员提成比例 | Y |
+| TRACEMEMO | NVARCHAR2 | 765 | 溯源说明 | Y |
+| SOURCETYPE | NUMBER | 22 | 补给来源类型 1 自产商品 2 自采商品 | Y |
+| ISUPDATESTOCKSYNC | NVARCHAR2 | 3 | 是否同步库存到饿了么/美团外卖 | Y |
+| PRODUCTTIME | NUMBER | 22 | 标准生产时间/分钟 | Y |
+| DATECONTROL | NVARCHAR2 | 3 | 保质期控制 Y、N(需搭配条码使用) | Y |
+| WMSAFESTOCKQTY | NUMBER | 22 | 外卖安全库存量 | Y |
+| PICKMINQTY | NUMBER | 22 | 领料最小量 (领料单位) | Y |
+| PICKMULQTY | NUMBER | 22 | 领料倍量 (领料单位) | Y |
+| PURPRICE | NUMBER | 22 | 标准采购价 (采购单位) | Y |
+| LEVELDESC | NVARCHAR2 | 240 | 商品等级 | Y |
+| TRIAL_GOODS | NVARCHAR2 | 3 | 试用商品：N-否；Y-是 | Y |
+| ENDING_SOON | NVARCHAR2 | 3 | 即将下架 Y-是 N-否 | Y |
+| POUNDS | NUMBER | 22 | 磅数 | Y |
+| PROCESSTYPE | NVARCHAR2 | 3 | 加工方式:1 冷加工；2 热加工 | Y |
+| ALLERGEN | NVARCHAR2 | 765 | 致敏原 | Y |
+| PHONE | NVARCHAR2 | 90 | 生产商电话 | Y |
+| ACCOUNTCLASS | NVARCHAR2 | 144 | 会计分类 | Y |
+| SHOPSOURCETYPE | NUMBER | 22 | 门店补给来源类型 1 自产 2 自采 3 工厂配送 | Y |
+| OPENED_SHELFLIFEN | NVARCHAR2 | 60 | 开封后保质期 | Y |
+| DEFROST_SHELFLIFEN | NVARCHAR2 | 60 | 解冻后保质期 | Y |
+| PRODUCTTYPE | NVARCHAR2 | 60 | （打印用）产品类型 | Y |
+| CLIENTNAME | NVARCHAR2 | 765 | 委托方 | Y |
+| CLIENTADDRESS | NVARCHAR2 | 765 | 委托方地址 | Y |
+| CLIENTPHONE | NVARCHAR2 | 60 | 委托方电话 | Y |
+| OPENVALIDHOUR | NUMBER | 22 | 开封有效时数/H | Y |
+| ISPICKCOMB | NVARCHAR2 | 3 | 是否领料单位组合 配料标签使用 | Y |
+
+### 表：DCP_GOODS_LANG（商品名称表）
+
+| 字段名 | 类型 | 长度 | 注释 | 可空 |
+|--------|------|------|------|------|
+| EID | NVARCHAR2 | 144 | 企业编号 | N |
+| PLUNO | NVARCHAR2 | 144 | 商品编码 | N |
+| LANG_TYPE | NVARCHAR2 | 144 | 语言类型：zh_CN，zh_TW，en_US | N |
+| PLU_NAME | NVARCHAR2 | 360 | 商品名称 | N |
+| LASTMODITIME | DATE | 7 | 最后修改时间 | Y |
+| TRAN_TIME | NVARCHAR2 | 90 | 最后传输时间 | Y |
+| ETL_DATETIME | DATE | 7 |  | Y |
+
+### 表：DCP_SALE（销售单）
+
+[150+ 个字段...]
+
+### 表：DCP_STOCK（库存表）
+
+[20+ 个字段...]
+
+
+## 用户问题
+
+本月销售额是多少？
+
+
+## 要求
+
+1. 只返回 SQL 语句，不要任何解释
+2. 只使用 SELECT 语句，禁止使用 INSERT、UPDATE、DELETE、DROP 等
+3. 使用 Oracle 语法（如 NVL、TRUNC、TO_CHAR、TO_DATE 等）
+4. 只查询必要的字段，不要 SELECT *
+5. 如果问题不明确，返回最简单的查询
+6. 确保 SQL 可以执行，返回的 SQL 不要以;结尾
+7. 日期字段如果是字符串类型（如 BDATE），使用 TO_DATE(BDATE,'YYYY-MM-DD HH24:MI:SS') 转换
+8. 使用 TRUNC(SYSDATE) 表示今天
+9. 聚合查询（SUM、COUNT 等）使用 NVL 处理 NULL 值，如 NVL(SUM(字段), 0)
+10. 优先使用表别名，提高 SQL 可读性
+11. 这是一个 Oracle11g 的数据库，不支持 FETCH FIRST 1 ROWS ONLY,改用类似语法 SELECT * FROM (select * from DCP_GOODS ORDER BY PLUNO) WHERE ROWNUM <= 1 实现
+12. PLU_NAME 在 DCP_GOODS_LANG 表中
+
+
+## SQL
+
+========================================
+
+========================================
+【配置说明】
+========================================
+
+角色定义来源：AI_PROMPT_REQUIREMENTS 表（CATEGORY = 'ROLE'）
+要求列表来源：AI_PROMPT_REQUIREMENTS 表（CATEGORY != 'ROLE'）
+数据库表结构：AI_TABLE_FILTER 表配置的表
+
+缓存机制：60 秒 TTL
+刷新方式：/api/prompt-config/refresh 接口
+
+========================================
+文档生成时间：2026-04-14 09:55
+生成者：龙虾 AI 助手 🦞
+========================================

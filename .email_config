@@ -7,7 +7,7 @@ EMAIL_TO=20388719@qq.com
 SMTP_SERVER=smtps://smtp.qq.com:465
 SMTP_AUTH_USER=20388719@qq.com
 # 授权码已保存（出于安全考虑，实际使用时请查看密钥管理服务）
-SMTP_AUTH_PASSWORD=YOUR_AUTH_CODE_HERE
+SMTP_AUTH_PASSWORD=sdhktpjwxqkfcagj
 
 # 使用说明：
 # 1. 将 YOUR_AUTH_CODE_HERE 替换为实际授权码

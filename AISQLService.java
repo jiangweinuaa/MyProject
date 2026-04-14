@@ -135,8 +135,6 @@ public class AISQLService {
         return sql;
     }
     
-
-    
     /**
      * 从数据库读取角色定义（使用 CATEGORY = 'ROLE'）
      */

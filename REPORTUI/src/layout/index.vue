@@ -141,6 +141,7 @@ import {
   ShoppingCart,
   Star,
   ChatDotRound,
+  Setting,
   Fold,
   Expand
 } from '@element-plus/icons-vue'
@@ -163,6 +164,7 @@ const menus = [
   { path: '/training-library', title: '训练库管理', icon: 'FolderOpened' },
   { path: '/retrain', title: '商品重新训练', icon: 'RefreshRight' },
   { path: '/smart-query', title: '🤖 智问', icon: 'ChatDotRound' },
+  { path: '/prompt-config', title: '⚙️ 智问配置', icon: 'Setting' },
   { path: '/sales-accuracy-analysis', title: '销售预估准确性', icon: 'TrendCharts' },
   { path: '/goods-forecast-accuracy', title: '单品预估准确性', icon: 'ShoppingCart' },
   { path: '/selection-simulator', title: '甄选模拟', icon: 'Star' },

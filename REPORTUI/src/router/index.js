@@ -11,7 +11,7 @@ const routes = [
   {
     path: '/',
     component: Layout,
-    redirect: '/product-recognition',
+    redirect: '/smart-query',
     children: [
       {
         path: '/sales-analysis',
@@ -66,6 +66,12 @@ const routes = [
         name: 'SmartQuery',
         component: () => import('@/views/SmartQuery.vue'),
         meta: { title: '🤖 智问', icon: 'ChatDotRound' }
+      },
+      {
+        path: '/prompt-config',
+        name: 'PromptConfig',
+        component: () => import('@/views/PromptConfig.vue'),
+        meta: { title: '⚙️ 智问配置', icon: 'Setting' }
       },
       {
         path: '/retrain',
