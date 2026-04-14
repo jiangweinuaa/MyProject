@@ -30,38 +30,38 @@
           <div class="message-content">
             <pre v-if="msg.sql" class="sql-block">{{ msg.sql }}</pre>
             
-            <!-- 图表区域（自动显示单个图表） -->
+            <!-- 图表区域（自动显示多个图表） -->
             <div class="chart-section" v-if="shouldShowChart(msg)">
               <!-- 指标卡 -->
               <MetricCard 
-                v-if="getChartType(msg) === 'metric'" 
+                v-if="hasChartType(msg, 'metric')" 
                 :data="msg.data" 
               />
               
               <!-- 折线图 -->
               <LineChart 
-                v-else-if="getChartType(msg) === 'line'" 
+                v-if="hasChartType(msg, 'line')" 
                 :data="extractChartData(msg)"
                 :height="300"
               />
               
               <!-- 柱状图 -->
               <BarChart 
-                v-else-if="getChartType(msg) === 'bar'" 
+                v-if="hasChartType(msg, 'bar')" 
                 :data="extractChartData(msg)"
                 :height="300"
               />
               
               <!-- 饼图 -->
               <PieChart 
-                v-else-if="getChartType(msg) === 'pie'" 
+                v-if="hasChartType(msg, 'pie')" 
                 :data="extractChartData(msg, 'ratio')"
                 :height="300"
               />
               
               <!-- 条形图 -->
               <HorizontalBarChart 
-                v-else-if="getChartType(msg) === 'horizontalBar'" 
+                v-if="hasChartType(msg, 'horizontalBar')" 
                 :data="extractChartData(msg)"
                 :height="300"
               />
@@ -161,12 +161,14 @@ export default {
   },
   methods: {
     /**
-     * 自动检测图表类型（返回单个图表类型）
+     * 自动检测图表类型（返回数组，支持多图表）
      */
-    detectChartType(data, sql) {
+    detectChartTypes(data, sql) {
+      const result = []
+      
       if (!data || data.length === 0) {
         console.log('图表检测：无数据')
-        return 'table'
+        return result
       }
       
       const sqlUpper = sql.toUpperCase()
@@ -178,8 +180,9 @@ export default {
       
       // 1. 单行单列 → 指标卡
       if (rowCount === 1 && columnCount === 1) {
+        result.push('metric')
         console.log('图表检测：指标卡')
-        return 'metric'
+        return result
       }
       
       // 2. 包含日期字段 → 折线图
@@ -189,8 +192,8 @@ export default {
       )
       
       if (hasDateField && rowCount > 1) {
+        result.push('line')
         console.log('图表检测：折线图（日期字段）')
-        return 'line'
       }
       
       // 3. 有 GROUP BY + 2-4 列 → 柱状图/饼图（支持占比列）
@@ -203,14 +206,18 @@ export default {
           return colUpper.includes('占比') || colUpper.includes('PERCENT') || colUpper.includes('RATIO') || colUpper.includes('RATE')
         })
         
-        if (hasRatioColumn && rowCount <= 6) {
+        console.log('图表检测：hasRatioColumn=', hasRatioColumn, 'rowCount=', rowCount)
+        
+        // 有占比列就显示饼图（不限制行数，行数太多时饼图可能不太好看但还是显示）
+        if (hasRatioColumn) {
+          result.push('pie')
           console.log('图表检测：饼图（占比分析）')
-          return 'pie'
         }
         
+        // 柱状图限制行数（太多时显示不下）
         if (rowCount <= 20) {
+          result.push('bar')
           console.log('图表检测：柱状图（金额对比）')
-          return 'bar'
         }
       }
       
@@ -218,19 +225,19 @@ export default {
       const hasOrderBy = sqlUpper.includes('ORDER BY')
       const hasRownum = sqlUpper.includes('ROWNUM')
       if (hasOrderBy && hasRownum && columnCount >= 2) {
+        result.push('horizontalBar')
         console.log('图表检测：条形图（排行）')
-        return 'horizontalBar'
       }
       
       // 5. 2 列数据 → 柱状图
-      if (columnCount === 2 && rowCount <= 15) {
+      if (columnCount === 2 && rowCount <= 15 && !result.includes('bar')) {
+        result.push('bar')
         console.log('图表检测：柱状图（2 列数据）')
-        return 'bar'
       }
       
-      // 6. 默认表格
-      console.log('图表检测：默认表格')
-      return 'table'
+      console.log('最终图表类型：', result)
+      
+      return result
     },
     
     /**
@@ -309,17 +316,18 @@ export default {
         console.log('不显示图表：data=', msg.data, 'sql=', msg.sql)
         return false
       }
-      const chartType = this.detectChartType(msg.data, msg.sql)
-      console.log('图表检测结果：', chartType, 'data:', msg.data, 'sql:', msg.sql)
-      return chartType !== 'table'
+      const chartTypes = this.detectChartTypes(msg.data, msg.sql)
+      console.log('图表检测结果：', chartTypes, 'data:', msg.data, 'sql:', msg.sql)
+      return chartTypes.length > 0
     },
     
     /**
-     * 获取图表类型
+     * 检查是否包含指定图表类型
      */
-    getChartType(msg) {
-      if (!msg.data || msg.data.length === 0 || !msg.sql) return 'table'
-      return this.detectChartType(msg.data, msg.sql)
+    hasChartType(msg, type) {
+      if (!msg.data || msg.data.length === 0 || !msg.sql) return false
+      const chartTypes = this.detectChartTypes(msg.data, msg.sql)
+      return chartTypes.includes(type)
     },
     
     /**
