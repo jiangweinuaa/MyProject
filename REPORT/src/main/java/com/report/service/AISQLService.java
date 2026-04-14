@@ -1,6 +1,7 @@
 package com.report.service;
 
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import okhttp3.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -103,9 +104,25 @@ public class AISQLService {
      * @return API 端点 URL
      */
     private String getAPIEndpoint(String model) {
-        // 通义千问各模型使用统一的 API 端点
-        // 参考：https://help.aliyun.com/document_detail/611472.html
-        return "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
+        // 根据模型类型选择不同的 API 端点
+        // 参考：https://help.aliyun.com/zh/model-studio/developer-reference/tongyi-qianwen-llm
+        
+        if (model == null) {
+            return "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
+        }
+        
+        // qwen-plus 使用纯文本模型端点
+        if ("qwen-plus".equals(model)) {
+            return "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
+        }
+        
+        // qwen3 开头的模型使用多模态模型端点
+        if (model.startsWith("qwen3")) {
+            return "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
+        }
+        
+        // 其他未知模型默认使用多模态端点
+        return "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
     }
     
     /**
@@ -294,19 +311,39 @@ public class AISQLService {
                 throw new RuntimeException("API Key 未配置，请在 PRODUCT_APPKEY 表中添加 PLATFORM='ALI_QWEN'的记录");
             }
             
-            // 构建请求体（通义千问各模型使用统一的请求格式）
+            // 构建请求体
             JSONObject requestBody = new JSONObject();
             requestBody.put("model", model);
             
             JSONObject input = new JSONObject();
-            List<Map<String, String>> messages = new ArrayList<>();
             
-            Map<String, String> userMessage = new HashMap<>();
-            userMessage.put("role", "user");
-            userMessage.put("content", prompt);
-            messages.add(userMessage);
+            // qwen-plus 使用纯文本格式，其他模型使用多模态格式
+            if ("qwen-plus".equals(model)) {
+                // 纯文本模型格式（原有逻辑）
+                List<Map<String, String>> messages = new ArrayList<>();
+                Map<String, String> userMessage = new HashMap<>();
+                userMessage.put("role", "user");
+                userMessage.put("content", prompt);
+                messages.add(userMessage);
+                input.put("messages", messages);
+            } else {
+                // qwen3 开头的模型使用多模态格式
+                List<Map<String, Object>> messages = new ArrayList<>();
+                Map<String, Object> userMessage = new HashMap<>();
+                userMessage.put("role", "user");
+                
+                // 多模态模型的 content 是数组格式
+                List<Map<String, String>> contentList = new ArrayList<>();
+                Map<String, String> content = new HashMap<>();
+                content.put("type", "text");
+                content.put("text", prompt);
+                contentList.add(content);
+                userMessage.put("content", contentList);
+                
+                messages.add(userMessage);
+                input.put("messages", messages);
+            }
             
-            input.put("messages", messages);
             requestBody.put("input", input);
             
             // 构建 HTTP 请求
