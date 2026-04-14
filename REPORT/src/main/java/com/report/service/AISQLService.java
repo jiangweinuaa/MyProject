@@ -27,7 +27,8 @@ public class AISQLService {
     
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
         .build();
     
     // Prompt 配置缓存
@@ -297,7 +298,7 @@ public class AISQLService {
     }
     
     /**
-     * 调用 AI API
+     * 调用 AI API（OpenAI 兼容模式）
      */
     private String callAI(String prompt) {
         try {
@@ -305,46 +306,26 @@ public class AISQLService {
             Map<String, String> config = getAIModelConfig();
             String model = config.get("model");
             String apiKey = config.get("apiKey");
-            String apiEndpoint = config.get("apiEndpoint");
+            
+            // 使用 OpenAI 兼容模式端点
+            String apiEndpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
             
             if (apiKey == null || apiKey.trim().isEmpty()) {
                 throw new RuntimeException("API Key 未配置，请在 PRODUCT_APPKEY 表中添加 PLATFORM='ALI_QWEN'的记录");
             }
             
-            // 构建请求体
+            // 构建请求体（OpenAI 兼容格式）
             JSONObject requestBody = new JSONObject();
             requestBody.put("model", model);
             
-            JSONObject input = new JSONObject();
+            // messages 数组（OpenAI 格式）
+            List<Map<String, Object>> messages = new ArrayList<>();
+            Map<String, Object> userMessage = new HashMap<>();
+            userMessage.put("role", "user");
+            userMessage.put("content", prompt);
+            messages.add(userMessage);
             
-            // qwen-plus 使用纯文本格式，其他模型使用多模态格式
-            if ("qwen-plus".equals(model)) {
-                // 纯文本模型格式（原有逻辑）
-                List<Map<String, String>> messages = new ArrayList<>();
-                Map<String, String> userMessage = new HashMap<>();
-                userMessage.put("role", "user");
-                userMessage.put("content", prompt);
-                messages.add(userMessage);
-                input.put("messages", messages);
-            } else {
-                // qwen3 开头的模型使用多模态格式
-                List<Map<String, Object>> messages = new ArrayList<>();
-                Map<String, Object> userMessage = new HashMap<>();
-                userMessage.put("role", "user");
-                
-                // 多模态模型的 content 是数组格式
-                List<Map<String, String>> contentList = new ArrayList<>();
-                Map<String, String> content = new HashMap<>();
-                content.put("type", "text");
-                content.put("text", prompt);
-                contentList.add(content);
-                userMessage.put("content", contentList);
-                
-                messages.add(userMessage);
-                input.put("messages", messages);
-            }
-            
-            requestBody.put("input", input);
+            requestBody.put("messages", messages);
             
             // 构建 HTTP 请求
             RequestBody body = RequestBody.create(
@@ -362,20 +343,41 @@ public class AISQLService {
             // 发送请求
             try (Response response = httpClient.newCall(request).execute()) {
                 if (!response.isSuccessful()) {
-                    throw new IOException("API 调用失败：" + response.code());
+                    String errorBody = response.body() != null ? response.body().string() : "无响应内容";
+                    System.err.println("❌ API 调用失败：" + response.code());
+                    System.err.println("错误响应：" + errorBody);
+                    throw new IOException("API 调用失败：" + response.code() + " - " + errorBody);
                 }
                 
                 String responseBody = response.body().string();
+                System.out.println("✅ API 响应：" + responseBody.substring(0, Math.min(500, responseBody.length())));
+                
                 JSONObject result = JSON.parseObject(responseBody);
                 
-                // 解析响应
-                JSONObject output = result.getJSONObject("output");
-                String text = output.getString("text");
+                // 解析响应（OpenAI 兼容格式）
+                JSONArray choices = result.getJSONArray("choices");
+                if (choices == null || choices.size() == 0) {
+                    throw new RuntimeException("API 响应格式错误：缺少 choices 字段");
+                }
                 
+                JSONObject firstChoice = choices.getJSONObject(0);
+                JSONObject message = firstChoice.getJSONObject("message");
+                if (message == null) {
+                    throw new RuntimeException("API 响应格式错误：缺少 message 字段");
+                }
+                
+                String text = message.getString("content");
+                if (text == null || text.trim().isEmpty()) {
+                    throw new RuntimeException("API 响应中未找到文本内容");
+                }
+                
+                System.out.println("✅ 解析后的文本：" + text.substring(0, Math.min(100, text.length())) + "...");
                 return text;
             }
             
         } catch (Exception e) {
+            System.err.println("❌ AI 调用异常：" + e.getMessage());
+            e.printStackTrace();
             throw new RuntimeException("AI 调用失败：" + e.getMessage(), e);
         }
     }
@@ -450,37 +452,17 @@ public class AISQLService {
      * @return 允许的表名数组
      */
     private String[] getAllowedTables() {
-        try {
-            String sql = "SELECT TABLE_NAME FROM AI_TABLE_FILTER WHERE ENABLED = 'Y' ORDER BY SORT_ORDER";
-            List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
-            
-            List<String> allowedTablesList = new ArrayList<>();
-            for (Map<String, Object> row : list) {
-                String tableName = (String) row.get("TABLE_NAME");
-                if (tableName != null && !tableName.trim().isEmpty()) {
-                    allowedTablesList.add(tableName);
-                }
+        String sql = "SELECT TABLE_NAME FROM AI_TABLE_FILTER WHERE ENABLED = 'Y' ORDER BY SORT_ORDER";
+        List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
+        
+        List<String> allowedTablesList = new ArrayList<>();
+        for (Map<String, Object> row : list) {
+            String tableName = (String) row.get("TABLE_NAME");
+            if (tableName != null && !tableName.trim().isEmpty()) {
+                allowedTablesList.add(tableName);
             }
-            
-            // 如果数据库中没有配置，使用默认列表
-            if (allowedTablesList.isEmpty()) {
-                allowedTablesList = Arrays.asList(
-                    "SALES", "DCP_SALE", "PRODUCT", "STOCK", "SHOP", "CATEGORY",
-                    "PRODUCT_FEATURES", "PRODUCT_TRAINING_SAMPLES",
-                    "PRODUCT_RECOGNITION_LOGS", "NL_QUERY_RULES"
-                );
-            }
-            
-            return allowedTablesList.toArray(new String[0]);
-            
-        } catch (Exception e) {
-            System.err.println("⚠️ 读取允许的表失败：" + e.getMessage());
-            // 返回默认列表
-            return new String[]{
-                "SALES", "DCP_SALE", "PRODUCT", "STOCK", "SHOP", "CATEGORY",
-                "PRODUCT_FEATURES", "PRODUCT_TRAINING_SAMPLES",
-                "PRODUCT_RECOGNITION_LOGS", "NL_QUERY_RULES"
-            };
         }
+        
+        return allowedTablesList.toArray(new String[0]);
     }
 }
