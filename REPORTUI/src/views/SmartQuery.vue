@@ -477,21 +477,41 @@ export default {
 
 <style scoped>
 .smart-query-page {
-  height: calc(100vh - 84px);
+  height: 100%;
   background: #f0f2f5;
-  padding: 20px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
 }
 
 .smart-query-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  height: 100%;
+  max-width: 100%;
+  margin: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0,0,0,0.1);
   overflow: hidden;
+}
+
+.chat-messages {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+  .smart-query-page {
+    padding: 0;
+  }
+  
+  .smart-query-container {
+    max-width: 100%;
+    margin: 0;
+    border-radius: 0;
+  }
 }
 
 .chat-header {
