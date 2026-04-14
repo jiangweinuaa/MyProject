@@ -38,6 +38,13 @@
                 :data="msg.data" 
               />
               
+              <!-- 对比柱状图 -->
+              <CompareBarChart 
+                v-if="hasChartType(msg, 'compareBar')" 
+                :data="extractChartData(msg)"
+                :height="200"
+              />
+              
               <!-- 折线图 -->
               <LineChart 
                 v-if="hasChartType(msg, 'line')" 
@@ -137,6 +144,7 @@ import BarChart from '@/components/SmartQuery/BarChart.vue'
 import LineChart from '@/components/SmartQuery/LineChart.vue'
 import PieChart from '@/components/SmartQuery/PieChart.vue'
 import HorizontalBarChart from '@/components/SmartQuery/HorizontalBarChart.vue'
+import CompareBarChart from '@/components/SmartQuery/CompareBarChart.vue'
 
 export default {
   name: 'SmartQuery',
@@ -145,7 +153,8 @@ export default {
     BarChart,
     LineChart,
     PieChart,
-    HorizontalBarChart
+    HorizontalBarChart,
+    CompareBarChart
   },
   data() {
     return {
@@ -183,6 +192,26 @@ export default {
         result.push('metric')
         console.log('图表检测：指标卡')
         return result
+      }
+      
+      // 1.5 单行多列 (2-4 列) → 对比柱状图
+      if (rowCount === 1 && columnCount >= 2 && columnCount <= 6) {
+        // 检查是否有对比特征列名
+        const hasCompareKeywords = columns.some(col => {
+          const colUpper = col.toUpperCase()
+          return colUpper.includes('LAST') ||     // 上月/上期
+                 colUpper.includes('THIS') ||     // 本月/本期
+                 colUpper.includes('PREV') ||     // 前期
+                 colUpper.includes('CURR') ||     // 本期
+                 colUpper.includes('GROWTH') ||   // 增长
+                 colUpper.includes('同比') ||      // 同比
+                 colUpper.includes('环比')         // 环比
+        })
+        
+        if (hasCompareKeywords) {
+          result.push('compareBar')
+          console.log('图表检测：对比柱状图（单行多列对比）')
+        }
       }
       
       // 2. 包含日期字段 → 折线图
