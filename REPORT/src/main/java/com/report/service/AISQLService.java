@@ -153,6 +153,39 @@ public class AISQLService {
         return sql;
     }
     
+    /**
+     * 重新生成 SQL（修正语法错误）
+     * @param question 用户问题
+     * @param originalSQL 原始失败的 SQL
+     * @return 修正后的 SQL
+     */
+    public String regenerateSQL(String question, String originalSQL) {
+        // 1. 读取表结构
+        String schema = schemaService.getAllTables();
+        
+        // 2. 构建修正 Prompt
+        String prompt = buildPrompt(schema, question);
+        prompt += "\n\n⚠️ 注意：以下 SQL 在 Oracle 11g 上执行失败，语法不正确：\n";
+        prompt += "```sql\n" + originalSQL + "\n```\n";
+        prompt += "\n请修正为 Oracle 11g 兼容的语法，注意：\n";
+        prompt += "1. 不能使用 FETCH FIRST n ROWS ONLY（这是 Oracle 12c 语法）\n";
+        prompt += "2. 使用 SELECT * FROM (SELECT ... WHERE ROWNUM <= n) 替代\n";
+        prompt += "3. 不能使用 OFFSET ... FETCH（这是 Oracle 12c 语法）\n";
+        prompt += "4. 确保所有语法都是 Oracle 11g 支持的\n";
+        prompt += "\n只返回修正后的 SQL，不要任何解释：";
+        
+        // 3. 调用 AI API
+        String sql = callAI(prompt);
+        
+        // 4. 清理 SQL（移除 markdown 标记）
+        sql = cleanSQL(sql);
+        
+        System.out.println("🔧 修正 SQL - 原始：" + originalSQL.substring(0, Math.min(100, originalSQL.length())) + "...");
+        System.out.println("🔧 修正 SQL - 修正后：" + sql.substring(0, Math.min(100, sql.length())) + "...");
+        
+        return sql;
+    }
+    
 
     
     /**

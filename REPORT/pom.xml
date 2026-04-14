@@ -52,6 +52,12 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
         
+        <!-- Spring JDBC -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        
         <!-- javax.annotation -->
         <dependency>
             <groupId>javax.annotation</groupId>
