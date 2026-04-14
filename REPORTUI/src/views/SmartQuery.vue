@@ -125,6 +125,7 @@
           @keyup.enter="send"
           :disabled="loading"
           size="large"
+          class="full-width-input"
         >
           <template #append>
             <el-button type="primary" @click="send" :loading="loading" size="large">
@@ -237,8 +238,8 @@ export default {
         
         console.log('图表检测：hasRatioColumn=', hasRatioColumn, 'rowCount=', rowCount)
         
-        // 有占比列就显示饼图（不限制行数，行数太多时饼图可能不太好看但还是显示）
-        if (hasRatioColumn) {
+        // 有占比列 + <=6 行 → 饼图（行数太多时饼图不好看）
+        if (hasRatioColumn && rowCount <= 6) {
           result.push('pie')
           console.log('图表检测：饼图（占比分析）')
         }
@@ -482,7 +483,7 @@ export default {
 }
 
 .smart-query-container {
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
   height: 100%;
   display: flex;
@@ -552,11 +553,36 @@ export default {
 }
 
 .message-content {
+  display: inline-block;
   max-width: 70%;
   padding: 12px 16px;
   border-radius: 12px;
   line-height: 1.5;
   word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+/* 用户消息靠右显示 */
+.message.user {
+  align-items: flex-end;
+}
+
+.message.user .message-content {
+  background: #409EFF;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+/* 机器人消息靠左显示，可以占满宽度 */
+.message.bot {
+  align-items: flex-start;
+}
+
+.message.bot .message-content {
+  background: white;
+  color: #333;
+  border-bottom-left-radius: 4px;
+  max-width: 100%;
 }
 
 .message.user .message-content {
@@ -627,9 +653,18 @@ export default {
 }
 
 .chat-input {
-  padding: 20px;
+  padding: 15px 20px;
   background: white;
   border-top: 1px solid #e0e0e0;
+}
+
+.chat-input .full-width-input {
+  width: 100%;
+}
+
+.chat-input .full-width-input .el-input__wrapper {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .loading {
