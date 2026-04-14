@@ -29,6 +29,73 @@
         >
           <div class="message-content">
             <pre v-if="msg.sql" class="sql-block">{{ msg.sql }}</pre>
+            
+            <!-- 图表区域（自动显示单个图表） -->
+            <div class="chart-section" v-if="shouldShowChart(msg)">
+              <!-- 指标卡 -->
+              <MetricCard 
+                v-if="getChartType(msg) === 'metric'" 
+                :data="msg.data" 
+              />
+              
+              <!-- 折线图 -->
+              <LineChart 
+                v-else-if="getChartType(msg) === 'line'" 
+                :data="extractChartData(msg)"
+                :height="300"
+              />
+              
+              <!-- 柱状图 -->
+              <BarChart 
+                v-else-if="getChartType(msg) === 'bar'" 
+                :data="extractChartData(msg)"
+                :height="300"
+              />
+              
+              <!-- 饼图 -->
+              <PieChart 
+                v-else-if="getChartType(msg) === 'pie'" 
+                :data="extractChartData(msg, 'ratio')"
+                :height="300"
+              />
+              
+              <!-- 条形图 -->
+              <HorizontalBarChart 
+                v-else-if="getChartType(msg) === 'horizontalBar'" 
+                :data="extractChartData(msg)"
+                :height="300"
+              />
+              
+              <!-- 数据摘要 -->
+              <div class="data-summary" v-if="msg.data && msg.data.length > 0">
+                <el-tag size="small" type="info">
+                  📊 共 {{ msg.data.length }} 条数据
+                </el-tag>
+                <el-tag size="small" type="success" v-if="getTotalValue(msg.data)">
+                  💰 总计：{{ getTotalValue(msg.data) }}
+                </el-tag>
+              </div>
+            </div>
+            
+            <!-- 表格视图（始终显示） -->
+            <div class="table-view" v-if="msg.data && msg.data.length > 0">
+              <el-table 
+                :data="msg.data" 
+                style="width: 100%" 
+                border 
+                stripe
+                :default-sort="{ prop: Object.keys(msg.data[0])[0], order: 'descending' }"
+              >
+                <el-table-column
+                  v-for="column in getColumns(msg.data)"
+                  :key="column"
+                  :prop="column"
+                  :label="column"
+                  sortable
+                />
+              </el-table>
+            </div>
+            
             <div class="text-content" v-html="formatContent(msg.content)"></div>
           </div>
           <div class="message-time">{{ msg.time }}</div>
@@ -64,8 +131,22 @@
 </template>
 
 <script>
+// 导入图表组件
+import MetricCard from '@/components/SmartQuery/MetricCard.vue'
+import BarChart from '@/components/SmartQuery/BarChart.vue'
+import LineChart from '@/components/SmartQuery/LineChart.vue'
+import PieChart from '@/components/SmartQuery/PieChart.vue'
+import HorizontalBarChart from '@/components/SmartQuery/HorizontalBarChart.vue'
+
 export default {
   name: 'SmartQuery',
+  components: {
+    MetricCard,
+    BarChart,
+    LineChart,
+    PieChart,
+    HorizontalBarChart
+  },
   data() {
     return {
       question: '',
@@ -79,16 +160,203 @@ export default {
     }
   },
   methods: {
+    /**
+     * 自动检测图表类型（返回单个图表类型）
+     */
+    detectChartType(data, sql) {
+      if (!data || data.length === 0) {
+        console.log('图表检测：无数据')
+        return 'table'
+      }
+      
+      const sqlUpper = sql.toUpperCase()
+      const rowCount = data.length
+      const columns = Object.keys(data[0])
+      const columnCount = columns.length
+      
+      console.log('图表检测参数：rowCount=', rowCount, 'columnCount=', columnCount, 'columns=', columns)
+      
+      // 1. 单行单列 → 指标卡
+      if (rowCount === 1 && columnCount === 1) {
+        console.log('图表检测：指标卡')
+        return 'metric'
+      }
+      
+      // 2. 包含日期字段 → 折线图
+      const dateKeywords = ['BDATE', 'DATE', 'TO_CHAR', 'TRUNC', 'TIME']
+      const hasDateField = columns.some(col => 
+        dateKeywords.some(keyword => col.toUpperCase().includes(keyword))
+      )
+      
+      if (hasDateField && rowCount > 1) {
+        console.log('图表检测：折线图（日期字段）')
+        return 'line'
+      }
+      
+      // 3. 有 GROUP BY + 2-4 列 → 柱状图/饼图（支持占比列）
+      const hasGroupBy = sqlUpper.includes('GROUP BY')
+      console.log('图表检测：hasGroupBy=', hasGroupBy, 'columnCount=', columnCount)
+      if (hasGroupBy && columnCount >= 2 && columnCount <= 4) {
+        // 检查是否有占比/百分比列
+        const hasRatioColumn = columns.some(col => {
+          const colUpper = col.toUpperCase()
+          return colUpper.includes('占比') || colUpper.includes('PERCENT') || colUpper.includes('RATIO') || colUpper.includes('RATE')
+        })
+        
+        if (hasRatioColumn && rowCount <= 6) {
+          console.log('图表检测：饼图（占比分析）')
+          return 'pie'
+        }
+        
+        if (rowCount <= 20) {
+          console.log('图表检测：柱状图（金额对比）')
+          return 'bar'
+        }
+      }
+      
+      // 4. 有 ORDER BY + ROWNUM → 排行条形图
+      const hasOrderBy = sqlUpper.includes('ORDER BY')
+      const hasRownum = sqlUpper.includes('ROWNUM')
+      if (hasOrderBy && hasRownum && columnCount >= 2) {
+        console.log('图表检测：条形图（排行）')
+        return 'horizontalBar'
+      }
+      
+      // 5. 2 列数据 → 柱状图
+      if (columnCount === 2 && rowCount <= 15) {
+        console.log('图表检测：柱状图（2 列数据）')
+        return 'bar'
+      }
+      
+      // 6. 默认表格
+      console.log('图表检测：默认表格')
+      return 'table'
+    },
+    
+    /**
+     * 提取图表数据
+     */
+    extractChartData(msg, type = null) {
+      if (!msg.data || msg.data.length === 0) return null
+      
+      const data = msg.data
+      const columns = Object.keys(data[0])
+      const sqlUpper = msg.sql.toUpperCase()
+      
+      console.log('提取图表数据 - type:', type, 'columns:', columns)
+      
+      // 查找分类列（字符串列，排除 ID/代码列）
+      const categoryColumn = columns.find(col => {
+        const sample = data[0][col]
+        const colUpper = col.toUpperCase()
+        // 跳过 ID、代码等列
+        if (colUpper.includes('_ID') || colUpper.includes('CODE') || colUpper.includes('NO')) {
+          return false
+        }
+        return typeof sample === 'string'
+      })
+      
+      // 查找数值列
+      let numericColumn = null
+      
+      if (type === 'ratio') {
+        // 饼图：找占比/百分比列
+        numericColumn = columns.find(col => {
+          const colUpper = col.toUpperCase()
+          return colUpper.includes('占比') || colUpper.includes('PERCENT') || colUpper.includes('RATIO') || colUpper.includes('RATE')
+        })
+      }
+      
+      // 如果没找到占比列或不是饼图，找金额/销量列
+      if (!numericColumn) {
+        numericColumn = columns.find(col => {
+          const sample = data[0][col]
+          const colUpper = col.toUpperCase()
+          // 跳过占比、百分比、比率列（除非是饼图）
+          if (type !== 'ratio' && (colUpper.includes('占比') || colUpper.includes('PERCENT') || colUpper.includes('RATIO') || colUpper.includes('RATE'))) {
+            return false
+          }
+          // 优先找金额、销量列
+          if (colUpper.includes('AMT') || colUpper.includes('SALE') || colUpper.includes('QTY') || colUpper.includes('金额') || colUpper.includes('销量')) {
+            return typeof sample === 'number' || !isNaN(Number(sample))
+          }
+          return typeof sample === 'number' || !isNaN(Number(sample))
+        })
+      }
+      
+      console.log('提取图表数据 - categoryColumn:', categoryColumn, 'numericColumn:', numericColumn)
+      
+      // 确定标题
+      let title = '查询结果'
+      if (sqlUpper.includes('销售额')) title = '销售额统计'
+      else if (sqlUpper.includes('销量')) title = '销量统计'
+      else if (sqlUpper.includes('库存')) title = '库存统计'
+      else if (sqlUpper.includes('品类')) title = '品类分析'
+      
+      return {
+        xAxis: categoryColumn,
+        series: numericColumn,
+        title: title,
+        data: data
+      }
+    },
+    
+    /**
+     * 是否显示图表
+     */
+    shouldShowChart(msg) {
+      if (!msg.data || msg.data.length === 0 || !msg.sql) {
+        console.log('不显示图表：data=', msg.data, 'sql=', msg.sql)
+        return false
+      }
+      const chartType = this.detectChartType(msg.data, msg.sql)
+      console.log('图表检测结果：', chartType, 'data:', msg.data, 'sql:', msg.sql)
+      return chartType !== 'table'
+    },
+    
+    /**
+     * 获取图表类型
+     */
+    getChartType(msg) {
+      if (!msg.data || msg.data.length === 0 || !msg.sql) return 'table'
+      return this.detectChartType(msg.data, msg.sql)
+    },
+    
+    /**
+     * 获取列名
+     */
+    getColumns(data) {
+      if (!data || data.length === 0) return []
+      return Object.keys(data[0])
+    },
+    
+    /**
+     * 获取总计值
+     */
+    getTotalValue(data) {
+      if (!data || data.length === 0) return null
+      const columns = Object.keys(data[0])
+      const numericCol = columns.find(col => {
+        const sample = data[0][col]
+        return typeof sample === 'number'
+      })
+      if (!numericCol) return null
+      
+      const total = data.reduce((sum, row) => sum + (row[numericCol] || 0), 0)
+      return total.toLocaleString()
+    },
+    
     now() {
       const d = new Date()
       return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
     },
     
-    addMessage(content, type, sql = '') {
+    addMessage(content, type, sql = '', data = null) {
       this.messages.push({
         type,
         content,
         sql,
+        data,
         time: this.now()
       })
       this.$nextTick(() => {
@@ -136,6 +404,7 @@ export default {
         
         if (data.success) {
           let content = ''
+          let chartData = null
           
           if (data.data && data.data.length > 0) {
             const headers = Object.keys(data.data[0])
@@ -146,11 +415,14 @@ export default {
               const values = headers.map(h => row[h] !== null ? row[h] : '')
               content += '| ' + values.join(' | ') + ' |\n'
             })
+            
+            // 保存原始数据（用于图表显示）
+            chartData = data.data
           } else {
             content = '暂无数据'
           }
           
-          this.addMessage(content, 'bot', data.sql)
+          this.addMessage(content, 'bot', data.sql, chartData)
         } else {
           this.addMessage('❌ ' + (data.message || '查询失败'), 'bot')
         }
@@ -269,10 +541,37 @@ export default {
   border-radius: 6px;
   font-family: 'Courier New', monospace;
   font-size: 13px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   max-height: 200px;
   overflow-y: auto;
   white-space: pre-wrap;
+}
+
+/* 图表区域样式 */
+.chart-section {
+  margin-bottom: 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+}
+
+.chart-view {
+  padding: 20px;
+}
+
+.data-summary {
+  padding: 10px 20px;
+  background: #f5f7fa;
+  border-top: 1px solid #e0e0e0;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* 表格视图样式 */
+.table-view {
+  margin-top: 10px;
 }
 
 .data-table {
