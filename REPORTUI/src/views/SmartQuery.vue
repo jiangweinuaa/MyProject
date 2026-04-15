@@ -221,7 +221,7 @@ export default {
         
         console.log('会话历史响应:', response);
         
-        if (data.success && data.data.length > 0) {
+        if (response.success && response.data && response.data.length > 0) {
           this.hasHistory = true;
           
           // 后端按时间倒序返回（新的在前），需要反转为正序显示（旧的在上，新的在下）
