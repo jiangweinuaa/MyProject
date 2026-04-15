@@ -198,18 +198,24 @@ public class AISQLService {
      * @return SQL 语句
      */
     public String generateSQL(String question) {
-        return generateSQL(question, new java.util.ArrayList<>());
+        return generateSQL(question, new java.util.ArrayList<>(), "99");
     }
     
     /**
      * 根据自然语言生成 SQL（带对话历史）
      * @param question 用户问题
      * @param history 对话历史
+     * @param eid 用户 EID
      * @return SQL 语句
      */
-    public String generateSQL(String question, List<com.report.dto.ConversationContext.Dialogue> history) {
+    public String generateSQL(String question, List<com.report.dto.ConversationContext.Dialogue> history, String eid) {
         // 1. 读取表结构（使用商家库）
         String schema = getAllTablesSchema();
+        
+        // 替换 [EID] 为真正的 EID
+        if (eid != null && !eid.trim().isEmpty()) {
+            schema = schema.replace("[EID]", eid);
+        }
         
         // 2. 构建 Prompt（带对话历史）
         String prompt = buildPromptWithHistory(schema, question, history);
@@ -245,7 +251,7 @@ public class AISQLService {
      * @return 修正后的 SQL
      */
     public String regenerateSQL(String question, String originalSQL) {
-        return regenerateSQL(question, originalSQL, new java.util.ArrayList<>());
+        return regenerateSQL(question, originalSQL, new java.util.ArrayList<>(), "99");
     }
     
     /**
@@ -253,11 +259,17 @@ public class AISQLService {
      * @param question 用户问题
      * @param originalSQL 原始失败的 SQL
      * @param history 对话历史
+     * @param eid 用户 EID
      * @return 修正后的 SQL
      */
-    public String regenerateSQL(String question, String originalSQL, List<com.report.dto.ConversationContext.Dialogue> history) {
+    public String regenerateSQL(String question, String originalSQL, List<com.report.dto.ConversationContext.Dialogue> history, String eid) {
         // 1. 读取表结构（使用商家库）
         String schema = getAllTablesSchema();
+        
+        // 替换 [EID] 为真正的 EID
+        if (eid != null && !eid.trim().isEmpty()) {
+            schema = schema.replace("[EID]", eid);
+        }
         
         // 2. 构建修正 Prompt（带对话历史）
         String prompt = buildPromptWithHistory(schema, question, history);

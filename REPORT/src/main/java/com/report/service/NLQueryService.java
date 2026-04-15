@@ -65,7 +65,12 @@ public class NLQueryService extends BaseService {
             enhancedQuestion = questionEnhancer.enhance(question, context.getVariables());
             
             long sqlStart = System.currentTimeMillis();
-            String sql = aiSQLService.generateSQL(enhancedQuestion, context.getHistory());
+            // 从 token 解析 EID
+            String eid = "99";
+            if (token != null && !token.trim().isEmpty()) {
+                eid = com.report.util.TokenUtil.getEidFromToken(platformJdbcTemplate, token);
+            }
+            String sql = aiSQLService.generateSQL(enhancedQuestion, context.getHistory(), eid);
             sqlGenTime = System.currentTimeMillis() - sqlStart;
             
             if (!aiSQLService.validateSQL(sql)) {
@@ -119,7 +124,12 @@ public class NLQueryService extends BaseService {
             if (!isRetry) {
                 String errorMsg = e.getMessage();
                 if (errorMsg != null && (errorMsg.contains("ORA-009") || errorMsg.contains("SQLSyntaxErrorException"))) {
-                    String correctedSQL = aiSQLService.regenerateSQL(question, errorMsg);
+                    // 从 token 解析 EID
+                    String eid = "99";
+                    if (token != null && !token.trim().isEmpty()) {
+                        eid = com.report.util.TokenUtil.getEidFromToken(platformJdbcTemplate, token);
+                    }
+                    String correctedSQL = aiSQLService.regenerateSQL(question, errorMsg, context.getHistory(), eid);
                     
                     if (!aiSQLService.validateSQL(correctedSQL)) {
                         return error("修正后的 SQL 不安全：" + correctedSQL);
@@ -214,6 +224,13 @@ public class NLQueryService extends BaseService {
                 logDTO.setResponseTimeMs(System.currentTimeMillis() - startTime);
                 logDTO.setModelName(getCurrentModel());
                 logDTO.setSqlGenTimeMs(sqlGenTime);
+                // 设置创建人（从 token 解析 OPNO）
+                if (token != null && !token.trim().isEmpty()) {
+                    String opno = com.report.util.TokenUtil.getOpnoFromToken(platformJdbcTemplate, token);
+                    logDTO.setCreatedBy(opno);
+                } else {
+                    logDTO.setCreatedBy("anonymous");
+                }
                 nlQueryLogService.logQuery(logDTO);
             }
         } catch (Exception e) {
