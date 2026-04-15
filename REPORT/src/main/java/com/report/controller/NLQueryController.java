@@ -8,7 +8,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 自然语言查询 Controller
+ * 自然语言查询 Controller（支持会话记忆）
  */
 @RestController
 @RequestMapping("/api/nl-query")
@@ -19,11 +19,31 @@ public class NLQueryController {
     private NLQueryService nlQueryService;
     
     /**
-     * 自然语言查询（AI 版）
+     * 自然语言查询（支持 sessionId）
      */
-    @PostMapping("/query")
-    public Map<String, Object> query(@RequestParam String question) {
-        return nlQueryService.query(question);
+    @PostMapping(value = "/query", consumes = "application/json", produces = "application/json")
+    public Map<String, Object> query(@RequestBody Map<String, String> request) {
+        String sessionId = request.get("sessionId");
+        String question = request.get("question");
+        
+        if (sessionId != null && !sessionId.trim().isEmpty()) {
+            return nlQueryService.query(sessionId, question);
+        } else {
+            return nlQueryService.query(question);
+        }
+    }
+    
+    /**
+     * 自然语言查询（兼容 form 提交）
+     */
+    @PostMapping(value = "/query", consumes = "application/x-www-form-urlencoded")
+    public Map<String, Object> queryForm(@RequestParam(required = false) String sessionId,
+                                         @RequestParam String question) {
+        if (sessionId != null && !sessionId.trim().isEmpty()) {
+            return nlQueryService.query(sessionId, question);
+        } else {
+            return nlQueryService.query(question);
+        }
     }
     
     /**
