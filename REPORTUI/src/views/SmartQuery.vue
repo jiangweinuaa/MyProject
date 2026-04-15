@@ -173,6 +173,7 @@ export default {
       messages: [],
       examples: [
         '今天销售额是多少？',
+        '昨天销售额是多少？',
         '本月销售额是多少？',
         '哪个商品卖得最好？'
       ],
@@ -266,6 +267,14 @@ export default {
             sql: '',
             data: null,
             time: this.now()
+          });
+          
+          // 滚动到最底部
+          this.$nextTick(() => {
+            const container = this.$refs.messageContainer;
+            if (container) {
+              container.scrollTop = container.scrollHeight;
+            }
           });
         }
       } catch (error) {
@@ -517,6 +526,14 @@ export default {
         data,
         time: this.now()
       })
+      
+      // 滚动到最底部
+      this.$nextTick(() => {
+        const container = this.$refs.messageContainer;
+        if (container) {
+          container.scrollTop = container.scrollHeight;
+        }
+      });
     },
     
     askExample(question) {
@@ -655,10 +672,10 @@ export default {
 
 .welcome-message {
   text-align: center;
-  padding: 20px;
+  padding: 15px 10px;
   background: #f0f2f5;
   border-radius: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
 }
 
 .welcome-message h2 {
@@ -669,7 +686,8 @@ export default {
 
 .welcome-message p {
   color: #666;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
+  font-size: 16px;
 }
 
 .example-questions {
