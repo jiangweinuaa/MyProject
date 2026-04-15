@@ -28,7 +28,7 @@ public class LoginServiceImpl implements LoginService {
         DateTimeFormatter.ofPattern("yyyyMMddHHmmssSSS");
 
     @Override
-    public ServiceResponse<?> login(String opno, String password, String ip) {
+    public ServiceResponse<?> login(String eid, String opno, String password, String ip) {
         if (jdbcTemplate == null) {
             return ServiceResponse.error("500", "数据库未连接");
         }
@@ -40,12 +40,14 @@ public class LoginServiceImpl implements LoginService {
             // 生成 GUID 作为 token
             String token = UUID.randomUUID().toString().replace("-", "").toUpperCase();
             
-            // 构建 token 数据（包含 IP）
+            // 构建 token 数据（包含 IP 和用户选择的 EID）
             Map<String, Object> tokenData = new HashMap<>();
             // 修复：当 opno 为空字符串时也使用默认值 "admin"
             String opnoValue = (opno != null && !opno.trim().isEmpty()) ? opno : "admin";
+            // 修复：使用用户选择的 EID，而不是硬编码 "66"
+            String eidValue = (eid != null && !eid.trim().isEmpty()) ? eid : "99";
             tokenData.put("OPNO", opnoValue);
-            tokenData.put("EID", "66");
+            tokenData.put("EID", eidValue);
             tokenData.put("IP", ip != null ? ip : "unknown");
             
             // 将 JSON 转为字符串

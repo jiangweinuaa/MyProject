@@ -45,6 +45,17 @@ request.interceptors.response.use(
     // 智问 API 返回格式：{success: true/false, data: ...}
     // 报表 API 返回格式：{success: true/false, serviceStatus: '000', ...}
     if (res.success === false) {
+      // 如果是 401 错误（token 失效），清除缓存并跳转到登录页
+      if (res.serviceStatus === '401' || res.message?.includes('token')) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('userInfo')
+        ElMessage.error('登录已过期，请重新登录')
+        setTimeout(() => {
+          window.location.href = '/login'
+        }, 1000)
+        return Promise.reject(new Error('token 已失效'))
+      }
+      
       ElMessage.error(res.message || res.serviceDescription || '请求失败')
       return Promise.reject(new Error(res.message || res.serviceDescription || '请求失败'))
     }

@@ -177,8 +177,8 @@ const handleLogin = async () => {
           
           ElMessage.success('登录成功')
           
-          // 使用 router.push 跳转
-          router.push('/sales-analysis')
+          // 使用 router.push 跳转（跳转到智问首页）
+          router.push('/smart-query')
         } else {
           ElMessage.error(response.serviceDescription || '登录失败')
           refreshCaptcha()

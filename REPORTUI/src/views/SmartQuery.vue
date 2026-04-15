@@ -67,7 +67,7 @@
               <!-- 柱状图 -->
               <BarChart 
                 v-if="hasChartType(msg, 'bar')" 
-                :data="extractChartData(msg)"
+                :data="extractChartData(msg, 'bar')"
                 :height="300"
               />
               
@@ -373,10 +373,14 @@ export default {
           console.log('图表检测：饼图（占比分析，' + rowCount + '行）')
         }
         
-        // 柱状图限制行数（太多时显示不下）
-        if (rowCount <= 50) {
+        // 柱状图 - 智能限制数据量（方案 3）
+        if (rowCount <= 100) {
           result.push('bar')
-          console.log('图表检测：柱状图（金额对比，' + rowCount + '行）')
+          if (rowCount > 50) {
+            console.log('图表检测：柱状图（金额对比，' + rowCount + '行，只显示前 50 条）')
+          } else {
+            console.log('图表检测：柱状图（金额对比，' + rowCount + '行）')
+          }
         }
       }
       
@@ -459,11 +463,18 @@ export default {
       else if (sqlUpper.includes('库存')) title = '库存统计'
       else if (sqlUpper.includes('品类')) title = '品类分析'
       
+      // 方案 3：智能限制数据量（柱状图超过 50 条只显示前 50 条）
+      let chartData = data
+      if (type === 'bar' && data.length > 50) {
+        chartData = data.slice(0, 50)
+        console.log('数据量较多（' + data.length + '条），图表只显示前 50 条')
+      }
+      
       return {
         xAxis: categoryColumn,
         series: numericColumn,
         title: title,
-        data: data
+        data: chartData
       }
     },
     

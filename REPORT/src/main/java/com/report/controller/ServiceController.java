@@ -50,15 +50,17 @@ public class ServiceController {
                 System.out.println("[DEBUG] 获取到客户端 IP: " + clientIp);
                 
                 // 从 request 中提取参数
+                String eid = "";
                 String opno = "";
                 String password = "";
                 if (request.getRequest() instanceof Map) {
                     Map<?, ?> requestMap = (Map<?, ?>) request.getRequest();
+                    eid = requestMap.get("eid") != null ? requestMap.get("eid").toString() : "";
                     opno = requestMap.get("username") != null ? requestMap.get("username").toString() : "";
                     password = requestMap.get("password") != null ? requestMap.get("password").toString() : "";
                 }
                 
-                return loginService.login(opno, password, clientIp);
+                return loginService.login(eid, opno, password, clientIp);
             }
         }
         
@@ -69,7 +71,7 @@ public class ServiceController {
      * 用户登录
      * POST /api/login
      * 
-     * @param params 登录参数 {"opno":"xxx","password":"xxx"}
+     * @param params 登录参数 {"eid":"xxx","opno":"xxx","password":"xxx"}
      * @return 包含 token 的响应
      */
     @PostMapping("/login")
@@ -82,13 +84,14 @@ public class ServiceController {
             return ServiceResponse.error("500", "登录服务未初始化");
         }
         
+        String eid = params.get("eid") != null ? params.get("eid").toString() : null;
         String opno = params.get("opno") != null ? params.get("opno").toString() : null;
         String password = params.get("password") != null ? params.get("password").toString() : null;
         
         // 获取客户端 IP
         String clientIp = getClientIp(xForwardedFor, xRealIp, request);
         
-        return loginService.login(opno, password, clientIp);
+        return loginService.login(eid, opno, password, clientIp);
     }
     
     /**

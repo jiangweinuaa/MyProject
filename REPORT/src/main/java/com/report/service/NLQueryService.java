@@ -58,7 +58,9 @@ public class NLQueryService extends BaseService {
         long startTime = System.currentTimeMillis();
         long sqlGenTime = 0;
         long sqlExecTime = 0;
+        long sqlExecStart = 0;
         String enhancedQuestion = question;
+        String sql = null;
         
         try {
             ConversationContext context = contextManager.getOrCreateSession(sessionId);
@@ -70,7 +72,7 @@ public class NLQueryService extends BaseService {
             if (token != null && !token.trim().isEmpty()) {
                 eid = com.report.util.TokenUtil.getEidFromToken(platformJdbcTemplate, token);
             }
-            String sql = aiSQLService.generateSQL(enhancedQuestion, context.getHistory(), eid);
+            sql = aiSQLService.generateSQL(enhancedQuestion, context.getHistory(), eid);
             sqlGenTime = System.currentTimeMillis() - sqlStart;
             
             if (!aiSQLService.validateSQL(sql)) {
@@ -78,7 +80,7 @@ public class NLQueryService extends BaseService {
                 return error("生成的 SQL 不安全，已拒绝执行：" + sql);
             }
             
-            long sqlExecStart = System.currentTimeMillis();
+            sqlExecStart = System.currentTimeMillis();
             JdbcTemplate businessJdbc = aiSQLService.getBusinessJdbcTemplate();
             List<Map<String, Object>> result = businessJdbc.queryForList(sql);
             sqlExecTime = System.currentTimeMillis() - sqlExecStart;
