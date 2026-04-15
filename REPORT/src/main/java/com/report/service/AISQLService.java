@@ -589,6 +589,11 @@ public class AISQLService {
         // 移除开头的 "SQL：" 等文字
         sql = sql.replaceAll("^[Ss][Qq][Ll]：?\\s*", "");
         
+        // 移除末尾的分号
+        while (sql.endsWith(";")) {
+            sql = sql.substring(0, sql.length() - 1).trim();
+        }
+        
         return sql;
     }
     

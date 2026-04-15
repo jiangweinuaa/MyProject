@@ -121,6 +121,12 @@ public class NLQueryService extends BaseService {
             return response;
             
         } catch (DataAccessException e) {
+            // SQL 执行失败，记录日志
+            long sqlExecTimeFailed = System.currentTimeMillis() - sqlExecStart;
+            logQuery(question, sql, Boolean.valueOf(isRetry), "FAILED", "SQL 执行失败：" + e.getMessage(), 
+                    Long.valueOf(sqlGenTime), Long.valueOf(sqlExecTimeFailed), Long.valueOf(System.currentTimeMillis() - startTime));
+            System.err.println("❌ SQL 执行失败：" + e.getMessage());
+            
             if (!isRetry) {
                 String errorMsg = e.getMessage();
                 if (errorMsg != null && (errorMsg.contains("ORA-009") || errorMsg.contains("SQLSyntaxErrorException"))) {
@@ -148,8 +154,8 @@ public class NLQueryService extends BaseService {
                         response.put("data", result);
                         response.put("question", question);
                         response.put("enhancedQuestion", enhancedQuestion);
-                        response.put("rowCount", result.size());
-                        response.put("retry", true);
+                        response.put("rowCount", Integer.valueOf(result.size()));
+                        response.put("retry", Boolean.valueOf(true));
                         response.put("sessionId", sessionId);
                         
                         return response;
