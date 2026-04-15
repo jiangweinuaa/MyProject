@@ -184,7 +184,19 @@ export default {
     async loadRecentHistory() {
       try {
         const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://47.100.138.89:8110/api';
-        const url = `${baseUrl}/conversation/list?userId=default_user&page=0&size=1`;
+        
+        // 从 localStorage 获取 token
+        const token = localStorage.getItem('token') || '';
+        
+        // 构建请求参数
+        const params = new URLSearchParams();
+        params.append('page', '0');
+        params.append('size', '1');
+        if (token) {
+          params.append('token', token);
+        }
+        
+        const url = `${baseUrl}/conversation/list?${params.toString()}`;
         console.log('请求历史记录:', url);
         
         const response = await fetch(url);
@@ -213,7 +225,21 @@ export default {
     async loadSessionHistory(sessionId) {
       try {
         const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://47.100.138.89:8110/api';
-        const response = await fetch(`${baseUrl}/conversation/history?sessionId=${sessionId}&page=0&size=50`);
+        
+        // 从 localStorage 获取 token
+        const token = localStorage.getItem('token') || '';
+        
+        // 构建请求参数
+        const params = new URLSearchParams();
+        params.append('sessionId', sessionId);
+        params.append('page', '0');
+        params.append('size', '50');
+        if (token) {
+          params.append('token', token);
+        }
+        
+        const url = `${baseUrl}/conversation/history?${params.toString()}`;
+        const response = await fetch(url);
         const data = await response.json();
         
         if (data.success && data.data.length > 0) {
@@ -537,11 +563,17 @@ export default {
           this.sessionId = 'session_' + Date.now();
         }
         
+        // 从 localStorage 获取 token
+        const token = localStorage.getItem('token') || '';
+        
         const params = new URLSearchParams()
         if (this.sessionId) {
           params.append('sessionId', this.sessionId);
         }
         params.append('question', userQuestion)
+        if (token) {
+          params.append('token', token);
+        }
         
         const response = await fetch('http://47.100.138.89:8110/api/nl-query/query', {
           method: 'POST',

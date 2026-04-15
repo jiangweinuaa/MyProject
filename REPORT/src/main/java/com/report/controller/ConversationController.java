@@ -1,7 +1,9 @@
 package com.report.controller;
 
 import com.report.repository.ConversationRepository;
+import com.report.util.TokenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -19,16 +21,33 @@ public class ConversationController {
     @Autowired
     private ConversationRepository conversationRepository;
     
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+    
+    /**
+     * 从 token 解析用户 ID（OPNO）
+     */
+    private String getUserIdFromToken(String token) {
+        if (token == null || token.trim().isEmpty()) {
+            return "default_user";
+        }
+        // 使用 TokenUtil 解析 OPNO（用户 ID）
+        return TokenUtil.getOpnoFromToken(jdbcTemplate, token);
+    }
+    
     /**
      * 获取会话列表（分页）
      */
     @GetMapping("/list")
     public Map<String, Object> getConversationList(
-            @RequestParam(defaultValue = "default_user") String userId,
+            @RequestParam(required = false) String token,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         
         try {
+            // 从 token 解析 EID 作为 userId
+            String userId = getUserIdFromToken(token);
+            
             List list = conversationRepository.getUserConversations(userId, page, size);
             int total = conversationRepository.getConversationCount(userId);
             
@@ -58,10 +77,14 @@ public class ConversationController {
     @GetMapping("/history")
     public Map<String, Object> getHistory(
             @RequestParam String sessionId,
+            @RequestParam(required = false) String token,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         
         try {
+            // 从 token 解析 EID 作为 userId（用于权限验证）
+            String userId = getUserIdFromToken(token);
+            
             List history = conversationRepository.getDialogueHistory(sessionId, page, size);
             int total = conversationRepository.getDialogueCount(sessionId);
             

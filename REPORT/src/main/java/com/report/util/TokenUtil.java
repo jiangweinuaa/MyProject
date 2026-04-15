@@ -38,7 +38,54 @@ public class TokenUtil {
     }
 
     /**
-     * 从 token 中解析 EID（带缓存）
+     * 从 token 中解析 OPNO（用户 ID，带缓存）
+     * @param jdbcTemplate 数据库连接
+     * @param token token 字符串
+     * @return OPNO（用户 ID），如果 token 无效返回 "default_user"
+     */
+    public static String getOpnoFromToken(JdbcTemplate jdbcTemplate, String token) {
+        if (token == null || token.trim().isEmpty()) {
+            return "default_user";
+        }
+        
+        // 1. 检查缓存
+        TokenCache cache = TOKEN_CACHE.get(token);
+        if (cache != null && !cache.isExpired()) {
+            return cache.eid;  // 缓存中存储的是 OPNO
+        }
+        
+        // 2. 缓存失效或不存在，查询数据库
+        try {
+            String querySql = "SELECT JSON FROM PLATFORM_TOKEN WHERE KEY = ?";
+            Map<String, Object> result = jdbcTemplate.queryForMap(querySql, token);
+            
+            if (result != null && result.get("JSON") != null) {
+                String jsonStr = result.get("JSON").toString();
+                // 解析 JSON 获取 OPNO（用户 ID）
+                // JSON 格式：{"OPNO":"admin","EID":"99","IP":"unknown"}
+                if (jsonStr.contains("\"OPNO\"")) {
+                    int opnoStart = jsonStr.indexOf("\"OPNO\"") + 8; // "OPNO":" 的长度
+                    int opnoEnd = jsonStr.indexOf("\"", opnoStart);
+                    if (opnoEnd > opnoStart) {
+                        String opno = jsonStr.substring(opnoStart, opnoEnd);
+                        opno = opno != null && !opno.isEmpty() ? opno : "default_user";
+                        
+                        // 3. 更新缓存
+                        TOKEN_CACHE.put(token, new TokenCache(opno, System.currentTimeMillis() + CACHE_EXPIRE_MS));
+                        
+                        return opno;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            // 查询失败，返回默认用户
+        }
+        
+        return "default_user";
+    }
+    
+    /**
+     * 从 token 中解析 EID（带缓存）- 保留兼容
      * @param jdbcTemplate 数据库连接
      * @param token token 字符串
      * @return EID，如果 token 无效返回 "99"

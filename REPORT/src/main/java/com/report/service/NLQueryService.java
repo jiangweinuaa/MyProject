@@ -80,9 +80,12 @@ public class NLQueryService extends BaseService {
             
             // 保存对话到数据库（包含完整结果集）
             try {
+                // 使用默认用户（后续通过 NLQueryController 传递 token）
+                String userId = "default_user";
+                
                 // 先保存会话（MERGE 模式，自动判断插入或更新）
                 String title = generateTitle(question);
-                conversationRepository.saveConversation(sessionId, "default_user", title);
+                conversationRepository.saveConversation(sessionId, userId, title);
                 
                 // 再保存对话记录
                 String resultData = JSON.toJSONString(result);
