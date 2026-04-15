@@ -1,5 +1,6 @@
 package com.report.service;
 
+import com.report.dto.ConversationContext;
 import com.report.dto.NLQueryLogDTO;
 import com.report.service.impl.BaseService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,11 +11,7 @@ import org.springframework.stereotype.Service;
 import java.util.*;
 
 /**
- * 自然语言查询服务（AI 版）
- * 
- * 数据源使用规范：
- * - 平台库：AI 配置（PRODUCT_APPKEY）、日志记录（NL_QUERY_LOG）
- * - 商家库：SQL 执行、表结构读取
+ * 自然语言查询服务（支持上下文记忆）
  */
 @Service
 public class NLQueryService extends BaseService {
@@ -25,25 +22,26 @@ public class NLQueryService extends BaseService {
     @Autowired
     private NLQueryLogService nlQueryLogService;
     
-    // 会话 ID（用于多轮对话追踪）
+    @Autowired
+    private ConversationContextManager contextManager;
+    
+    @Autowired
+    private QuestionEnhancer questionEnhancer;
+    
     private static String sessionId = null;
     
-    /**
-     * 自然语言查询
-     * @param question 用户问题
-     * @return 查询结果
-     */
-    public Map<String, Object> query(String question) {
-        return query(question, false);
+    public Map<String, Object> query(String sessionId, String question) {
+        return query(sessionId, question, false);
     }
     
-    /**
-     * 自然语言查询（内部方法，支持重试）
-     * @param question 用户问题
-     * @param isRetry 是否重试
-     * @return 查询结果
-     */
-    private Map<String, Object> query(String question, boolean isRetry) {
+    public Map<String, Object> query(String question) {
+        if (sessionId == null) {
+            sessionId = generateSessionId();
+        }
+        return query(sessionId, question, false);
+    }
+    
+    private Map<String, Object> query(String sessionId, String question, boolean isRetry) {
         if (question == null || question.trim().isEmpty()) {
             return error("问题不能为空");
         }
@@ -51,85 +49,74 @@ public class NLQueryService extends BaseService {
         long startTime = System.currentTimeMillis();
         long sqlGenTime = 0;
         long sqlExecTime = 0;
+        String enhancedQuestion = question;
         
         try {
-            // 1. 生成 SQL（使用平台库配置 + 商家库表结构）
+            ConversationContext context = contextManager.getOrCreateSession(sessionId);
+            enhancedQuestion = questionEnhancer.enhance(question, context.getVariables());
+            
             long sqlStart = System.currentTimeMillis();
-            String sql = aiSQLService.generateSQL(question);
+            String sql = aiSQLService.generateSQL(enhancedQuestion, context.getHistory());
             sqlGenTime = System.currentTimeMillis() - sqlStart;
             
-            // 2. 验证 SQL
             if (!aiSQLService.validateSQL(sql)) {
-                logQuery(question, sql, sql, isRetry, "FAILED", "生成的 SQL 不安全", sqlGenTime, 0L, System.currentTimeMillis() - startTime);
+                logQuery(question, sql, isRetry, "FAILED", "生成的 SQL 不安全", sqlGenTime, 0L, startTime);
                 return error("生成的 SQL 不安全，已拒绝执行：" + sql);
             }
             
-            // 3. 执行 SQL（使用商家库）
             long sqlExecStart = System.currentTimeMillis();
             JdbcTemplate businessJdbc = aiSQLService.getBusinessJdbcTemplate();
             List<Map<String, Object>> result = businessJdbc.queryForList(sql);
             sqlExecTime = System.currentTimeMillis() - sqlExecStart;
             
-            // 4. 记录日志（平台库）
-            logQuery(question, sql, sql, isRetry, "SUCCESS", null, sqlGenTime, sqlExecTime, System.currentTimeMillis() - startTime);
+            contextManager.addDialogue(sessionId, question, sql);
+            extractAndUpdateVariables(sessionId, sql);
+            logQuery(question, sql, isRetry, "SUCCESS", null, sqlGenTime, sqlExecTime, startTime);
             
-            // 5. 返回结果
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("sql", sql);
             response.put("data", result);
             response.put("question", question);
+            response.put("enhancedQuestion", enhancedQuestion);
             response.put("rowCount", result.size());
+            response.put("sessionId", sessionId);
             
             return response;
             
         } catch (DataAccessException e) {
-            // SQL 语法错误，检查是否需要重试
             if (!isRetry) {
                 String errorMsg = e.getMessage();
-                // 检查是否是 Oracle 语法错误
                 if (errorMsg != null && (errorMsg.contains("ORA-009") || errorMsg.contains("SQLSyntaxErrorException"))) {
-                    System.err.println("⚠️ SQL 语法错误，尝试重新生成 Oracle 11g 兼容的 SQL");
-                    System.err.println("错误信息：" + errorMsg);
-                    
-                    // 重新生成 SQL（加上 Oracle 11g 要求）
                     String correctedSQL = aiSQLService.regenerateSQL(question, errorMsg);
                     
-                    System.out.println("✅ 修正后的 SQL: " + correctedSQL);
-                    
-                    // 验证修正后的 SQL
                     if (!aiSQLService.validateSQL(correctedSQL)) {
-                        // 记录日志（失败）
-                        logQuery(question, correctedSQL, correctedSQL, true, "FAILED", "修正后的 SQL 不安全", sqlGenTime, 0L, System.currentTimeMillis() - startTime);
-                        return error("修正后的 SQL 不安全，已拒绝执行：" + correctedSQL);
+                        return error("修正后的 SQL 不安全：" + correctedSQL);
                     }
                     
-                    // 重试执行（使用商家库）
                     try {
-                        long sqlExecStart = System.currentTimeMillis();
                         JdbcTemplate businessJdbc = aiSQLService.getBusinessJdbcTemplate();
                         List<Map<String, Object>> result = businessJdbc.queryForList(correctedSQL);
-                        sqlExecTime = System.currentTimeMillis() - sqlExecStart;
                         
-                        // 记录日志（成功，重试）
-                        logQuery(question, correctedSQL, correctedSQL, true, "SUCCESS", null, sqlGenTime, sqlExecTime, System.currentTimeMillis() - startTime);
+                        contextManager.addDialogue(sessionId, question, correctedSQL);
+                        extractAndUpdateVariables(sessionId, correctedSQL);
                         
                         Map<String, Object> response = new HashMap<>();
                         response.put("success", true);
                         response.put("sql", correctedSQL);
                         response.put("data", result);
                         response.put("question", question);
+                        response.put("enhancedQuestion", enhancedQuestion);
                         response.put("rowCount", result.size());
                         response.put("retry", true);
-                        response.put("originalError", errorMsg);
+                        response.put("sessionId", sessionId);
                         
                         return response;
                     } catch (Exception retryEx) {
-                        return error("SQL 语法修正后执行仍失败：" + retryEx.getMessage());
+                        return error("修正后执行失败：" + retryEx.getMessage());
                     }
                 }
             }
-            
             return error("SQL 执行错误：" + e.getMessage());
             
         } catch (Exception e) {
@@ -137,9 +124,38 @@ public class NLQueryService extends BaseService {
         }
     }
     
-    /**
-     * 错误响应
-     */
+    private void extractAndUpdateVariables(String sessionId, String sql) {
+        String shopId = extractValue(sql, "SHOPID");
+        if (shopId != null) contextManager.updateVariable(sessionId, "shopId", shopId);
+        
+        String pluno = extractValue(sql, "PLUNO");
+        if (pluno != null) contextManager.updateVariable(sessionId, "pluno", pluno);
+    }
+    
+    private String extractValue(String sql, String column) {
+        int idx = sql.toUpperCase().indexOf(column);
+        if (idx == -1) return null;
+        
+        int eqIdx = sql.indexOf("=", idx);
+        if (eqIdx == -1) return null;
+        
+        int startIdx = eqIdx + 1;
+        while (startIdx < sql.length() && sql.charAt(startIdx) == ' ') startIdx++;
+        
+        int endIdx = startIdx;
+        while (endIdx < sql.length() && sql.charAt(endIdx) != ' ' && sql.charAt(endIdx) != ')') endIdx++;
+        
+        String value = sql.substring(startIdx, endIdx).trim();
+        if (value.startsWith("'") && value.endsWith("'")) {
+            value = value.substring(1, value.length() - 1);
+        }
+        return value;
+    }
+    
+    private String generateSessionId() {
+        return "SESSION_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().replace("-", "").substring(0, 9);
+    }
+    
     private Map<String, Object> error(String message) {
         Map<String, Object> response = new HashMap<>();
         response.put("success", false);
@@ -147,30 +163,22 @@ public class NLQueryService extends BaseService {
         return response;
     }
     
-    /**
-     * 记录查询日志（使用平台库）
-     */
-    private void logQuery(String question, String generatedSql, String finalSql, 
-                         Boolean isRetry, String status, String errorMessage, 
-                         Long sqlGenTime, Long sqlExecTime, Long responseTimeMs) {
+    private void logQuery(String question, String sql, Boolean isRetry, String status, String errorMessage, 
+                         Long sqlGenTime, Long sqlExecTime, Long startTime) {
         try {
             if (nlQueryLogService != null) {
                 NLQueryLogDTO logDTO = new NLQueryLogDTO();
-                logDTO.setSessionId(getSessionId());
+                logDTO.setSessionId(sessionId);
                 logDTO.setQuestion(question);
-                logDTO.setGeneratedSql(generatedSql);
-                logDTO.setFinalSql(finalSql);
+                logDTO.setGeneratedSql(sql);
+                logDTO.setFinalSql(sql);
                 logDTO.setIsRetry(isRetry);
                 logDTO.setStatus(status);
                 logDTO.setErrorMessage(errorMessage);
                 logDTO.setExecTimeMs(sqlExecTime);
-                logDTO.setResponseTimeMs(responseTimeMs);
+                logDTO.setResponseTimeMs(System.currentTimeMillis() - startTime);
                 logDTO.setModelName(getCurrentModel());
-                
-                // 保存 SQL 生成时间
                 logDTO.setSqlGenTimeMs(sqlGenTime);
-                logDTO.setGeneratedTimeMs(sqlGenTime);
-                
                 nlQueryLogService.logQuery(logDTO);
             }
         } catch (Exception e) {
@@ -178,29 +186,13 @@ public class NLQueryService extends BaseService {
         }
     }
     
-    /**
-     * 获取当前使用的模型名称（使用平台库）
-     */
     private String getCurrentModel() {
         String sql = "SELECT ACCESSKEYID FROM PRODUCT_APPKEY WHERE PLATFORM = 'ALI_QWEN'";
         List<Map<String, Object>> list = platformJdbcTemplate.queryForList(sql);
         if (list != null && !list.isEmpty()) {
             String model = (String) list.get(0).get("ACCESSKEYID");
-            if (model != null && !model.trim().isEmpty()) {
-                return model;
-            }
+            if (model != null && !model.trim().isEmpty()) return model;
         }
         throw new RuntimeException("PRODUCT_APPKEY 表中没有配置有效的模型");
-    }
-    
-    /**
-     * 获取或创建会话 ID
-     */
-    private String getSessionId() {
-        if (sessionId == null) {
-            sessionId = "SESSION_" + System.currentTimeMillis() + "_" + 
-                       UUID.randomUUID().toString().replace("-", "").substring(0, 9);
-        }
-        return sessionId;
     }
 }

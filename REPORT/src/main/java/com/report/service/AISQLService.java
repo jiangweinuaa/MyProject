@@ -193,16 +193,26 @@ public class AISQLService {
     private String modelSwitchMessage = null;
     
     /**
-     * 根据自然语言生成 SQL
+     * 根据自然语言生成 SQL（不带对话历史，兼容旧接口）
      * @param question 用户问题
      * @return SQL 语句
      */
     public String generateSQL(String question) {
+        return generateSQL(question, new java.util.ArrayList<>());
+    }
+    
+    /**
+     * 根据自然语言生成 SQL（带对话历史）
+     * @param question 用户问题
+     * @param history 对话历史
+     * @return SQL 语句
+     */
+    public String generateSQL(String question, List<com.report.dto.ConversationContext.Dialogue> history) {
         // 1. 读取表结构（使用商家库）
         String schema = getAllTablesSchema();
         
-        // 2. 构建 Prompt
-        String prompt = buildPrompt(schema, question);
+        // 2. 构建 Prompt（带对话历史）
+        String prompt = buildPromptWithHistory(schema, question, history);
         
         // 记录完整的 Prompt 到日志
         System.out.println("🤖 传递给大模型的完整 Prompt:");
@@ -235,11 +245,22 @@ public class AISQLService {
      * @return 修正后的 SQL
      */
     public String regenerateSQL(String question, String originalSQL) {
+        return regenerateSQL(question, originalSQL, new java.util.ArrayList<>());
+    }
+    
+    /**
+     * 重新生成 SQL（修正语法错误，带对话历史）
+     * @param question 用户问题
+     * @param originalSQL 原始失败的 SQL
+     * @param history 对话历史
+     * @return 修正后的 SQL
+     */
+    public String regenerateSQL(String question, String originalSQL, List<com.report.dto.ConversationContext.Dialogue> history) {
         // 1. 读取表结构（使用商家库）
         String schema = getAllTablesSchema();
         
-        // 2. 构建修正 Prompt
-        String prompt = buildPrompt(schema, question);
+        // 2. 构建修正 Prompt（带对话历史）
+        String prompt = buildPromptWithHistory(schema, question, history);
         prompt += "\n\n⚠️ 注意：以下 SQL 在 Oracle 11g 上执行失败，语法不正确：\n";
         prompt += "```sql\n" + originalSQL + "\n```\n";
         prompt += "\n请修正为 Oracle 11g 兼容的语法，注意：\n";
@@ -370,24 +391,42 @@ public class AISQLService {
     }
     
     /**
-     * 构建 Prompt
+     * 构建 Prompt（不带对话历史，兼容旧接口）
      */
     private String buildPrompt(String schema, String question) {
+        return buildPromptWithHistory(schema, question, new java.util.ArrayList<>());
+    }
+    
+    /**
+     * 构建带对话历史的 Prompt
+     */
+    private String buildPromptWithHistory(String schema, String question, 
+                                          List<com.report.dto.ConversationContext.Dialogue> history) {
         StringBuilder prompt = new StringBuilder();
         
         // 1. 角色定义（从数据库读取）
         prompt.append(getRoleDefinition());
         prompt.append("\n\n");
         
-        // 2. 表结构（动态获取）
+        // 2. 对话历史（如果有）
+        if (!history.isEmpty()) {
+            prompt.append("## 对话历史\n\n");
+            for (int i = 0; i < history.size(); i++) {
+                com.report.dto.ConversationContext.Dialogue d = history.get(i);
+                prompt.append(i + 1).append(". 用户：").append(d.question).append("\n");
+                prompt.append("   AI：").append(d.sql).append("\n\n");
+            }
+        }
+        
+        // 3. 当前问题
+        prompt.append("## 当前问题\n\n");
+        prompt.append(question).append("\n\n");
+        
+        // 4. 表结构（动态获取）
         prompt.append("## 数据库表结构\n\n");
         prompt.append(schema);
         
-        // 3. 用户问题（动态传入）
-        prompt.append("\n\n## 用户问题\n\n");
-        prompt.append(question);
-        
-        // 4. 要求（从数据库读取）
+        // 5. 要求（从数据库读取）
         prompt.append("\n\n## 要求\n\n");
         List<String> requirements = getRequirements();
         for (int i = 0; i < requirements.size(); i++) {
@@ -397,7 +436,13 @@ public class AISQLService {
                   .append("\n");
         }
         
-        // 5. 结尾
+        // 6. 特殊说明（仅在有历史时添加）
+        if (!history.isEmpty()) {
+            prompt.append("\n⚠️ 注意：请根据对话历史理解用户的意图，");
+            prompt.append("特别注意代词（如'它'、'这个'、'上周'等）的指代对象。\n");
+        }
+        
+        // 7. 结尾
         prompt.append("\n## SQL\n");
         
         return prompt.toString();

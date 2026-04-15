@@ -43,3 +43,12 @@ logging:
     com.report: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+
+# 会话配置
+conversation:
+  # 对话历史最大轮数
+  # 0 = 不使用对话历史（每个问题独立）
+  # 3 = 保留最近 3 轮（轻量级）
+  # 5 = 保留最近 5 轮（推荐）
+  # 10 = 保留最近 10 轮（完整历史）
+  max-history: 5
