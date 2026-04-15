@@ -36,17 +36,21 @@ public class NLQueryService extends BaseService {
     private static String sessionId = null;
     
     public Map<String, Object> query(String sessionId, String question) {
-        return query(sessionId, question, false);
+        return query(sessionId, question, null, false);
     }
     
     public Map<String, Object> query(String question) {
         if (sessionId == null) {
             sessionId = generateSessionId();
         }
-        return query(sessionId, question, false);
+        return query(sessionId, question, null, false);
     }
     
-    private Map<String, Object> query(String sessionId, String question, boolean isRetry) {
+    public Map<String, Object> query(String sessionId, String question, String token) {
+        return query(sessionId, question, token, false);
+    }
+    
+    private Map<String, Object> query(String sessionId, String question, String token, boolean isRetry) {
         if (question == null || question.trim().isEmpty()) {
             return error("问题不能为空");
         }
@@ -80,8 +84,11 @@ public class NLQueryService extends BaseService {
             
             // 保存对话到数据库（包含完整结果集）
             try {
-                // 使用默认用户（后续通过 NLQueryController 传递 token）
+                // 从 token 解析 OPNO（用户 ID，如果没有 token，使用 default_user）
                 String userId = "default_user";
+                if (token != null && !token.trim().isEmpty()) {
+                    userId = com.report.util.TokenUtil.getOpnoFromToken(platformJdbcTemplate, token);
+                }
                 
                 // 先保存会话（MERGE 模式，自动判断插入或更新）
                 String title = generateTitle(question);

@@ -19,30 +19,26 @@ public class NLQueryController {
     private NLQueryService nlQueryService;
     
     /**
-     * 自然语言查询（支持 sessionId）
+     * 自然语言查询（支持 sessionId 和 token）
      */
     @PostMapping(value = "/query", consumes = "application/json", produces = "application/json")
-    public Map<String, Object> query(@RequestBody Map<String, String> request) {
-        String sessionId = request.get("sessionId");
-        String question = request.get("question");
+    public Map<String, Object> query(@RequestBody Map<String, Object> request) {
+        String sessionId = request.get("sessionId") != null ? request.get("sessionId").toString() : null;
+        String question = request.get("question") != null ? request.get("question").toString() : null;
+        
+        // 获取 token（从 request 或 sign 对象）
+        String token = null;
+        if (request.get("token") != null) {
+            token = request.get("token").toString();
+        } else if (request.get("sign") instanceof Map) {
+            Map<?, ?> sign = (Map<?, ?>) request.get("sign");
+            token = sign.get("token") != null ? sign.get("token").toString() : null;
+        }
         
         if (sessionId != null && !sessionId.trim().isEmpty()) {
-            return nlQueryService.query(sessionId, question);
+            return nlQueryService.query(sessionId, question, token);
         } else {
-            return nlQueryService.query(question);
-        }
-    }
-    
-    /**
-     * 自然语言查询（兼容 form 提交）
-     */
-    @PostMapping(value = "/query", consumes = "application/x-www-form-urlencoded")
-    public Map<String, Object> queryForm(@RequestParam(required = false) String sessionId,
-                                         @RequestParam String question) {
-        if (sessionId != null && !sessionId.trim().isEmpty()) {
-            return nlQueryService.query(sessionId, question);
-        } else {
-            return nlQueryService.query(question);
+            return nlQueryService.query(question, token);
         }
     }
     

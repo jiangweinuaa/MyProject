@@ -13,7 +13,13 @@ request.interceptors.request.use(
     // 自动添加 token（从 localStorage 读取）
     const token = localStorage.getItem('token') || ''
     
-    // 如果请求体中有 sign 对象，统一添加 token
+    // GET 请求：添加到 params
+    if (config.method === 'get' && token) {
+      config.params = config.params || {}
+      config.params.token = token
+    }
+    
+    // POST/PUT 请求：如果请求体中有 sign 对象，统一添加 token
     if (config.data && config.data.sign) {
       config.data.sign.token = token
     }

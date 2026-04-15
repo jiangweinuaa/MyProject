@@ -153,6 +153,9 @@ import PieChart from '@/components/SmartQuery/PieChart.vue'
 import HorizontalBarChart from '@/components/SmartQuery/HorizontalBarChart.vue'
 import CompareBarChart from '@/components/SmartQuery/CompareBarChart.vue'
 
+// 导入 API
+import { getConversationList, getConversationHistory, nlQuery } from '@/api/smart-query'
+
 export default {
   name: 'SmartQuery',
   components: {
@@ -183,34 +186,19 @@ export default {
   methods: {
     async loadRecentHistory() {
       try {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://47.100.138.89:8110/api';
+        console.log('===== 智问页面加载历史记录 =====');
+        console.log('localStorage token:', localStorage.getItem('token') ? '有' : '无');
         
-        // 从 localStorage 获取 token
-        const token = localStorage.getItem('token') || '';
+        // 使用 API 模块（axios 会自动添加 token）
+        const response = await getConversationList({
+          page: 0,
+          size: 1
+        });
         
-        // 构建请求参数
-        const params = new URLSearchParams();
-        params.append('page', '0');
-        params.append('size', '1');
-        if (token) {
-          params.append('token', token);
-        }
+        console.log('会话列表响应:', response);
         
-        const url = `${baseUrl}/conversation/list?${params.toString()}`;
-        console.log('请求历史记录:', url);
-        
-        const response = await fetch(url);
-        console.log('响应状态:', response.status);
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        console.log('历史记录数据:', data);
-        
-        if (data.success && data.data.length > 0) {
-          const latestSession = data.data[0];
+        if (response.success && response.data && response.data.length > 0) {
+          const latestSession = response.data[0];
           this.sessionId = latestSession.sessionId;
           console.log('加载会话历史:', latestSession.sessionId);
           await this.loadSessionHistory(latestSession.sessionId);
@@ -224,23 +212,14 @@ export default {
     
     async loadSessionHistory(sessionId) {
       try {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://47.100.138.89:8110/api';
+        // 使用 API 模块（axios 会自动添加 token）
+        const response = await getConversationHistory({
+          sessionId: sessionId,
+          page: 0,
+          size: 50
+        });
         
-        // 从 localStorage 获取 token
-        const token = localStorage.getItem('token') || '';
-        
-        // 构建请求参数
-        const params = new URLSearchParams();
-        params.append('sessionId', sessionId);
-        params.append('page', '0');
-        params.append('size', '50');
-        if (token) {
-          params.append('token', token);
-        }
-        
-        const url = `${baseUrl}/conversation/history?${params.toString()}`;
-        const response = await fetch(url);
-        const data = await response.json();
+        console.log('会话历史响应:', response);
         
         if (data.success && data.data.length > 0) {
           this.hasHistory = true;
@@ -563,25 +542,13 @@ export default {
           this.sessionId = 'session_' + Date.now();
         }
         
-        // 从 localStorage 获取 token
-        const token = localStorage.getItem('token') || '';
+        console.log('发送问题，sessionId:', this.sessionId);
         
-        const params = new URLSearchParams()
-        if (this.sessionId) {
-          params.append('sessionId', this.sessionId);
-        }
-        params.append('question', userQuestion)
-        if (token) {
-          params.append('token', token);
-        }
-        
-        const response = await fetch('http://47.100.138.89:8110/api/nl-query/query', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded'
-          },
-          body: params
-        })
+        // 使用 API 模块（axios 会自动添加 token 到 sign.token）
+        const response = await nlQuery({
+          sessionId: this.sessionId,
+          question: userQuestion
+        });
         
         const data = await response.json()
         
