@@ -70,8 +70,8 @@ public class TokenUtil {
                         String opno = jsonStr.substring(opnoStart, opnoEnd);
                         opno = opno != null && !opno.isEmpty() ? opno : "default_user";
                         
-                        // 3. 更新缓存
-                        TOKEN_CACHE.put(token, new TokenCache(opno, System.currentTimeMillis() + CACHE_EXPIRE_MS));
+                        // 3. 更新缓存（使用不同的键：OPNO_前缀）
+                        TOKEN_CACHE.put("OPNO_" + token, new TokenCache(opno, System.currentTimeMillis() + CACHE_EXPIRE_MS));
                         
                         return opno;
                     }
@@ -95,8 +95,8 @@ public class TokenUtil {
             return "99";
         }
         
-        // 1. 检查缓存
-        TokenCache cache = TOKEN_CACHE.get(token);
+        // 1. 检查缓存（使用不同的键：EID_前缀）
+        TokenCache cache = TOKEN_CACHE.get("EID_" + token);
         if (cache != null && !cache.isExpired()) {
             return cache.eid;
         }
@@ -108,6 +108,7 @@ public class TokenUtil {
             
             if (result != null && result.get("JSON") != null) {
                 String jsonStr = result.get("JSON").toString();
+                System.out.println("✅ Token JSON: " + jsonStr);
                 // 解析 JSON 获取 EID
                 // JSON 格式：{"OPNO":"admin","EID":"99","IP":"unknown"}
                 if (jsonStr.contains("\"EID\"")) {
@@ -115,10 +116,11 @@ public class TokenUtil {
                     int eidEnd = jsonStr.indexOf("\"", eidStart);
                     if (eidEnd > eidStart) {
                         String eid = jsonStr.substring(eidStart, eidEnd);
+                        System.out.println("✅ 解析的 EID: " + eid);
                         eid = eid != null && !eid.isEmpty() ? eid : "99";
                         
-                        // 3. 更新缓存
-                        TOKEN_CACHE.put(token, new TokenCache(eid, System.currentTimeMillis() + CACHE_EXPIRE_MS));
+                        // 3. 更新缓存（使用不同的键：EID_前缀）
+                        TOKEN_CACHE.put("EID_" + token, new TokenCache(eid, System.currentTimeMillis() + CACHE_EXPIRE_MS));
                         
                         return eid;
                     }

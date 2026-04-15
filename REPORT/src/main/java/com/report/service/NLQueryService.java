@@ -129,7 +129,7 @@ public class NLQueryService extends BaseService {
                     if (token != null && !token.trim().isEmpty()) {
                         eid = com.report.util.TokenUtil.getEidFromToken(platformJdbcTemplate, token);
                     }
-                    String correctedSQL = aiSQLService.regenerateSQL(question, errorMsg, context.getHistory(), eid);
+                    String correctedSQL = aiSQLService.regenerateSQL(question, errorMsg, new java.util.ArrayList<>(), eid);
                     
                     if (!aiSQLService.validateSQL(correctedSQL)) {
                         return error("修正后的 SQL 不安全：" + correctedSQL);
@@ -224,13 +224,6 @@ public class NLQueryService extends BaseService {
                 logDTO.setResponseTimeMs(System.currentTimeMillis() - startTime);
                 logDTO.setModelName(getCurrentModel());
                 logDTO.setSqlGenTimeMs(sqlGenTime);
-                // 设置创建人（从 token 解析 OPNO）
-                if (token != null && !token.trim().isEmpty()) {
-                    String opno = com.report.util.TokenUtil.getOpnoFromToken(platformJdbcTemplate, token);
-                    logDTO.setCreatedBy(opno);
-                } else {
-                    logDTO.setCreatedBy("anonymous");
-                }
                 nlQueryLogService.logQuery(logDTO);
             }
         } catch (Exception e) {
