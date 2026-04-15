@@ -550,7 +550,6 @@ export default {
           question: userQuestion
         });
         
-        const data = await response.json()
         
         if (data.success) {
           let content = ''
