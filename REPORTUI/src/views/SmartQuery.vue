@@ -225,7 +225,7 @@ export default {
           this.hasHistory = true;
           
           // 后端按时间倒序返回（新的在前），需要反转为正序显示（旧的在上，新的在下）
-          const dialogues = data.data.reverse();
+          const dialogues = response.data.reverse();
           
           dialogues.forEach(dialogue => {
             this.messages.push({
@@ -550,30 +550,29 @@ export default {
           question: userQuestion
         });
         
-        
-        if (data.success) {
+        if (response.success) {
           let content = ''
           let chartData = null
           
-          if (data.data && data.data.length > 0) {
-            const headers = Object.keys(data.data[0])
+          if (response.data && response.data.length > 0) {
+            const headers = Object.keys(response.data[0])
             content += '| ' + headers.join(' | ') + ' |\n'
             content += '| ' + headers.map(() => '---').join(' | ') + ' |\n'
             
-            data.data.forEach(row => {
+            response.data.forEach(row => {
               const values = headers.map(h => row[h] !== null ? row[h] : '')
               content += '| ' + values.join(' | ') + ' |\n'
             })
             
             // 保存原始数据（用于图表显示）
-            chartData = data.data
+            chartData = response.data
           } else {
             content = '暂无数据'
           }
           
-          this.addMessage(content, 'bot', data.sql, chartData)
+          this.addMessage(content, 'bot', response.sql, chartData)
         } else {
-          this.addMessage('❌ ' + (data.message || '查询失败'), 'bot')
+          this.addMessage('❌ ' + (response.message || '查询失败'), 'bot')
         }
         
       } catch (error) {
