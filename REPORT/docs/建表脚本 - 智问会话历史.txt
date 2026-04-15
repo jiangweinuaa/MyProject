@@ -1,0 +1,88 @@
+============================================================
+智问会话历史表 - 建表 SQL（AI_前缀版本）
+创建时间：2026-04-15
+============================================================
+
+-- 1. 智问会话表
+CREATE TABLE AI_NL_CONVERSATION (
+    SESSION_ID VARCHAR2(100) PRIMARY KEY,
+    USER_ID VARCHAR2(100) DEFAULT 'default_user',
+    TITLE VARCHAR2(500),
+    CREATED_TIME DATE DEFAULT SYSDATE,
+    UPDATED_TIME DATE DEFAULT SYSDATE,
+    STATUS NUMBER DEFAULT 100
+);
+
+COMMENT ON TABLE AI_NL_CONVERSATION IS '智问会话表';
+COMMENT ON COLUMN AI_NL_CONVERSATION.SESSION_ID IS '会话 ID（主键）';
+COMMENT ON COLUMN AI_NL_CONVERSATION.USER_ID IS '用户 ID';
+COMMENT ON COLUMN AI_NL_CONVERSATION.TITLE IS '会话标题';
+COMMENT ON COLUMN AI_NL_CONVERSATION.CREATED_TIME IS '创建时间';
+COMMENT ON COLUMN AI_NL_CONVERSATION.UPDATED_TIME IS '最后更新时间';
+COMMENT ON COLUMN AI_NL_CONVERSATION.STATUS IS '状态：100=活跃，0=已结束';
+
+-- 2. 智问对话记录表（存储完整结果）
+CREATE TABLE AI_NL_DIALOGUE (
+    ID VARCHAR2(100) PRIMARY KEY,
+    SESSION_ID VARCHAR2(100),
+    QUESTION CLOB,
+    SQL_GENERATED CLOB,
+    RESULT_DATA CLOB,
+    ROW_COUNT NUMBER,
+    EXECUTION_TIME_MS NUMBER,
+    CREATED_TIME DATE DEFAULT SYSDATE,
+    CONSTRAINT FK_DIALOGUE_SESSION FOREIGN KEY (SESSION_ID) 
+        REFERENCES AI_NL_CONVERSATION(SESSION_ID) ON DELETE CASCADE
+);
+
+COMMENT ON TABLE AI_NL_DIALOGUE IS '智问对话记录表（存储完整结果）';
+COMMENT ON COLUMN AI_NL_DIALOGUE.ID IS '对话记录 ID';
+COMMENT ON COLUMN AI_NL_DIALOGUE.SESSION_ID IS '会话 ID';
+COMMENT ON COLUMN AI_NL_DIALOGUE.QUESTION IS '用户问题';
+COMMENT ON COLUMN AI_NL_DIALOGUE.SQL_GENERATED IS '生成的 SQL';
+COMMENT ON COLUMN AI_NL_DIALOGUE.RESULT_DATA IS '完整结果集（JSON）';
+COMMENT ON COLUMN AI_NL_DIALOGUE.ROW_COUNT IS '返回行数';
+COMMENT ON COLUMN AI_NL_DIALOGUE.EXECUTION_TIME_MS IS '执行耗时';
+COMMENT ON COLUMN AI_NL_DIALOGUE.CREATED_TIME IS '创建时间';
+
+-- 3. 索引
+CREATE INDEX IDX_AI_DIALOGUE_SESSION ON AI_NL_DIALOGUE(SESSION_ID, CREATED_TIME DESC);
+CREATE INDEX IDX_AI_CONVERSATION_USER ON AI_NL_CONVERSATION(USER_ID, UPDATED_TIME DESC);
+
+-- 4. 序列
+CREATE SEQUENCE SEQ_AI_DIALOGUE_ID START WITH 1 INCREMENT BY 1 NOCACHE;
+
+============================================================
+执行说明
+============================================================
+
+1. 使用 SQL Developer 或其他 Oracle 客户端工具
+2. 连接到数据库 (47.99.153.144:1521/posdb)
+3. 执行上述 SQL 脚本
+4. 验证表是否创建成功
+
+============================================================
+验证 SQL
+============================================================
+
+-- 检查表是否存在
+SELECT table_name, comments 
+FROM user_tables t 
+LEFT JOIN user_tab_comments c ON t.table_name = c.table_name
+WHERE table_name IN ('AI_NL_CONVERSATION', 'AI_NL_DIALOGUE');
+
+-- 检查索引
+SELECT index_name, table_name 
+FROM user_indexes 
+WHERE table_name IN ('AI_NL_CONVERSATION', 'AI_NL_DIALOGUE');
+
+-- 检查序列
+SELECT sequence_name FROM user_sequences 
+WHERE sequence_name = 'SEQ_AI_DIALOGUE_ID';
+
+============================================================
+文件位置
+============================================================
+
+完整 SQL 文件：/home/admin/.openclaw/workspace/REPORT/docs/01_智问会话历史表.sql
+GitHub 仓库：https://github.com/jiangweinuaa/MyProject

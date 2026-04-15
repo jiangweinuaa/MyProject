@@ -80,16 +80,17 @@ public class NLQueryService extends BaseService {
             
             // 保存对话到数据库（包含完整结果集）
             try {
+                // 先保存会话（MERGE 模式，自动判断插入或更新）
+                String title = generateTitle(question);
+                conversationRepository.saveConversation(sessionId, "default_user", title);
+                
+                // 再保存对话记录
                 String resultData = JSON.toJSONString(result);
                 conversationRepository.saveDialogue(sessionId, question, sql, resultData, result.size(), sqlExecTime);
                 
-                // 自动生成会话标题（第 1 轮对话）
-                if (context.getHistory().size() == 1) {
-                    String title = generateTitle(question);
-                    conversationRepository.saveConversation(sessionId, "default_user", title);
-                }
             } catch (Exception e) {
                 System.err.println("⚠️ 保存对话历史失败：" + e.getMessage());
+                e.printStackTrace();
                 // 不影响主流程
             }
             

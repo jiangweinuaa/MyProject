@@ -35,6 +35,11 @@ spring:
     time-zone: GMT+8
     serialization:
       write-dates-as-timestamps: false
+  
+  # Web 静态资源配置
+  web:
+    resources:
+      static-locations: classpath:/static/,file:/home/admin/.openclaw/workspace/REPORTUI/dist/
 
 # 日志配置
 logging:

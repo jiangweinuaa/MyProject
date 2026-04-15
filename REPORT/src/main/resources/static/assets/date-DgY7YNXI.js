@@ -1,0 +1,1 @@
+function e(){return new Date().toISOString().split("T")[0]}function n(){const t=new Date;return t.setDate(1),t.toISOString().split("T")[0]}function a(){return{startDate:n(),endDate:e()}}function r(t){return t?t.replace(/-/g,""):""}export{r as f,a as g};

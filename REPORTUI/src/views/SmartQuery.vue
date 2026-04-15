@@ -7,7 +7,7 @@
       </div>
       
       <div class="chat-messages" ref="messageContainer">
-        <div v-if="messages.length === 0" class="welcome-message">
+        <div v-if="messages.length === 0 && !hasHistory" class="welcome-message">
           <h2>你好！我是智问助手 👋</h2>
           <p>可以用自然语言查询数据，试试问我：</p>
           <div class="example-questions">
@@ -20,6 +20,11 @@
               {{ example }}
             </el-button>
           </div>
+        </div>
+        
+        <div v-if="messages.length === 0 && hasHistory" class="welcome-message">
+          <h2>欢迎回来！👋</h2>
+          <p>继续提问或查看上面的历史记录</p>
         </div>
         
         <div 
@@ -167,10 +172,109 @@ export default {
         '今天销售额是多少？',
         '本月销售额是多少？',
         '哪个商品卖得最好？'
-      ]
+      ],
+      hasHistory: false,
+      sessionId: null
     }
   },
+  mounted() {
+    this.loadRecentHistory();
+  },
   methods: {
+    async loadRecentHistory() {
+      try {
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://47.100.138.89:8110/api';
+        const url = `${baseUrl}/conversation/list?userId=default_user&page=0&size=1`;
+        console.log('请求历史记录:', url);
+        
+        const response = await fetch(url);
+        console.log('响应状态:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        console.log('历史记录数据:', data);
+        
+        if (data.success && data.data.length > 0) {
+          const latestSession = data.data[0];
+          this.sessionId = latestSession.sessionId;
+          console.log('加载会话历史:', latestSession.sessionId);
+          await this.loadSessionHistory(latestSession.sessionId);
+        } else {
+          console.log('无历史记录');
+        }
+      } catch (error) {
+        console.error('加载历史记录失败:', error.message || error);
+      }
+    },
+    
+    async loadSessionHistory(sessionId) {
+      try {
+        const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://47.100.138.89:8110/api';
+        const response = await fetch(`${baseUrl}/conversation/history?sessionId=${sessionId}&page=0&size=50`);
+        const data = await response.json();
+        
+        if (data.success && data.data.length > 0) {
+          this.hasHistory = true;
+          
+          // 后端按时间倒序返回（新的在前），需要反转为正序显示（旧的在上，新的在下）
+          const dialogues = data.data.reverse();
+          
+          dialogues.forEach(dialogue => {
+            this.messages.push({
+              type: 'user',
+              content: dialogue.question,
+              time: this.formatTime(dialogue.createdTime)
+            });
+            
+            let chartData = [];
+            try {
+              chartData = JSON.parse(dialogue.resultData);
+            } catch (e) {
+              console.error('解析结果数据失败:', e);
+            }
+            
+            this.messages.push({
+              type: 'bot',
+              content: `查询完成，共 ${dialogue.rowCount} 条数据`,
+              sql: dialogue.sqlGenerated,
+              data: chartData,
+              time: this.formatTime(dialogue.createdTime)
+            });
+          });
+          
+          // 滚动到底部（显示最新消息）
+          this.$nextTick(() => {
+            const container = this.$refs.messageContainer;
+            if (container) {
+              container.scrollTop = container.scrollHeight;
+            }
+          });
+        }
+      } catch (error) {
+        console.error('加载会话历史失败:', error);
+      }
+    },
+    
+    formatTime(dateStr) {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diff = now - date;
+      
+      if (diff < 60000) return '刚刚';
+      if (diff < 3600000) return Math.floor(diff / 60000) + '分钟前';
+      if (diff < 86400000) return Math.floor(diff / 3600000) + '小时前';
+      
+      return date.toLocaleDateString('zh-CN', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    },
     /**
      * 自动检测图表类型（返回数组，支持多图表）
      */
@@ -428,7 +532,15 @@ export default {
       this.loading = true
       
       try {
+        // 如果没有 sessionId，创建新的
+        if (!this.sessionId) {
+          this.sessionId = 'session_' + Date.now();
+        }
+        
         const params = new URLSearchParams()
+        if (this.sessionId) {
+          params.append('sessionId', this.sessionId);
+        }
         params.append('question', userQuestion)
         
         const response = await fetch('http://47.100.138.89:8110/api/nl-query/query', {
