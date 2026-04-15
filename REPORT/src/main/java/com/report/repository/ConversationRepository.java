@@ -29,7 +29,7 @@ public class ConversationRepository {
                      "WHEN MATCHED THEN UPDATE SET UPDATED_TIME = SYSDATE " +
                      "WHEN NOT MATCHED THEN INSERT (SESSION_ID, USER_ID, TITLE, CREATED_TIME, UPDATED_TIME) " +
                      "VALUES (?, ?, ?, SYSDATE, SYSDATE)";
-        jdbcTemplate.update(sql, sessionId, sessionId, userId, title);
+        jdbcTemplate.update(sql, sessionId, userId, title);
     }
     
     /**

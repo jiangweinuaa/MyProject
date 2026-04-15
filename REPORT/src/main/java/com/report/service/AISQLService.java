@@ -212,13 +212,8 @@ public class AISQLService {
         // 1. 读取表结构（使用商家库）
         String schema = getAllTablesSchema();
         
-        // 替换 [EID] 为真正的 EID
-        if (eid != null && !eid.trim().isEmpty()) {
-            schema = schema.replace("[EID]", eid);
-        }
-        
-        // 2. 构建 Prompt（带对话历史）
-        String prompt = buildPromptWithHistory(schema, question, history);
+        // 2. 构建 Prompt（带对话历史，并替换 [EID]）
+        String prompt = buildPromptWithHistory(schema, question, history, eid);
         
         // 记录完整的 Prompt 到日志
         System.out.println("🤖 传递给大模型的完整 Prompt:");
@@ -266,13 +261,8 @@ public class AISQLService {
         // 1. 读取表结构（使用商家库）
         String schema = getAllTablesSchema();
         
-        // 替换 [EID] 为真正的 EID
-        if (eid != null && !eid.trim().isEmpty()) {
-            schema = schema.replace("[EID]", eid);
-        }
-        
-        // 2. 构建修正 Prompt（带对话历史）
-        String prompt = buildPromptWithHistory(schema, question, history);
+        // 2. 构建修正 Prompt（带对话历史，并替换 [EID]）
+        String prompt = buildPromptWithHistory(schema, question, history, eid);
         prompt += "\n\n⚠️ 注意：以下 SQL 在 Oracle 11g 上执行失败，语法不正确：\n";
         prompt += "```sql\n" + originalSQL + "\n```\n";
         prompt += "\n请修正为 Oracle 11g 兼容的语法，注意：\n";
@@ -406,18 +396,23 @@ public class AISQLService {
      * 构建 Prompt（不带对话历史，兼容旧接口）
      */
     private String buildPrompt(String schema, String question) {
-        return buildPromptWithHistory(schema, question, new java.util.ArrayList<>());
+        return buildPromptWithHistory(schema, question, new java.util.ArrayList<>(), "99");
     }
     
     /**
      * 构建带对话历史的 Prompt
      */
     private String buildPromptWithHistory(String schema, String question, 
-                                          List<com.report.dto.ConversationContext.Dialogue> history) {
+                                          List<com.report.dto.ConversationContext.Dialogue> history,
+                                          String eid) {
         StringBuilder prompt = new StringBuilder();
         
-        // 1. 角色定义（从数据库读取）
-        prompt.append(getRoleDefinition());
+        // 1. 角色定义（从数据库读取，并替换 [EID]）
+        String roleDef = getRoleDefinition();
+        if (eid != null && !eid.trim().isEmpty()) {
+            roleDef = roleDef.replace("[EID]", eid);
+        }
+        prompt.append(roleDef);
         prompt.append("\n\n");
         
         // 2. 对话历史（如果有）
@@ -438,13 +433,17 @@ public class AISQLService {
         prompt.append("## 数据库表结构\n\n");
         prompt.append(schema);
         
-        // 5. 要求（从数据库读取）
+        // 5. 要求（从数据库读取，并替换 [EID]）
         prompt.append("\n\n## 要求\n\n");
         List<String> requirements = getRequirements();
         for (int i = 0; i < requirements.size(); i++) {
+            String req = requirements.get(i);
+            if (eid != null && !eid.trim().isEmpty()) {
+                req = req.replace("[EID]", eid);
+            }
             prompt.append((i + 1))
                   .append(". ")
-                  .append(requirements.get(i))
+                  .append(req)
                   .append("\n");
         }
         
