@@ -159,4 +159,30 @@ public class ConversationController {
             return response;
         }
     }
+    
+    /**
+     * 批量更新 userId（临时接口）
+     */
+    @GetMapping("/update-userid")
+    public Map<String, Object> updateUserId(
+            @RequestParam(defaultValue = "default_user") String from,
+            @RequestParam(defaultValue = "admin") String to) {
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            String sql = "UPDATE AI_NL_CONVERSATION SET USER_ID = ? WHERE USER_ID = ?";
+            int updated = jdbcTemplate.update(sql, to, from);
+            
+            response.put("success", true);
+            response.put("message", "更新成功");
+            response.put("updated", updated);
+            
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "更新失败：" + e.getMessage());
+        }
+        
+        return response;
+    }
 }

@@ -19,6 +19,11 @@ request.interceptors.request.use(
       config.params.token = token
     }
     
+    // POST/PUT 请求：添加 token 到 data 中
+    if (config.method === 'post' && token && config.data) {
+      config.data.token = token
+    }
+    
     // POST/PUT 请求：如果请求体中有 sign 对象，统一添加 token
     if (config.data && config.data.sign) {
       config.data.sign.token = token
