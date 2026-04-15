@@ -37,7 +37,15 @@ request.interceptors.response.use(
     const res = response.data
     
     // 根据后端返回格式处理
-    if (res.success === false || res.serviceStatus !== '000') {
+    // 智问 API 返回格式：{success: true/false, data: ...}
+    // 报表 API 返回格式：{success: true/false, serviceStatus: '000', ...}
+    if (res.success === false) {
+      ElMessage.error(res.message || res.serviceDescription || '请求失败')
+      return Promise.reject(new Error(res.message || res.serviceDescription || '请求失败'))
+    }
+    
+    // 兼容报表 API 的 serviceStatus 检查
+    if (res.serviceStatus && res.serviceStatus !== '000') {
       ElMessage.error(res.serviceDescription || '请求失败')
       return Promise.reject(new Error(res.serviceDescription || '请求失败'))
     }
