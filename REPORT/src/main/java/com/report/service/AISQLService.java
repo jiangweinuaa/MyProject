@@ -3,6 +3,7 @@ package com.report.service;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.report.config.MerchantDataSourceManager;
 import okhttp3.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -14,19 +15,26 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * AI SQL 生成服务
- * 调用通义千问 API 生成 SQL
+ * 
+ * 数据源使用规范：
+ * - 平台库：AI 配置（PRODUCT_APPKEY）、Prompt 配置、表结构过滤（AI_TABLE_FILTER）
+ * - 商家库：表结构读取（USER_TAB_COLUMNS）、SQL 执行
  */
 @Service
 public class AISQLService {
     
+    /**
+     * 平台 JdbcTemplate
+     * 用于：AI 配置、Prompt 配置、表结构过滤
+     */
     @Autowired
-    private JdbcTemplate jdbcTemplate;
-    
-    @Autowired
-    private SchemaService schemaService;
+    private JdbcTemplate platformJdbcTemplate;
     
     @Autowired
     private AIModelService aiModelService;
+    
+    @Autowired
+    private MerchantDataSourceManager dataSourceManager;
     
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
@@ -41,13 +49,74 @@ public class AISQLService {
     private static final long CACHE_TTL_MS = 60000; // 缓存 1 分钟
     
     /**
-     * 从数据库获取 API Key
+     * 获取商家 JdbcTemplate（用于表结构读取和 SQL 执行）
+     * @return 商家 JdbcTemplate
+     */
+    public JdbcTemplate getBusinessJdbcTemplate() {
+        JdbcTemplate merchantJdbc = dataSourceManager.getMerchantJdbcTemplate();
+        return merchantJdbc != null ? merchantJdbc : platformJdbcTemplate;
+    }
+    
+    /**
+     * 获取所有表结构（用于 AI 生成 SQL）
+     * 直接实现，避免循环依赖
+     */
+    private String getAllTablesSchema() {
+        StringBuilder schema = new StringBuilder();
+        
+        // 1. 查询过滤表中配置的表（使用平台库）
+        String tablesSql = "SELECT f.TABLE_NAME, f.TABLE_COMMENT FROM AI_TABLE_FILTER f WHERE f.ENABLED = 'Y' ORDER BY f.SORT_ORDER";
+        List<Map<String, Object>> tables = platformJdbcTemplate.queryForList(tablesSql);
+        
+        // 2. 获取商家 JdbcTemplate
+        JdbcTemplate businessJdbc = getBusinessJdbcTemplate();
+        
+        for (Map<String, Object> table : tables) {
+            String tableName = (String) table.get("TABLE_NAME");
+            String tableComment = (String) table.get("TABLE_COMMENT");
+            
+            schema.append("### 表：").append(tableName);
+            if (tableComment != null && !tableComment.isEmpty()) {
+                schema.append("（").append(tableComment).append("）");
+            }
+            schema.append("\n\n");
+            
+            // 3. 查询表的列（使用商家库）
+            String columnsSql = "SELECT c.COLUMN_NAME, c.DATA_TYPE, c.DATA_LENGTH, cm.COMMENTS, c.NULLABLE FROM USER_TAB_COLUMNS c LEFT JOIN USER_COL_COMMENTS cm ON c.TABLE_NAME = cm.TABLE_NAME AND c.COLUMN_NAME = cm.COLUMN_NAME WHERE c.TABLE_NAME = ? ORDER BY c.COLUMN_ID";
+            List<Map<String, Object>> columns = businessJdbc.queryForList(columnsSql, tableName);
+            
+            schema.append("| 字段名 | 类型 | 长度 | 注释 | 可空 |\n");
+            schema.append("|--------|------|------|------|------|\n");
+            
+            for (Map<String, Object> col : columns) {
+                String colName = (String) col.get("COLUMN_NAME");
+                String dataType = (String) col.get("DATA_TYPE");
+                Number dataLength = (Number) col.get("DATA_LENGTH");
+                String comment = (String) col.get("COMMENTS");
+                String nullable = (String) col.get("NULLABLE");
+                
+                schema.append("| ").append(colName);
+                schema.append(" | ").append(dataType);
+                schema.append(" | ").append(dataLength != null ? dataLength.intValue() : "");
+                schema.append(" | ").append(comment != null ? comment : "");
+                schema.append(" | ").append(nullable);
+                schema.append(" |\n");
+            }
+            
+            schema.append("\n");
+        }
+        
+        return schema.toString();
+    }
+    
+    /**
+     * 从数据库读取 API Key（使用平台库）
      * @return API Key
      */
     private String getApiKey() {
         try {
             String sql = "SELECT ACCESSKEYSECRET FROM PRODUCT_APPKEY WHERE PLATFORM = 'ALI_QWEN'";
-            List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
+            List<Map<String, Object>> list = platformJdbcTemplate.queryForList(sql);
             
             if (list != null && !list.isEmpty()) {
                 return (String) list.get(0).get("ACCESSKEYSECRET");
@@ -61,14 +130,14 @@ public class AISQLService {
     }
     
     /**
-     * 从数据库获取 AI 模型配置
+     * 从数据库获取 AI 模型配置（使用平台库）
      * @return 模型配置 Map（包含 model 和 apiEndpoint）
      */
     private Map<String, String> getAIModelConfig() {
         Map<String, String> config = new HashMap<>();
         
         String sql = "SELECT ACCESSKEYID, ACCESSKEYSECRET FROM PRODUCT_APPKEY WHERE PLATFORM = 'ALI_QWEN'";
-        List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
+        List<Map<String, Object>> list = platformJdbcTemplate.queryForList(sql);
         
         if (list == null || list.isEmpty()) {
             throw new RuntimeException("PRODUCT_APPKEY 表中没有配置 ALI_QWEN 的 API Key");
@@ -129,8 +198,8 @@ public class AISQLService {
      * @return SQL 语句
      */
     public String generateSQL(String question) {
-        // 1. 读取表结构
-        String schema = schemaService.getAllTables();
+        // 1. 读取表结构（使用商家库）
+        String schema = getAllTablesSchema();
         
         // 2. 构建 Prompt
         String prompt = buildPrompt(schema, question);
@@ -166,8 +235,8 @@ public class AISQLService {
      * @return 修正后的 SQL
      */
     public String regenerateSQL(String question, String originalSQL) {
-        // 1. 读取表结构
-        String schema = schemaService.getAllTables();
+        // 1. 读取表结构（使用商家库）
+        String schema = getAllTablesSchema();
         
         // 2. 构建修正 Prompt
         String prompt = buildPrompt(schema, question);
@@ -192,10 +261,8 @@ public class AISQLService {
         return sql;
     }
     
-
-    
     /**
-     * 从数据库读取角色定义（使用 CATEGORY = 'ROLE'）
+     * 从数据库读取角色定义（使用平台库）
      */
     private String getRoleDefinition() {
         if (roleDefinitionCache != null && (System.currentTimeMillis() - cacheTime) < CACHE_TTL_MS) {
@@ -204,7 +271,7 @@ public class AISQLService {
         
         try {
             String sql = "SELECT REQUIREMENT FROM AI_PROMPT_REQUIREMENTS WHERE CATEGORY = 'ROLE' AND ENABLED = 'Y' ORDER BY SORT_ORDER";
-            List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
+            List<Map<String, Object>> list = platformJdbcTemplate.queryForList(sql);
             
             StringBuilder roleDef = new StringBuilder();
             for (Map<String, Object> row : list) {
@@ -235,7 +302,7 @@ public class AISQLService {
     }
     
     /**
-     * 从数据库读取要求列表
+     * 从数据库读取要求列表（使用平台库）
      */
     private List<String> getRequirements() {
         if (requirementsCache != null && (System.currentTimeMillis() - cacheTime) < CACHE_TTL_MS) {
@@ -244,7 +311,7 @@ public class AISQLService {
         
         try {
             String sql = "SELECT REQUIREMENT FROM AI_PROMPT_REQUIREMENTS WHERE CATEGORY != 'ROLE' AND ENABLED = 'Y' ORDER BY SORT_ORDER";
-            List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
+            List<Map<String, Object>> list = platformJdbcTemplate.queryForList(sql);
             
             List<String> requirements = new ArrayList<>();
             for (Map<String, Object> row : list) {
@@ -337,7 +404,7 @@ public class AISQLService {
     }
     
     /**
-     * 调用 AI API（OpenAI 兼容模式）
+     * 调用 AI API（支持重试和模型切换）
      */
     private String callAI(String prompt) {
         return callAIWithRetry(prompt, false);
@@ -348,7 +415,7 @@ public class AISQLService {
      */
     private String callAIWithRetry(String prompt, boolean isRetry) {
         try {
-            // 从数据库获取模型配置
+            // 从数据库获取模型配置（使用平台库）
             Map<String, String> config = getAIModelConfig();
             String model = config.get("model");
             String apiKey = config.get("apiKey");
@@ -497,7 +564,7 @@ public class AISQLService {
             }
         }
         
-        // 3. 从 AI_TABLE_FILTER 表读取允许的表
+        // 3. 从 AI_TABLE_FILTER 表读取允许的表（使用平台库）
         String[] allowedTables = getAllowedTables();
         
         boolean hasAllowedTable = false;
@@ -516,12 +583,12 @@ public class AISQLService {
     }
     
     /**
-     * 从 AI_TABLE_FILTER 表读取允许的表
+     * 从 AI_TABLE_FILTER 表读取允许的表（使用平台库）
      * @return 允许的表名数组
      */
     private String[] getAllowedTables() {
         String sql = "SELECT TABLE_NAME FROM AI_TABLE_FILTER WHERE ENABLED = 'Y' ORDER BY SORT_ORDER";
-        List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
+        List<Map<String, Object>> list = platformJdbcTemplate.queryForList(sql);
         
         List<String> allowedTablesList = new ArrayList<>();
         for (Map<String, Object> row : list) {

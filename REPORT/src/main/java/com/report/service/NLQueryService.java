@@ -1,6 +1,7 @@
 package com.report.service;
 
 import com.report.dto.NLQueryLogDTO;
+import com.report.service.impl.BaseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -10,15 +11,16 @@ import java.util.*;
 
 /**
  * 自然语言查询服务（AI 版）
+ * 
+ * 数据源使用规范：
+ * - 平台库：AI 配置（PRODUCT_APPKEY）、日志记录（NL_QUERY_LOG）
+ * - 商家库：SQL 执行、表结构读取
  */
 @Service
-public class NLQueryService {
+public class NLQueryService extends BaseService {
     
     @Autowired
     private AISQLService aiSQLService;
-    
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
     
     @Autowired
     private NLQueryLogService nlQueryLogService;
@@ -51,7 +53,7 @@ public class NLQueryService {
         long sqlExecTime = 0;
         
         try {
-            // 1. 生成 SQL
+            // 1. 生成 SQL（使用平台库配置 + 商家库表结构）
             long sqlStart = System.currentTimeMillis();
             String sql = aiSQLService.generateSQL(question);
             sqlGenTime = System.currentTimeMillis() - sqlStart;
@@ -62,12 +64,13 @@ public class NLQueryService {
                 return error("生成的 SQL 不安全，已拒绝执行：" + sql);
             }
             
-            // 3. 执行 SQL
+            // 3. 执行 SQL（使用商家库）
             long sqlExecStart = System.currentTimeMillis();
-            List<Map<String, Object>> result = jdbcTemplate.queryForList(sql);
+            JdbcTemplate businessJdbc = aiSQLService.getBusinessJdbcTemplate();
+            List<Map<String, Object>> result = businessJdbc.queryForList(sql);
             sqlExecTime = System.currentTimeMillis() - sqlExecStart;
             
-            // 4. 记录日志
+            // 4. 记录日志（平台库）
             logQuery(question, sql, sql, isRetry, "SUCCESS", null, sqlGenTime, sqlExecTime, System.currentTimeMillis() - startTime);
             
             // 5. 返回结果
@@ -101,10 +104,11 @@ public class NLQueryService {
                         return error("修正后的 SQL 不安全，已拒绝执行：" + correctedSQL);
                     }
                     
-                    // 重试执行
+                    // 重试执行（使用商家库）
                     try {
                         long sqlExecStart = System.currentTimeMillis();
-                        List<Map<String, Object>> result = jdbcTemplate.queryForList(correctedSQL);
+                        JdbcTemplate businessJdbc = aiSQLService.getBusinessJdbcTemplate();
+                        List<Map<String, Object>> result = businessJdbc.queryForList(correctedSQL);
                         sqlExecTime = System.currentTimeMillis() - sqlExecStart;
                         
                         // 记录日志（成功，重试）
@@ -144,7 +148,7 @@ public class NLQueryService {
     }
     
     /**
-     * 记录查询日志
+     * 记录查询日志（使用平台库）
      */
     private void logQuery(String question, String generatedSql, String finalSql, 
                          Boolean isRetry, String status, String errorMessage, 
@@ -175,11 +179,11 @@ public class NLQueryService {
     }
     
     /**
-     * 获取当前使用的模型名称
+     * 获取当前使用的模型名称（使用平台库）
      */
     private String getCurrentModel() {
         String sql = "SELECT ACCESSKEYID FROM PRODUCT_APPKEY WHERE PLATFORM = 'ALI_QWEN'";
-        List<Map<String, Object>> list = jdbcTemplate.queryForList(sql);
+        List<Map<String, Object>> list = platformJdbcTemplate.queryForList(sql);
         if (list != null && !list.isEmpty()) {
             String model = (String) list.get(0).get("ACCESSKEYID");
             if (model != null && !model.trim().isEmpty()) {

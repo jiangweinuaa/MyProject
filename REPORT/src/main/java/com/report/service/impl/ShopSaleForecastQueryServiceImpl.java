@@ -13,24 +13,18 @@ import java.util.*;
 @Service("shopSaleForecastQueryService")
 public class ShopSaleForecastQueryServiceImpl extends BaseService {
     
-    @Autowired(required = false)
-    private JdbcTemplate jdbcTemplate;
-    
     /**
      * 查询准确性分析完整数据（一个接口返回所有数据）
      */
     public ServiceResponse queryAccuracyAnalysisFull(Map<String, Object> params) {
         ServiceResponse response = new ServiceResponse();
         
-        if (jdbcTemplate == null) {
-            response.setSuccess(false);
-            response.setServiceDescription("数据库未连接");
-            return response;
-        }
-        
         try {
-            // 从 token 解析 EID
-            String eid = resolveEid(jdbcTemplate, params);
+            // 业务数据从商家库读取（降级到平台库）
+            JdbcTemplate businessJdbc = resolveBusinessJdbcTemplate();
+            
+            // 从 token 解析 EID（使用平台库）
+            String eid = resolveEid(params);
             if (eid == null || eid.isEmpty()) {
                 response.setSuccess(false);
                 response.setServiceDescription("未找到用户信息，请重新登录");
@@ -41,8 +35,8 @@ public class ShopSaleForecastQueryServiceImpl extends BaseService {
             String startDate = getStringParam(params, "startDate", "");
             String endDate = getStringParam(params, "endDate", "");
             
-            // 1. 查询原始数据
-            List<Map<String, Object>> rawData = queryRawData(eid, shopId, startDate, endDate);
+            // 1. 查询原始数据（使用商家库）
+            List<Map<String, Object>> rawData = queryRawData(businessJdbc, eid, shopId, startDate, endDate);
             
             // 2. 构建返回结果
             Map<String, Object> result = new HashMap<>();
@@ -95,7 +89,7 @@ public class ShopSaleForecastQueryServiceImpl extends BaseService {
     /**
      * 查询原始数据（只查询销售额，不查询数量）
      */
-    private List<Map<String, Object>> queryRawData(String eid, String shopId, String startDate, String endDate) {
+    private List<Map<String, Object>> queryRawData(JdbcTemplate jdbc, String eid, String shopId, String startDate, String endDate) {
         StringBuilder sql = new StringBuilder();
         sql.append("select a.SALEDATE, ");
         sql.append("NVL(SUM(b.AMT), 0) as AMT, ");
@@ -131,7 +125,7 @@ public class ShopSaleForecastQueryServiceImpl extends BaseService {
             params.add(endDate);
         }
         
-        return jdbcTemplate.queryForList(sql.toString(), params.toArray());
+        return jdbc.queryForList(sql.toString(), params.toArray());
     }
     
     /**

@@ -43,7 +43,7 @@ public class DcpSaleQueryServiceImpl extends BaseService implements ReportServic
                 }
             }
 
-            String eid = resolveEid(jdbcTemplate, params);
+            String eid = resolveEid(params);
             
             // 构建动态 SQL - 门店号为空时不限制门店，考虑退货的正负号
             StringBuilder sqlBuilder = new StringBuilder();

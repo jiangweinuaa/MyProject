@@ -2,10 +2,9 @@ package com.report.service.impl.sales;
 
 import com.report.dto.ServiceResponse;
 import com.report.service.ReportService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.report.service.impl.BaseService;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import com.report.service.impl.BaseService;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,29 +18,15 @@ import java.util.Set;
 @Service("dayChannelQueryService")
 public class DayChannelQueryServiceImpl extends BaseService implements ReportService {
 
-    @Autowired(required = false)
-    private JdbcTemplate jdbcTemplate;
-
     @Override
     public ServiceResponse<?> execute(Map<String, Object> params, Integer pageNumber, Integer pageSize) {
-        if (jdbcTemplate == null) {
-            return ServiceResponse.error("500", "数据库未连接");
-        }
-
         try {
-            String startDate = "20250101";
-            String endDate = "20261231";
-
-            if (params != null) {
-                if (params.get("startDate") != null) {
-                    startDate = params.get("startDate").toString();
-                }
-                if (params.get("endDate") != null) {
-                    endDate = params.get("endDate").toString();
-                }
-            }
-
-            String eid = resolveEid(jdbcTemplate, params);
+            String startDate = getStringParam(params, "startDate", "20250101");
+            String endDate = getStringParam(params, "endDate", "20261231");
+            String eid = resolveEid(params);
+            
+            // 业务数据从商家库读取（降级到平台库）
+            JdbcTemplate businessJdbc = resolveBusinessJdbcTemplate();
             
             String sql = "select a.CHANNELID, a.BDATE as SALEDATE, " +
                     "SUM(case when a.type='1' or a.type='2' or a.type='4' then -(a.TOT_AMT) else (a.TOT_AMT) end) as AMOUNT, " +
@@ -55,7 +40,7 @@ public class DayChannelQueryServiceImpl extends BaseService implements ReportSer
                     "where a.EID = ? AND a.BDATE >= ? AND a.BDATE <= ? " +
                     "group by a.BDATE, a.CHANNELID)";
 
-            Map<String, Object> pageData = buildPaginatedResult(sql, pageNumber, pageSize, countSql, eid, startDate, endDate);
+            Map<String, Object> pageData = buildPaginatedResult(businessJdbc, sql, countSql, pageNumber, pageSize, eid, startDate, endDate);
             List<Map<String, Object>> resultList = (List<Map<String, Object>>) pageData.get("list");
 
             double totalAmount = 0;
@@ -108,44 +93,5 @@ public class DayChannelQueryServiceImpl extends BaseService implements ReportSer
             e.printStackTrace();
             return ServiceResponse.error("500", "查询失败：" + e.getMessage());
         }
-    }
-
-    private Map<String, Object> buildPaginatedResult(String sql, Integer pageNumber, Integer pageSize, 
-                                                      String countSql, Object... sqlParams) {
-        Map<String, Object> result = new HashMap<>();
-        
-        boolean needPagination = pageNumber != null && pageSize != null && pageNumber > 0 && pageSize > 0;
-        
-        if (needPagination) {
-            int totalRecords = jdbcTemplate.queryForObject(countSql, Integer.class, sqlParams);
-            int totalPages = (int) Math.ceil((double) totalRecords / pageSize);
-            
-            if (pageNumber > totalPages) {
-                pageNumber = totalPages > 0 ? totalPages : 1;
-            }
-            
-            int startRow = (pageNumber - 1) * pageSize + 1;
-            int endRow = pageNumber * pageSize;
-            
-            String paginatedSql = "select * from ( SELECT rownum as NUM, ALLTABLE.* FROM ( " + sql + " ) ALLTABLE ) where NUM >= " + startRow + " AND NUM <= " + endRow;
-            
-            List<Map<String, Object>> resultList = jdbcTemplate.queryForList(paginatedSql, sqlParams);
-            
-            result.put("list", resultList);
-            result.put("totalRecords", totalRecords);
-            result.put("totalPages", totalPages);
-            result.put("pageNumber", pageNumber);
-            result.put("pageSize", pageSize);
-        } else {
-            List<Map<String, Object>> resultList = jdbcTemplate.queryForList(sql, sqlParams);
-            
-            result.put("list", resultList);
-            result.put("totalRecords", resultList.size());
-            result.put("totalPages", resultList.size() > 0 ? 1 : 0);
-            result.put("pageNumber", 1);
-            result.put("pageSize", 0);
-        }
-        
-        return result;
     }
 }
