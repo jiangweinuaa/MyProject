@@ -1,6 +1,25 @@
 <template>
   <div class="prompt-config-page">
     <div class="config-container">
+      <!-- 模型管理 -->
+      <el-card class="config-card" shadow="hover">
+        <template #header>
+          <div class="card-header">
+            <span>🤖 当前使用模型</span>
+            <el-button type="primary" size="small" @click="showModelSwitchDialog">
+              切换模型
+            </el-button>
+          </div>
+        </template>
+        
+        <div class="current-model-display">
+          <el-tag size="large" type="success">
+            🟢 {{ currentModel || '加载中...' }}
+          </el-tag>
+          <span class="model-desc">点击"切换模型"可更换为其他可用模型</span>
+        </div>
+      </el-card>
+
       <!-- 角色定义 -->
       <el-card class="config-card" shadow="hover">
         <template #header>
@@ -187,6 +206,49 @@
         <el-button type="primary" @click="saveTableFilter" :loading="savingTable">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 模型切换对话框 -->
+    <el-dialog
+      v-model="modelDialogVisible"
+      title="切换模型"
+      width="800px"
+    >
+      <el-alert
+        title="模型状态说明"
+        type="info"
+        :closable="false"
+        show-icon
+        style="margin-bottom: 15px"
+      >
+        🟢 可用（STATUS=100）：可正常切换使用 | 🔴 已耗尽（STATUS=403）：Token 已用完，不可切换
+      </el-alert>
+      
+      <el-table :data="modelList" style="width: 100%" border stripe>
+        <el-table-column prop="MODEL_NAME" label="模型名称" width="200" />
+        <el-table-column prop="MODEL_ID" label="模型 ID" min-width="280" />
+        <el-table-column prop="SORT_ORDER" label="排序" width="80" />
+        <el-table-column label="状态" width="120">
+          <template #default="{ row }">
+            <el-tag :type="row.STATUS === '100' || row.STATUS === 100 ? 'success' : 'danger'" size="small">
+              {{ row.STATUS === '100' || row.STATUS === 100 ? '🟢 可用' : '🔴 已耗尽' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="140" fixed="right">
+          <template #default="{ row }">
+            <el-button 
+              type="primary" 
+              size="small"
+              :disabled="row.STATUS !== '100' && row.STATUS !== 100"
+              :loading="switchingModel && switchingModelId === row.MODEL_ID"
+              @click="switchToModel(row)"
+            >
+              {{ currentModel === row.MODEL_ID ? '当前使用' : '切换到此模型' }}
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
@@ -215,6 +277,13 @@ const tableDialogVisible = ref(false)
 const isEditTable = ref(false)
 const savingTable = ref(false)
 
+// 模型管理
+const currentModel = ref('')
+const modelList = ref([])
+const modelDialogVisible = ref(false)
+const switchingModel = ref(false)
+const switchingModelId = ref('')
+
 // 表单数据
 const formData = ref({
   requirement: '',
@@ -242,6 +311,66 @@ const getCategoryType = (category) => {
     'PERFORMANCE': 'success'
   }
   return types[category] || ''
+}
+
+// 加载当前模型
+const loadCurrentModel = async () => {
+  try {
+    const res = await fetch('http://47.100.138.89:8110/api/ai-model/current')
+    const data = await res.json()
+    if (data.success) {
+      currentModel.value = data.data || ''
+    }
+  } catch (error) {
+    console.error('加载当前模型失败:', error)
+  }
+}
+
+// 加载模型列表
+const loadModelList = async () => {
+  try {
+    const res = await fetch('http://47.100.138.89:8110/api/ai-model/list')
+    const data = await res.json()
+    if (data.success) {
+      modelList.value = data.data || []
+    }
+  } catch (error) {
+    ElMessage.error('加载模型列表失败：' + error.message)
+  }
+}
+
+// 显示模型切换对话框
+const showModelSwitchDialog = async () => {
+  await loadModelList()
+  modelDialogVisible.value = true
+}
+
+// 切换到指定模型
+const switchToModel = async (row) => {
+  switchingModel.value = true
+  switchingModelId.value = row.MODEL_ID
+  try {
+    const res = await fetch('http://47.100.138.89:8110/api/ai-model/switch', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ modelId: row.MODEL_ID })
+    })
+    const data = await res.json()
+    if (data.success) {
+      ElMessage.success('✅ 已切换到 ' + row.MODEL_NAME)
+      currentModel.value = row.MODEL_ID
+      modelDialogVisible.value = false
+      // 刷新 Prompt 缓存
+      await refreshCache()
+    } else {
+      ElMessage.error('切换失败：' + data.message)
+    }
+  } catch (error) {
+    ElMessage.error('切换失败：' + error.message)
+  } finally {
+    switchingModel.value = false
+    switchingModelId.value = ''
+  }
 }
 
 // 加载角色定义
@@ -471,6 +600,7 @@ const deleteTableFilter = async (tableName) => {
 }
 
 onMounted(() => {
+  loadCurrentModel()
   loadRoleRequirements()
   loadTableFilter()
 })
@@ -501,5 +631,22 @@ onMounted(() => {
 .card-header span {
   font-size: 16px;
   font-weight: bold;
+}
+
+.current-model-display {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 10px 0;
+}
+
+.current-model-display .el-tag {
+  font-size: 16px;
+  padding: 8px 16px;
+}
+
+.model-desc {
+  color: #666;
+  font-size: 14px;
 }
 </style>

@@ -8,6 +8,7 @@ import com.report.service.impl.ServiceRouter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -23,6 +24,12 @@ public class ServiceController {
 
     @Autowired(required = false)
     private LoginService loginService;
+
+    @Autowired(required = false)
+    private com.report.service.AIModelService aiModelService;
+
+    @Autowired(required = false)
+    private org.springframework.jdbc.core.JdbcTemplate platformJdbcTemplate;
 
     /**
      * 统一服务入口
@@ -151,6 +158,63 @@ public class ServiceController {
     @GetMapping("/health")
     public ServiceResponse<?> health() {
         return ServiceResponse.success("OK", "服务运行正常");
+    }
+
+    /**
+     * 获取当前使用的模型
+     * GET /api/ai-model/current
+     */
+    @GetMapping("/ai-model/current")
+    public ServiceResponse<?> getCurrentModel() {
+        try {
+            String sql = "SELECT ACCESSKEYID FROM PRODUCT_APPKEY WHERE PLATFORM = 'ALI_QWEN'";
+            List<Map<String, Object>> list = platformJdbcTemplate.queryForList(sql);
+            if (list != null && !list.isEmpty()) {
+                String model = (String) list.get(0).get("ACCESSKEYID");
+                return ServiceResponse.success(model != null ? model : "", "获取成功");
+            }
+            return ServiceResponse.success("", "获取成功");
+        } catch (Exception e) {
+            return ServiceResponse.error("500", "获取当前模型失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 获取模型列表
+     * GET /api/ai-model/list
+     */
+    @GetMapping("/ai-model/list")
+    public ServiceResponse<?> getModelList() {
+        try {
+            if (aiModelService == null) {
+                return ServiceResponse.error("500", "模型服务未初始化");
+            }
+            List<Map<String, Object>> list = aiModelService.getModelList();
+            return ServiceResponse.success(list, "获取成功");
+        } catch (Exception e) {
+            return ServiceResponse.error("500", "获取模型列表失败：" + e.getMessage());
+        }
+    }
+
+    /**
+     * 切换模型
+     * PUT /api/ai-model/switch
+     */
+    @PutMapping("/ai-model/switch")
+    public ServiceResponse<?> switchModel(@RequestBody Map<String, Object> params) {
+        try {
+            String newModel = params.get("modelId") != null ? params.get("modelId").toString() : null;
+            if (newModel == null || newModel.trim().isEmpty()) {
+                return ServiceResponse.error("400", "模型 ID 不能为空");
+            }
+            
+            String sql = "UPDATE PRODUCT_APPKEY SET ACCESSKEYID = ? WHERE PLATFORM = 'ALI_QWEN'";
+            platformJdbcTemplate.update(sql, newModel);
+            
+            return ServiceResponse.success(newModel, "切换成功");
+        } catch (Exception e) {
+            return ServiceResponse.error("500", "切换模型失败：" + e.getMessage());
+        }
     }
 
     /**
