@@ -1,7 +1,9 @@
 package com.report.service;
 
+import com.alibaba.fastjson2.JSON;
 import com.report.dto.ConversationContext;
 import com.report.dto.NLQueryLogDTO;
+import com.report.repository.ConversationRepository;
 import com.report.service.impl.BaseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
@@ -27,6 +29,9 @@ public class NLQueryService extends BaseService {
     
     @Autowired
     private QuestionEnhancer questionEnhancer;
+    
+    @Autowired
+    private ConversationRepository conversationRepository;
     
     private static String sessionId = null;
     
@@ -72,6 +77,21 @@ public class NLQueryService extends BaseService {
             contextManager.addDialogue(sessionId, question, sql);
             extractAndUpdateVariables(sessionId, sql);
             logQuery(question, sql, isRetry, "SUCCESS", null, sqlGenTime, sqlExecTime, startTime);
+            
+            // 保存对话到数据库（包含完整结果集）
+            try {
+                String resultData = JSON.toJSONString(result);
+                conversationRepository.saveDialogue(sessionId, question, sql, resultData, result.size(), sqlExecTime);
+                
+                // 自动生成会话标题（第 1 轮对话）
+                if (context.getHistory().size() == 1) {
+                    String title = generateTitle(question);
+                    conversationRepository.saveConversation(sessionId, "default_user", title);
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ 保存对话历史失败：" + e.getMessage());
+                // 不影响主流程
+            }
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -154,6 +174,10 @@ public class NLQueryService extends BaseService {
     
     private String generateSessionId() {
         return "SESSION_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().replace("-", "").substring(0, 9);
+    }
+    
+    private String generateTitle(String question) {
+        return question.length() > 30 ? question.substring(0, 30) + "..." : question;
     }
     
     private Map<String, Object> error(String message) {
