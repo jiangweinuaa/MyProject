@@ -24,7 +24,7 @@ public class ConversationRepository {
      * 保存会话
      */
     public void saveConversation(String sessionId, String userId, String title) {
-        String sql = "MERGE INTO NL_CONVERSATION c " +
+        String sql = "MERGE INTO AI_NL_CONVERSATION c " +
                      "USING DUAL ON (c.SESSION_ID = ?) " +
                      "WHEN MATCHED THEN UPDATE SET UPDATED_TIME = SYSDATE " +
                      "WHEN NOT MATCHED THEN INSERT (SESSION_ID, USER_ID, TITLE, CREATED_TIME, UPDATED_TIME) " +
@@ -37,7 +37,7 @@ public class ConversationRepository {
      */
     public void saveDialogue(String sessionId, String question, String sql, String resultData, int rowCount, long executionTimeMs) {
         String id = UUID.randomUUID().toString().replace("-", "");
-        String insertSql = "INSERT INTO NL_DIALOGUE (ID, SESSION_ID, QUESTION, SQL_GENERATED, RESULT_DATA, ROW_COUNT, EXECUTION_TIME_MS, CREATED_TIME) " +
+        String insertSql = "INSERT INTO AI_NL_DIALOGUE (ID, SESSION_ID, QUESTION, SQL_GENERATED, RESULT_DATA, ROW_COUNT, EXECUTION_TIME_MS, CREATED_TIME) " +
                           "VALUES (?, ?, ?, ?, ?, ?, ?, SYSDATE)";
         jdbcTemplate.update(insertSql, id, sessionId, question, sql, resultData, rowCount, executionTimeMs);
     }
@@ -52,7 +52,7 @@ public class ConversationRepository {
         String sql = "SELECT * FROM (" +
                      "  SELECT d.*, ROWNUM rn FROM (" +
                      "    SELECT ID, SESSION_ID, QUESTION, SQL_GENERATED, RESULT_DATA, ROW_COUNT, EXECUTION_TIME_MS, CREATED_TIME " +
-                     "    FROM NL_DIALOGUE " +
+                     "    FROM AI_NL_DIALOGUE " +
                      "    WHERE SESSION_ID = ? " +
                      "    ORDER BY CREATED_TIME DESC" +
                      "  ) d WHERE ROWNUM <= ?" +
@@ -67,7 +67,7 @@ public class ConversationRepository {
      * 获取对话总数
      */
     public int getDialogueCount(String sessionId) {
-        String sql = "SELECT COUNT(*) FROM NL_DIALOGUE WHERE SESSION_ID = ?";
+        String sql = "SELECT COUNT(*) FROM AI_NL_DIALOGUE WHERE SESSION_ID = ?";
         return jdbcTemplate.queryForObject(sql, Integer.class, sessionId);
     }
     
@@ -81,8 +81,8 @@ public class ConversationRepository {
         String sql = "SELECT * FROM (" +
                      "  SELECT c.*, ROWNUM rn FROM (" +
                      "    SELECT SESSION_ID, USER_ID, TITLE, CREATED_TIME, UPDATED_TIME, STATUS," +
-                     "           (SELECT COUNT(*) FROM NL_DIALOGUE d WHERE d.SESSION_ID = c.SESSION_ID) as DIALOGUE_COUNT " +
-                     "    FROM NL_CONVERSATION c " +
+                     "           (SELECT COUNT(*) FROM AI_NL_DIALOGUE d WHERE d.SESSION_ID = c.SESSION_ID) as DIALOGUE_COUNT " +
+                     "    FROM AI_NL_CONVERSATION c " +
                      "    WHERE USER_ID = ? AND STATUS = 100 " +
                      "    ORDER BY UPDATED_TIME DESC" +
                      "  ) c WHERE ROWNUM <= ?" +
@@ -106,7 +106,7 @@ public class ConversationRepository {
      * 获取会话总数
      */
     public int getConversationCount(String userId) {
-        String sql = "SELECT COUNT(*) FROM NL_CONVERSATION WHERE USER_ID = ? AND STATUS = 100";
+        String sql = "SELECT COUNT(*) FROM AI_NL_CONVERSATION WHERE USER_ID = ? AND STATUS = 100";
         return jdbcTemplate.queryForObject(sql, Integer.class, userId);
     }
     
@@ -115,7 +115,7 @@ public class ConversationRepository {
      */
     public void deleteConversation(String sessionId) {
         // 外键会级联删除对话记录
-        String sql = "DELETE FROM NL_CONVERSATION WHERE SESSION_ID = ?";
+        String sql = "DELETE FROM AI_NL_CONVERSATION WHERE SESSION_ID = ?";
         jdbcTemplate.update(sql, sessionId);
     }
     
@@ -123,7 +123,7 @@ public class ConversationRepository {
      * 更新会话标题
      */
     public void updateConversationTitle(String sessionId, String title) {
-        String sql = "UPDATE NL_CONVERSATION SET TITLE = ?, UPDATED_TIME = SYSDATE WHERE SESSION_ID = ?";
+        String sql = "UPDATE AI_NL_CONVERSATION SET TITLE = ?, UPDATED_TIME = SYSDATE WHERE SESSION_ID = ?";
         jdbcTemplate.update(sql, title, sessionId);
     }
     
