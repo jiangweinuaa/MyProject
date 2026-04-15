@@ -7,32 +7,31 @@
       </div>
       
       <div class="chat-messages" ref="messageContainer">
-        <div v-if="messages.length === 0 && !hasHistory" class="welcome-message">
-          <h2>你好！我是智问助手 👋</h2>
-          <p>可以用自然语言查询数据，试试问我：</p>
-          <div class="example-questions">
-            <el-button 
-              v-for="(example, index) in examples" 
-              :key="index"
-              size="small"
-              @click="askExample(example)"
-            >
-              {{ example }}
-            </el-button>
-          </div>
-        </div>
-        
-        <div v-if="messages.length === 0 && hasHistory" class="welcome-message">
-          <h2>欢迎回来！👋</h2>
-          <p>继续提问或查看上面的历史记录</p>
-        </div>
-        
+        <!-- 聊天记录 -->
         <div 
           v-for="(msg, index) in messages" 
           :key="index" 
-          :class="['message', msg.type]"
+          :class="['message', msg.type, msg.isWelcome ? 'welcome-message' : '']"
         >
           <div class="message-content">
+            <!-- 欢迎语特殊显示 -->
+            <div v-if="msg.isWelcome">
+              <h2>{{ msg.content }}</h2>
+              <p>可以用自然语言查询数据，试试问我：</p>
+              <div class="example-questions">
+                <el-button 
+                  v-for="(example, index) in examples" 
+                  :key="index"
+                  size="small"
+                  @click="askExample(example)"
+                >
+                  {{ example }}
+                </el-button>
+              </div>
+            </div>
+            
+            <!-- 普通消息显示 -->
+            <template v-else>
             <!-- SQL 代码块已隐藏 -->
             <!-- <pre v-if="msg.sql" class="sql-block">{{ msg.sql }}</pre> -->
             
@@ -110,6 +109,7 @@
             </div>
             
             <div class="text-content" v-html="formatContent(msg.content)"></div>
+            </template>
           </div>
           <div class="message-time">{{ msg.time }}</div>
         </div>
@@ -203,7 +203,15 @@ export default {
           console.log('加载会话历史:', latestSession.sessionId);
           await this.loadSessionHistory(latestSession.sessionId);
         } else {
-          console.log('无历史记录');
+          // 没有历史记录，只添加欢迎语
+          this.messages.push({
+            type: 'bot',
+            isWelcome: true,
+            content: '你好！我是智问助手 👋',
+            sql: '',
+            data: null,
+            time: this.now()
+          });
         }
       } catch (error) {
         console.error('加载历史记录失败:', error.message || error);
@@ -250,12 +258,14 @@ export default {
             });
           });
           
-          // 滚动到底部（显示最新消息）
-          this.$nextTick(() => {
-            const container = this.$refs.messageContainer;
-            if (container) {
-              container.scrollTop = container.scrollHeight;
-            }
+          // 最后添加欢迎语（在最后面，会被新消息推着往上走）
+          this.messages.push({
+            type: 'bot',
+            isWelcome: true,
+            content: '你好！我是智问助手 👋',
+            sql: '',
+            data: null,
+            time: this.now()
           });
         }
       } catch (error) {
@@ -507,11 +517,6 @@ export default {
         data,
         time: this.now()
       })
-      this.$nextTick(() => {
-        if (this.$refs.messageContainer) {
-          this.$refs.messageContainer.scrollTop = this.$refs.messageContainer.scrollHeight
-        }
-      })
     },
     
     askExample(question) {
@@ -650,18 +655,25 @@ export default {
 
 .welcome-message {
   text-align: center;
-  padding: 60px 20px;
-  color: #666;
+  padding: 20px;
+  background: #f0f2f5;
+  border-radius: 8px;
+  margin-bottom: 20px;
 }
 
 .welcome-message h2 {
-  font-size: 20px;
-  margin-bottom: 15px;
+  font-size: 18px;
+  margin-bottom: 10px;
   color: #333;
 }
 
+.welcome-message p {
+  color: #666;
+  margin-bottom: 15px;
+}
+
 .example-questions {
-  margin-top: 30px;
+  margin-top: 15px;
 }
 
 .example-questions .el-button {
