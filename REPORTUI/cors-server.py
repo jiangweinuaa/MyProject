@@ -27,6 +27,12 @@ class CORSHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Expires', '0')
         super().serve_file(path, content_type)
     
+    def do_GET(self):
+        # Vue Router History 模式支持：所有路径都返回 index.html
+        if not self.path.startswith('/assets/') and not self.path.endswith(('.js', '.css', '.png', '.jpg', '.svg', '.ico')):
+            self.path = '/index.html'
+        return http.server.SimpleHTTPRequestHandler.do_GET(self)
+    
     def do_OPTIONS(self):
         self.send_response(200)
         self.end_headers()
