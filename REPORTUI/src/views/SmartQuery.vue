@@ -130,7 +130,7 @@
       <div class="chat-input">
         <input
           ref="inputRef"
-          :value="question"
+          :value="inputValue"
           placeholder="问我：今天销售额是多少？"
           @compositionstart="isComposing = true"
           @compositionend="handleCompositionEnd"
@@ -180,6 +180,7 @@ export default {
   data() {
     return {
       question: '',
+      inputValue: '',  // 输入框的临时值（避免响应式强制同步）
       loading: false,
       messages: [],
       isComposing: false,  // 中文输入法状态
@@ -556,17 +557,25 @@ export default {
     },
     
     handleInput(e) {
-      // 中文输入期间不更新 question，避免拼音上屏
+      // 始终更新 inputValue（输入框显示值）
+      this.inputValue = e.target.value
+      
+      // 中文输入期间不更新 question（不触发响应式）
       if (this.isComposing) return
+      
+      // 非中文输入时同步到 question
       this.question = e.target.value
     },
     
     handleCompositionEnd(e) {
       this.isComposing = false
+      // compositionend 时同步最终值
+      this.inputValue = e.target.value
       this.question = e.target.value
     },
     
     askExample(question) {
+      this.inputValue = question
       this.question = question
       this.send()
     },
@@ -580,11 +589,13 @@ export default {
     },
     
     async send() {
-      if (!this.question.trim() || this.loading) return
+      const questionToSend = this.inputValue.trim()
+      if (!questionToSend || this.loading) return
       
-      const userQuestion = this.question.trim()
+      const userQuestion = questionToSend
       
       this.addMessage(userQuestion, 'user')
+      this.inputValue = ''
       this.question = ''
       this.loading = true
       
