@@ -126,12 +126,20 @@
       
       <div class="chat-input">
         <input
-          v-model="question"
+          ref="inputRef"
+          :value="question"
           type="text"
           placeholder="问我：今天销售额是多少？"
-          @keyup.enter="send"
+          @input="handleInput"
+          @keydown.enter.prevent="send"
+          @compositionstart="isComposing = true"
+          @compositionend="handleCompositionEnd"
           :disabled="loading"
           class="native-input"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+          inputmode="text"
         />
         <button 
           type="button" 
@@ -173,6 +181,7 @@ export default {
       question: '',
       loading: false,
       messages: [],
+      isComposing: false,  // 中文输入法状态
       examples: [
         '今天销售额是多少？',
         '昨天销售额是多少？',
@@ -550,6 +559,17 @@ export default {
       });
     },
     
+    handleInput(e) {
+      // 中文输入期间不更新，等 compositionend
+      if (this.isComposing) return
+      this.question = e.target.value
+    },
+    
+    handleCompositionEnd(e) {
+      this.isComposing = false
+      this.question = e.target.value
+    },
+    
     askExample(question) {
       this.question = question
       this.send()
@@ -842,7 +862,6 @@ export default {
   border-radius: 4px;
   font-size: 14px;
   outline: none;
-  transition: border-color 0.2s;
 }
 
 .native-input:focus {
