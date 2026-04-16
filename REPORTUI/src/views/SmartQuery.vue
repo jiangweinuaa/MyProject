@@ -191,6 +191,42 @@ export default {
         
         if (response.success && response.data && response.data.length > 0) {
           const latestSession = response.data[0];
+          // 检查会话的 userId 是否与当前 token 一致
+          const currentToken = localStorage.getItem('token') || '';
+          if (currentToken) {
+            try {
+              const tokenData = JSON.parse(atob(currentToken.split('.')[0] || '{}'));
+              const currentOpno = tokenData.OPNO || 'unknown';
+              if (latestSession.userId !== currentOpno) {
+                // userId 不匹配，创建新会话
+                console.log('userId 不匹配，创建新会话');
+                this.sessionId = 'session_' + Date.now();
+                this.messages.push({
+                  type: 'bot',
+                  isWelcome: true,
+                  content: '你好！我是智问助手 👋',
+                  sql: '',
+                  data: null,
+                  time: this.now()
+                });
+                return;
+              }
+            } catch (e) {
+              // token 解析失败，使用新会话
+              console.log('token 解析失败，使用新会话');
+              this.sessionId = 'session_' + Date.now();
+              this.messages.push({
+                type: 'bot',
+                isWelcome: true,
+                content: '你好！我是智问助手 👋',
+                sql: '',
+                data: null,
+                time: this.now()
+              });
+              return;
+            }
+          }
+          // userId 匹配，加载历史会话
           this.sessionId = latestSession.sessionId;
           console.log('加载会话历史:', latestSession.sessionId);
           await this.loadSessionHistory(latestSession.sessionId);
