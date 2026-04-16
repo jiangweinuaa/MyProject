@@ -418,15 +418,10 @@ export default {
       
       console.log('提取图表数据 - type:', type, 'columns:', columns)
       
-      // 查找分类列（字符串列，排除 ID/代码列）
+      // 查找分类列（字符串列，作为 X 轴）
       const categoryColumn = columns.find(col => {
         const sample = data[0][col]
-        const colUpper = col.toUpperCase()
-        // 跳过 ID、代码等列（用 endsWith 判断）
-        const idSuffixes = ['_ID', 'ID', 'CODE', 'NO', 'NUMBER', 'PLUNO', 'SHOPID', 'EID', 'SALNO', '编码']
-        if (idSuffixes.some(suffix => colUpper.endsWith(suffix))) {
-          return false
-        }
+        // 只要是字符串，就可以作为 X 轴（分类）
         return typeof sample === 'string'
       })
       
