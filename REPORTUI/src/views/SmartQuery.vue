@@ -128,28 +128,20 @@
       </div>
       
       <div class="chat-input">
-        <input
-          ref="inputRef"
-          :value="inputValue"
+        <el-input
+          v-model="question"
           placeholder="问我：今天销售额是多少？"
-          @compositionstart="isComposing = true"
-          @compositionend="handleCompositionEnd"
-          @input="handleInput"
-          @keydown.enter.prevent="send"
+          @keyup.enter="send"
           :disabled="loading"
-          class="native-input"
-          autocomplete="off"
-          autocorrect="off"
-          spellcheck="false"
-        />
-        <button 
-          type="button" 
-          @click="send" 
-          :disabled="loading"
-          class="send-btn"
+          size="large"
+          class="full-width-input"
         >
-          {{ loading ? '发送中...' : '发送' }}
-        </button>
+          <template #append>
+            <el-button type="primary" @click="send" :loading="loading" size="large">
+              发送
+            </el-button>
+          </template>
+        </el-input>
       </div>
     </div>
   </div>
@@ -180,10 +172,8 @@ export default {
   data() {
     return {
       question: '',
-      inputValue: '',  // 输入框的临时值（避免响应式强制同步）
       loading: false,
       messages: [],
-      isComposing: false,  // 中文输入法状态
       examples: [
         '今天销售额是多少？',
         '昨天销售额是多少？',
@@ -556,26 +546,7 @@ export default {
       });
     },
     
-    handleInput(e) {
-      // 始终更新 inputValue（输入框显示值）
-      this.inputValue = e.target.value
-      
-      // 中文输入期间不更新 question（不触发响应式）
-      if (this.isComposing) return
-      
-      // 非中文输入时同步到 question
-      this.question = e.target.value
-    },
-    
-    handleCompositionEnd(e) {
-      this.isComposing = false
-      // compositionend 时同步最终值
-      this.inputValue = e.target.value
-      this.question = e.target.value
-    },
-    
     askExample(question) {
-      this.inputValue = question
       this.question = question
       this.send()
     },
@@ -589,13 +560,11 @@ export default {
     },
     
     async send() {
-      const questionToSend = this.inputValue.trim()
-      if (!questionToSend || this.loading) return
+      if (!this.question.trim() || this.loading) return
       
-      const userQuestion = questionToSend
+      const userQuestion = this.question.trim()
       
       this.addMessage(userQuestion, 'user')
-      this.inputValue = ''
       this.question = ''
       this.loading = true
       
@@ -855,49 +824,18 @@ export default {
 }
 
 .chat-input {
-  display: flex;
-  padding: 10px 15px;
+  padding: 15px 20px;
   background: white;
   border-top: 1px solid #e0e0e0;
-  gap: 10px;
 }
 
-.native-input {
-  flex: 1;
-  padding: 10px 15px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  font-size: 14px;
-  outline: none;
+.chat-input .full-width-input {
+  width: 100%;
 }
 
-.native-input:focus {
-  border-color: #409EFF;
-}
-
-.native-input:disabled {
-  background: #f5f7fa;
-  cursor: not-allowed;
-}
-
-.send-btn {
-  padding: 10px 20px;
-  background: #409EFF;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.send-btn:hover {
-  background: #66b1ff;
-}
-
-.send-btn:disabled {
-  background: #a0cfff;
-  cursor: not-allowed;
+.chat-input .full-width-input .el-input__wrapper {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .loading {
