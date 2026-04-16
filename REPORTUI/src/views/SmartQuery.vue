@@ -539,13 +539,19 @@ export default {
         time: this.now()
       })
       
-      // 滚动到最底部
-      this.$nextTick(() => {
-        const container = this.$refs.messageContainer;
-        if (container) {
-          container.scrollTop = container.scrollHeight;
-        }
-      });
+      // 检测输入框是否有焦点
+      const inputFocused = document.activeElement.tagName === 'INPUT' || 
+                           document.activeElement.tagName === 'TEXTAREA'
+      
+      // 只有机器人消息且输入框没有焦点时才滚动，避免打断用户输入
+      if (type === 'bot' && !inputFocused) {
+        this.$nextTick(() => {
+          const container = this.$refs.messageContainer;
+          if (container) {
+            container.scrollTop = container.scrollHeight;
+          }
+        });
+      }
     },
     
     askExample(question) {
