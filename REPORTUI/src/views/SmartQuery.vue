@@ -125,30 +125,20 @@
       </div>
       
       <div class="chat-input">
-        <input
-          ref="inputRef"
-          :value="question"
-          type="text"
+        <el-input
+          v-model="question"
           placeholder="问我：今天销售额是多少？"
-          @input="handleInput"
-          @keydown.enter.prevent="send"
-          @compositionstart="isComposing = true"
-          @compositionend="handleCompositionEnd"
+          @keyup.enter="send"
           :disabled="loading"
-          class="native-input"
-          autocomplete="off"
-          autocorrect="off"
-          spellcheck="false"
-          inputmode="text"
-        />
-        <button 
-          type="button" 
-          @click="send" 
-          :disabled="loading"
-          class="send-btn"
+          size="large"
+          class="full-width-input"
         >
-          {{ loading ? '发送中...' : '发送' }}
-        </button>
+          <template #append>
+            <el-button type="primary" @click="send" :loading="loading" size="large">
+              发送
+            </el-button>
+          </template>
+        </el-input>
       </div>
     </div>
   </div>
@@ -181,7 +171,6 @@ export default {
       question: '',
       loading: false,
       messages: [],
-      isComposing: false,  // 中文输入法状态
       examples: [
         '今天销售额是多少？',
         '昨天销售额是多少？',
@@ -559,17 +548,6 @@ export default {
       });
     },
     
-    handleInput(e) {
-      // 中文输入期间不更新，等 compositionend
-      if (this.isComposing) return
-      this.question = e.target.value
-    },
-    
-    handleCompositionEnd(e) {
-      this.isComposing = false
-      this.question = e.target.value
-    },
-    
     askExample(question) {
       this.question = question
       this.send()
@@ -848,50 +826,18 @@ export default {
 }
 
 .chat-input {
-  display: flex;
-  padding: 10px 15px;
+  padding: 15px 20px;
   background: white;
   border-top: 1px solid #e0e0e0;
-  gap: 10px;
 }
 
-.native-input {
-  flex: 1;
-  padding: 10px 15px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  font-size: 14px;
-  outline: none;
+.chat-input .full-width-input {
+  width: 100%;
 }
 
-.native-input:focus {
-  border-color: #409EFF;
-}
-
-.native-input:disabled {
-  background: #f5f7fa;
-  cursor: not-allowed;
-}
-
-.send-btn {
-  padding: 10px 20px;
-  background: #409EFF;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.2s;
-  white-space: nowrap;
-}
-
-.send-btn:hover {
-  background: #66b1ff;
-}
-
-.send-btn:disabled {
-  background: #a0cfff;
-  cursor: not-allowed;
+.chat-input .full-width-input .el-input__wrapper {
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .loading {
