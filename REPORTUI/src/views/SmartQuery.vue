@@ -350,10 +350,17 @@ export default {
       const hasGroupBy = sqlUpper.includes('GROUP BY')
       console.log('图表检测：hasGroupBy=', hasGroupBy, 'columnCount=', columnCount)
       if (hasGroupBy && columnCount >= 2 && columnCount <= 10) {
-        // 检查是否有占比/百分比列
+        // 检查是否有占比/百分比列（用 endsWith 避免误判）
         const hasRatioColumn = columns.some(col => {
           const colUpper = col.toUpperCase()
-          return colUpper.includes('占比') || colUpper.includes('PERCENT') || colUpper.includes('RATIO') || colUpper.includes('RATE')
+          return colUpper.endsWith('占比') || 
+                 colUpper.endsWith('占比%') || 
+                 colUpper.endsWith('PERCENT') || 
+                 colUpper.endsWith('PERCENTAGE') || 
+                 colUpper.endsWith('RATIO') || 
+                 colUpper.endsWith('RATE') || 
+                 colUpper.endsWith('率') || 
+                 colUpper.endsWith('%')
         })
         
         console.log('图表检测：hasRatioColumn=', hasRatioColumn, 'rowCount=', rowCount)
@@ -417,10 +424,17 @@ export default {
       let numericColumn = null
       
       if (type === 'ratio') {
-        // 饼图：找占比/百分比列
+        // 饼图：找占比/百分比列（用 endsWith 避免误判）
         numericColumn = columns.find(col => {
           const colUpper = col.toUpperCase()
-          return colUpper.includes('占比') || colUpper.includes('PERCENT') || colUpper.includes('RATIO') || colUpper.includes('RATE')
+          return colUpper.endsWith('占比') || 
+                 colUpper.endsWith('占比%') || 
+                 colUpper.endsWith('PERCENT') || 
+                 colUpper.endsWith('PERCENTAGE') || 
+                 colUpper.endsWith('RATIO') || 
+                 colUpper.endsWith('RATE') || 
+                 colUpper.endsWith('率') || 
+                 colUpper.endsWith('%')
         })
       }
       

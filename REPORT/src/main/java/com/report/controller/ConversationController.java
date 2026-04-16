@@ -26,20 +26,18 @@ public class ConversationController {
     
     /**
      * 从 token 解析用户 ID（OPNO）
+     * @throws RuntimeException 如果 token 无效
      */
     private String getUserIdFromToken(String token) {
         if (token == null || token.trim().isEmpty()) {
-            return "anonymous";
+            throw new RuntimeException("token 不能为空");
         }
-        try {
-            String opno = TokenUtil.getOpnoFromToken(jdbcTemplate, token);
-            if (opno != null && !opno.trim().isEmpty()) {
-                return opno;
-            }
-        } catch (Exception e) {
-            // Token 解析失败
+        String opno = TokenUtil.getOpnoFromToken(jdbcTemplate, token);
+        // TokenUtil 在解析失败时返回 "default_user"，需要检查
+        if (opno == null || opno.trim().isEmpty() || "default_user".equals(opno)) {
+            throw new RuntimeException("token 无效或已过期");
         }
-        return "anonymous";
+        return opno;
     }
     
     /**
@@ -52,11 +50,16 @@ public class ConversationController {
             @RequestParam(defaultValue = "20") int size) {
         
         try {
-            // 从 token 解析 EID 作为 userId
+            // 从 token 解析用户 ID
             String userId = getUserIdFromToken(token);
+            System.out.println("🔍 [ConversationController] token=" + (token != null ? "有" : "无") + 
+                ", userId=" + userId);
             
             List list = conversationRepository.getUserConversations(userId, page, size);
             int total = conversationRepository.getConversationCount(userId);
+            
+            System.out.println("🔍 [ConversationController] 查询结果：total=" + total + 
+                ", 返回记录数=" + list.size());
             
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
@@ -73,7 +76,15 @@ public class ConversationController {
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
-            response.put("message", "查询失败：" + e.getMessage());
+            
+            // token 相关错误返回 401
+            if (e.getMessage() != null && e.getMessage().contains("token")) {
+                response.put("serviceStatus", "401");
+                response.put("message", "登录已过期，请重新登录");
+            } else {
+                response.put("message", "查询失败：" + e.getMessage());
+            }
+            
             return response;
         }
     }
@@ -110,7 +121,15 @@ public class ConversationController {
         } catch (Exception e) {
             Map<String, Object> response = new HashMap<>();
             response.put("success", false);
-            response.put("message", "查询失败：" + e.getMessage());
+            
+            // token 相关错误返回 401
+            if (e.getMessage() != null && e.getMessage().contains("token")) {
+                response.put("serviceStatus", "401");
+                response.put("message", "登录已过期，请重新登录");
+            } else {
+                response.put("message", "查询失败：" + e.getMessage());
+            }
+            
             return response;
         }
     }
