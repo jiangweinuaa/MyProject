@@ -107,8 +107,6 @@
                 />
               </el-table>
             </div>
-            
-            <div class="text-content" v-html="formatContent(msg.content)"></div>
             </template>
           </div>
           <div class="message-time">{{ msg.time }}</div>
