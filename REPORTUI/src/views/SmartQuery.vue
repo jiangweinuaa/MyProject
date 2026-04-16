@@ -128,23 +128,28 @@
       </div>
       
       <div class="chat-input">
-        <el-input
-          v-model="question"
+        <input
+          ref="inputRef"
+          :value="question"
           placeholder="问我：今天销售额是多少？"
           @compositionstart="isComposing = true"
           @compositionend="handleCompositionEnd"
           @input="handleInput"
-          @keyup.enter="send"
+          @keydown.enter.prevent="send"
           :disabled="loading"
-          size="large"
-          class="full-width-input"
+          class="native-input"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+        />
+        <button 
+          type="button" 
+          @click="send" 
+          :disabled="loading"
+          class="send-btn"
         >
-          <template #append>
-            <el-button type="primary" @click="send" :loading="loading" size="large">
-              发送
-            </el-button>
-          </template>
-        </el-input>
+          {{ loading ? '发送中...' : '发送' }}
+        </button>
       </div>
     </div>
   </div>
@@ -839,18 +844,49 @@ export default {
 }
 
 .chat-input {
-  padding: 15px 20px;
+  display: flex;
+  padding: 10px 15px;
   background: white;
   border-top: 1px solid #e0e0e0;
+  gap: 10px;
 }
 
-.chat-input .full-width-input {
-  width: 100%;
+.native-input {
+  flex: 1;
+  padding: 10px 15px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
 }
 
-.chat-input .full-width-input .el-input__wrapper {
-  width: 100%;
-  box-sizing: border-box;
+.native-input:focus {
+  border-color: #409EFF;
+}
+
+.native-input:disabled {
+  background: #f5f7fa;
+  cursor: not-allowed;
+}
+
+.send-btn {
+  padding: 10px 20px;
+  background: #409EFF;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.send-btn:hover {
+  background: #66b1ff;
+}
+
+.send-btn:disabled {
+  background: #a0cfff;
+  cursor: not-allowed;
 }
 
 .loading {
