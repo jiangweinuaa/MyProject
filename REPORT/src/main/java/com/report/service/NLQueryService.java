@@ -76,7 +76,7 @@ public class NLQueryService extends BaseService {
             sqlGenTime = System.currentTimeMillis() - sqlStart;
             
             if (!aiSQLService.validateSQL(sql)) {
-                logQuery(question, sql, isRetry, "FAILED", "生成的 SQL 不安全", sqlGenTime, 0L, startTime);
+                logQuery(question, sql, isRetry, "FAILED", "生成的 SQL 不安全", sqlGenTime, 0L, startTime, token);
                 return error("生成的 SQL 不安全，已拒绝执行：" + sql);
             }
             
@@ -87,7 +87,7 @@ public class NLQueryService extends BaseService {
             
             contextManager.addDialogue(sessionId, question, sql);
             extractAndUpdateVariables(sessionId, sql);
-            logQuery(question, sql, isRetry, "SUCCESS", null, sqlGenTime, sqlExecTime, startTime);
+            logQuery(question, sql, isRetry, "SUCCESS", null, sqlGenTime, sqlExecTime, startTime, token);
             
             // 保存对话到数据库（包含完整结果集）
             try {
@@ -137,7 +137,7 @@ public class NLQueryService extends BaseService {
             // SQL 执行失败，记录日志
             long sqlExecTimeFailed = System.currentTimeMillis() - sqlExecStart;
             logQuery(question, sql, Boolean.valueOf(isRetry), "FAILED", "SQL 执行失败：" + e.getMessage(), 
-                    Long.valueOf(sqlGenTime), Long.valueOf(sqlExecTimeFailed), Long.valueOf(System.currentTimeMillis() - startTime));
+                    Long.valueOf(sqlGenTime), Long.valueOf(sqlExecTimeFailed), Long.valueOf(System.currentTimeMillis() - startTime), token);
             System.err.println("❌ SQL 执行失败：" + e.getMessage());
             
             if (!isRetry) {
@@ -228,7 +228,7 @@ public class NLQueryService extends BaseService {
     }
     
     private void logQuery(String question, String sql, Boolean isRetry, String status, String errorMessage, 
-                         Long sqlGenTime, Long sqlExecTime, Long startTime) {
+                         Long sqlGenTime, Long sqlExecTime, Long startTime, String token) {
         try {
             if (nlQueryLogService != null) {
                 NLQueryLogDTO logDTO = new NLQueryLogDTO();
@@ -244,6 +244,13 @@ public class NLQueryService extends BaseService {
                 logDTO.setModelName(getCurrentModel());
                 logDTO.setSqlGenTimeMs(sqlGenTime);
                 
+                // 从 token 解析用户 ID（createdBy）
+                String userId = "system";
+                if (token != null && !token.trim().isEmpty()) {
+                    userId = com.report.util.TokenUtil.getOpnoFromToken(platformJdbcTemplate, token);
+                }
+                logDTO.setCreatedBy(userId);
+                
                 // 从 TokenContext 获取 token 信息
                 AISQLService.TokenContext.TokenInfo tokenInfo = AISQLService.TokenContext.getTokenInfo();
                 if (tokenInfo != null) {
@@ -251,6 +258,11 @@ public class NLQueryService extends BaseService {
                     logDTO.setCompletionTokens(tokenInfo.completionTokens);
                     logDTO.setTotalTokens(tokenInfo.totalTokens);
                     logDTO.setEstimatedCost(tokenInfo.estimatedCost);
+                    System.out.println("✅ 记录 token 消耗：prompt=" + tokenInfo.promptTokens + 
+                        ", completion=" + tokenInfo.completionTokens + 
+                        ", total=" + tokenInfo.totalTokens);
+                } else {
+                    System.err.println("⚠️ TokenContext 为空，未记录 token 消耗");
                 }
                 
                 nlQueryLogService.logQuery(logDTO);
@@ -260,6 +272,7 @@ public class NLQueryService extends BaseService {
             }
         } catch (Exception e) {
             System.err.println("⚠️ 记录日志失败：" + e.getMessage());
+            e.printStackTrace();
         }
     }
     
