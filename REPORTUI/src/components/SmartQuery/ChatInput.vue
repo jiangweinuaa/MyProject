@@ -4,13 +4,12 @@
       v-model="inputValue"
       placeholder="问我：今天销售额是多少？"
       @keyup.enter="handleSend"
-      :disabled="loading"
       size="large"
       class="full-width-input"
     >
       <template #append>
         <el-button type="primary" @click="handleSend" :loading="loading" size="large">
-          发送
+          {{ loading ? '思考中...' : '发送' }}
         </el-button>
       </template>
     </el-input>

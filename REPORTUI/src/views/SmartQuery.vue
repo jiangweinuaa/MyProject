@@ -159,6 +159,8 @@ export default {
   data() {
     return {
       loading: false,
+      inputQueue: [],      // 输入队列
+      isProcessing: false, // 是否正在处理队列
       messages: [],
       examples: [
         '今天销售额是多少？',
@@ -546,11 +548,29 @@ export default {
     
     // 处理输入框发送的消息
     handleSendMessage(question) {
-      this.send(question)
+      // 加入队列
+      this.inputQueue.push(question)
+      
+      // 如果当前没有处理，开始处理
+      if (!this.isProcessing) {
+        this.processQueue()
+      }
+    },
+    
+    // 处理队列中的消息
+    async processQueue() {
+      this.isProcessing = true
+      
+      while (this.inputQueue.length > 0) {
+        const question = this.inputQueue.shift()
+        await this.send(question)
+      }
+      
+      this.isProcessing = false
     },
     
     async send(question) {
-      if (!question || this.loading) return
+      if (!question) return
       
       this.addMessage(question, 'user')
       this.loading = true
@@ -598,6 +618,10 @@ export default {
         this.addMessage('❌ 网络错误：' + error.message, 'bot')
       } finally {
         this.loading = false
+        // 继续处理队列中的下一条消息
+        if (this.inputQueue.length > 0) {
+          this.processQueue()
+        }
       }
     }
   }
