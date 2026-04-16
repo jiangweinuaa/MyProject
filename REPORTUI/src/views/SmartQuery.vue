@@ -329,7 +329,7 @@ export default {
     /**
      * 自动检测图表类型（返回数组，支持多图表）
      */
-    detectChartTypes(data, sql) {
+    detectChartTypes(data, sql, question = '') {
       const result = []
       
       if (!data || data.length === 0) {
@@ -341,8 +341,35 @@ export default {
       const rowCount = data.length
       const columns = Object.keys(data[0])
       const columnCount = columns.length
+      const questionUpper = question.toUpperCase()
       
       console.log('图表检测参数：rowCount=', rowCount, 'columnCount=', columnCount, 'columns=', columns)
+      
+      // 检测用户指定的图表类型（优先处理）
+      const userChartTypes = []
+      if (questionUpper.includes('饼图') || questionUpper.includes('饼状图')) {
+        userChartTypes.push('pie')
+      }
+      if (questionUpper.includes('柱图') || questionUpper.includes('柱状图') || questionUpper.includes('条形图')) {
+        userChartTypes.push('bar')
+      }
+      if (questionUpper.includes('折线图') || questionUpper.includes('曲线图') || questionUpper.includes('趋势图')) {
+        userChartTypes.push('line')
+      }
+      if (questionUpper.includes('指标卡') || questionUpper.includes('指标')) {
+        userChartTypes.push('metric')
+      }
+      if (questionUpper.includes('排行') || questionUpper.includes('排名')) {
+        userChartTypes.push('horizontalBar')
+      }
+      
+      // 用户指定的图表类型优先添加到结果
+      userChartTypes.forEach(type => {
+        if (!result.includes(type)) {
+          result.push(type)
+          console.log('🎯 用户指定图表类型：' + type)
+        }
+      })
       
       // 1. 单行单列 → 指标卡
       if (rowCount === 1 && columnCount === 1) {
@@ -446,21 +473,34 @@ export default {
       const data = msg.data
       const columns = Object.keys(data[0])
       const sqlUpper = msg.sql.toUpperCase()
+      const question = (msg.question || '').toUpperCase()
       
       console.log('提取图表数据 - type:', type, 'columns:', columns)
       
+      // 用户指定的图表类型，强制生成数据
+      const isUserSpecified = 
+        (type === 'pie' && (question.includes('饼图') || question.includes('饼状图'))) ||
+        (type === 'bar' && (question.includes('柱图') || question.includes('柱状图') || question.includes('条形图'))) ||
+        (type === 'line' && (question.includes('折线图') || question.includes('曲线图') || question.includes('趋势图'))) ||
+        (type === 'horizontalBar' && (question.includes('排行') || question.includes('排名')))
+      
       // 查找分类列（字符串列，作为 X 轴）
-      const categoryColumn = columns.find(col => {
+      let categoryColumn = columns.find(col => {
         const sample = data[0][col]
-        // 只要是字符串，就可以作为 X 轴（分类）
         return typeof sample === 'string'
       })
+      
+      // 如果用户指定图表类型但没找到分类列，使用第一列
+      if (isUserSpecified && !categoryColumn && columns.length >= 1) {
+        categoryColumn = columns[0]
+        console.log('🎯 用户指定图表，强制使用第一列作为分类：' + categoryColumn)
+      }
       
       // 查找数值列
       let numericColumn = null
       
       if (type === 'ratio') {
-        // 饼图：找占比/百分比列（用 endsWith 避免误判）
+        // 饼图：找占比/百分比列
         numericColumn = columns.find(col => {
           const colUpper = col.toUpperCase()
           return colUpper.endsWith('占比') || 
@@ -491,14 +531,16 @@ export default {
         })
       }
       
+      // 用户指定图表类型但没找到数值列，使用第二列（如果有）
+      if (isUserSpecified && !numericColumn && columns.length >= 2) {
+        numericColumn = columns[1]
+        console.log('🎯 用户指定图表，强制使用第二列作为数值：' + numericColumn)
+      }
+      
       console.log('提取图表数据 - categoryColumn:', categoryColumn, 'numericColumn:', numericColumn)
       
       // 确定标题
-      let title = '查询结果'
-      if (sqlUpper.includes('销售额')) title = '销售额统计'
-      else if (sqlUpper.includes('销量')) title = '销量统计'
-      else if (sqlUpper.includes('库存')) title = '库存统计'
-      else if (sqlUpper.includes('品类')) title = '品类分析'
+      let title = msg.question || '查询结果'
       
       // 方案 3：智能限制数据量（柱状图超过 50 条只显示前 50 条）
       let chartData = data
@@ -523,7 +565,7 @@ export default {
         console.log('不显示图表：data=', msg.data, 'sql=', msg.sql)
         return false
       }
-      const chartTypes = this.detectChartTypes(msg.data, msg.sql)
+      const chartTypes = this.detectChartTypes(msg.data, msg.sql, msg.question || '')
       console.log('图表检测结果：', chartTypes, 'data:', msg.data, 'sql:', msg.sql)
       return chartTypes.length > 0
     },
@@ -533,7 +575,7 @@ export default {
      */
     hasChartType(msg, type) {
       if (!msg.data || msg.data.length === 0 || !msg.sql) return false
-      const chartTypes = this.detectChartTypes(msg.data, msg.sql)
+      const chartTypes = this.detectChartTypes(msg.data, msg.sql, msg.question || '')
       return chartTypes.includes(type)
     },
     
