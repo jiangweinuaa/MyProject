@@ -10,8 +10,11 @@ const request = axios.create({
 // 请求拦截器
 request.interceptors.request.use(
   config => {
-    // 自动添加 token（从 localStorage 读取）
-    const token = localStorage.getItem('token') || ''
+    // 优先从 URL 获取 token，其次从 localStorage
+    const urlParams = new URLSearchParams(window.location.search)
+    const urlToken = urlParams.get('token')
+    const localToken = localStorage.getItem('token')
+    const token = urlToken || localToken || ''
     
     // GET 请求：添加到 params
     if (config.method === 'get' && token) {

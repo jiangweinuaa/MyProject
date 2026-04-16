@@ -124,9 +124,16 @@ router.beforeEach((to, from, next) => {
   if (to.path === '/login') {
     next()
   } else {
-    // 访问其他页面，检查是否登录
-    const token = localStorage.getItem('token')
+    // 优先从 URL 参数获取 token，其次从 localStorage
+    const urlToken = to.query.token
+    const localToken = localStorage.getItem('token')
+    const token = urlToken || localToken
+    
     if (token) {
+      // 如果 URL 有 token，保存到 localStorage
+      if (urlToken) {
+        localStorage.setItem('token', urlToken)
+      }
       next()
     } else {
       next('/login')
