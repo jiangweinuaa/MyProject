@@ -67,17 +67,26 @@ public class NLQueryService extends BaseService {
             enhancedQuestion = questionEnhancer.enhance(question, context.getVariables());
             
             long sqlStart = System.currentTimeMillis();
-            // 从 token 解析 EID
-            String eid = "99";
-            if (token != null && !token.trim().isEmpty()) {
-                eid = com.report.util.TokenUtil.getEidFromToken(platformJdbcTemplate, token);
-            }
-            sql = aiSQLService.generateSQL(enhancedQuestion, context.getHistory(), eid);
-            sqlGenTime = System.currentTimeMillis() - sqlStart;
             
+            // 检测是否直接执行 SQL（以 SELECT 开头，不区分大小写）
+            if (question.trim().toUpperCase().startsWith("SELECT")) {
+                sql = question.trim();
+                sqlGenTime = 0;
+                System.out.println("⚡ 直接执行 SQL：" + sql.substring(0, Math.min(100, sql.length())) + "...");
+            } else {
+                // 从 token 解析 EID
+                String eid = "99";
+                if (token != null && !token.trim().isEmpty()) {
+                    eid = com.report.util.TokenUtil.getEidFromToken(platformJdbcTemplate, token);
+                }
+                sql = aiSQLService.generateSQL(enhancedQuestion, context.getHistory(), eid);
+                sqlGenTime = System.currentTimeMillis() - sqlStart;
+            }
+            
+            // 验证 SQL 安全性（直接执行的 SQL 也需要验证）
             if (!aiSQLService.validateSQL(sql)) {
-                logQuery(question, sql, isRetry, "FAILED", "生成的 SQL 不安全", sqlGenTime, 0L, startTime, token);
-                return error("生成的 SQL 不安全，已拒绝执行：" + sql);
+                logQuery(question, sql, isRetry, "FAILED", "SQL 不安全", sqlGenTime, 0L, startTime, token);
+                return error("SQL 不安全，已拒绝执行：" + sql);
             }
             
             sqlExecStart = System.currentTimeMillis();
