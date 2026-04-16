@@ -479,15 +479,33 @@ export default {
         numericColumn = columns.find(col => {
           const sample = data[0][col]
           const colUpper = col.toUpperCase()
-          // 跳过占比、百分比、比率列（除非是饼图）
-          if (type !== 'ratio' && (colUpper.includes('占比') || colUpper.includes('PERCENT') || colUpper.includes('RATIO') || colUpper.includes('RATE'))) {
+          // 跳过占比、百分比、比率列（用 endsWith 避免误判）
+          if (type !== 'ratio' && (
+            colUpper.endsWith('占比') || 
+            colUpper.endsWith('占比%') || 
+            colUpper.endsWith('PERCENT') || 
+            colUpper.endsWith('PERCENTAGE') || 
+            colUpper.endsWith('RATIO') || 
+            colUpper.endsWith('RATE') || 
+            colUpper.endsWith('率') || 
+            colUpper.endsWith('%')
+          )) {
             return false
           }
           // 优先找金额、销量列
-          if (colUpper.includes('AMT') || colUpper.includes('SALE') || colUpper.includes('QTY') || colUpper.includes('金额') || colUpper.includes('销量')) {
+          if (colUpper.endsWith('金额') || 
+              colUpper.endsWith('AMT') || 
+              colUpper.endsWith('销量') || 
+              colUpper.endsWith('QTY') || 
+              colUpper.endsWith('SALE') || 
+              colUpper.endsWith('SUM') || 
+              colUpper.endsWith('AVG') || 
+              colUpper.endsWith('COUNT') || 
+              colUpper.endsWith('TIME') || 
+              colUpper.endsWith('MS')) {
             return typeof sample === 'number' || !isNaN(Number(sample))
           }
-          return typeof sample === 'number' || !isNaN(Number(sample))
+          return typeof sample === 'number'
         })
       }
       
