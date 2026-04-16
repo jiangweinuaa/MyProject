@@ -371,6 +371,19 @@ export default {
         }
       })
       
+      // 自动检测：如果列名包含占比/百分比，自动添加饼图
+      const hasPercentColumn = columns.some(col => {
+        const colUpper = col.toUpperCase()
+        return colUpper.includes('占比') || 
+               colUpper.includes('百分比') || 
+               colUpper.includes('PERCENT') || 
+               colUpper.includes('RATIO')
+      })
+      if (hasPercentColumn && !result.includes('pie')) {
+        result.unshift('pie')  // 添加到最前面
+        console.log('🥧 自动检测占比列，添加饼图')
+      }
+      
       // 1. 单行单列 → 指标卡
       if (rowCount === 1 && columnCount === 1) {
         result.push('metric')
