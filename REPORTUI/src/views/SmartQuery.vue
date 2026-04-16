@@ -127,22 +127,7 @@
         </div>
       </div>
       
-      <div class="chat-input">
-        <el-input
-          v-model="question"
-          placeholder="问我：今天销售额是多少？"
-          @keyup.enter="send"
-          :disabled="loading"
-          size="large"
-          class="full-width-input"
-        >
-          <template #append>
-            <el-button type="primary" @click="send" :loading="loading" size="large">
-              发送
-            </el-button>
-          </template>
-        </el-input>
-      </div>
+      <ChatInput :loading="loading" @send="handleSendMessage" />
     </div>
   </div>
 </template>
@@ -155,6 +140,7 @@ import LineChart from '@/components/SmartQuery/LineChart.vue'
 import PieChart from '@/components/SmartQuery/PieChart.vue'
 import HorizontalBarChart from '@/components/SmartQuery/HorizontalBarChart.vue'
 import CompareBarChart from '@/components/SmartQuery/CompareBarChart.vue'
+import ChatInput from '@/components/SmartQuery/ChatInput.vue'
 
 // 导入 API
 import { getConversationList, getConversationHistory, nlQuery } from '@/api/smart-query'
@@ -167,11 +153,11 @@ export default {
     LineChart,
     PieChart,
     HorizontalBarChart,
-    CompareBarChart
+    CompareBarChart,
+    ChatInput
   },
   data() {
     return {
-      question: '',
       loading: false,
       messages: [],
       examples: [
@@ -547,8 +533,7 @@ export default {
     },
     
     askExample(question) {
-      this.question = question
-      this.send()
+      this.send(question)
     },
     
     formatContent(content) {
@@ -559,13 +544,15 @@ export default {
       return content
     },
     
-    async send() {
-      if (!this.question.trim() || this.loading) return
+    // 处理输入框发送的消息
+    handleSendMessage(question) {
+      this.send(question)
+    },
+    
+    async send(question) {
+      if (!question || this.loading) return
       
-      const userQuestion = this.question.trim()
-      
-      this.addMessage(userQuestion, 'user')
-      this.question = ''
+      this.addMessage(question, 'user')
       this.loading = true
       
       try {
@@ -579,7 +566,7 @@ export default {
         // 使用 API 模块（axios 会自动添加 token 到 sign.token）
         const response = await nlQuery({
           sessionId: this.sessionId,
-          question: userQuestion
+          question: question
         });
         
         if (response.success) {
