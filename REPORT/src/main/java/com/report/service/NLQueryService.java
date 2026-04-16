@@ -120,6 +120,17 @@ public class NLQueryService extends BaseService {
             response.put("rowCount", result.size());
             response.put("sessionId", sessionId);
             
+            // 添加 token 消耗信息
+            AISQLService.TokenContext.TokenInfo tokenInfo = AISQLService.TokenContext.getTokenInfo();
+            if (tokenInfo != null) {
+                Map<String, Object> tokenUsage = new HashMap<>();
+                tokenUsage.put("prompt", tokenInfo.promptTokens);
+                tokenUsage.put("completion", tokenInfo.completionTokens);
+                tokenUsage.put("total", tokenInfo.totalTokens);
+                tokenUsage.put("estimatedCost", tokenInfo.estimatedCost);
+                response.put("tokenUsage", tokenUsage);
+            }
+            
             return response;
             
         } catch (DataAccessException e) {
@@ -232,7 +243,20 @@ public class NLQueryService extends BaseService {
                 logDTO.setResponseTimeMs(System.currentTimeMillis() - startTime);
                 logDTO.setModelName(getCurrentModel());
                 logDTO.setSqlGenTimeMs(sqlGenTime);
+                
+                // 从 TokenContext 获取 token 信息
+                AISQLService.TokenContext.TokenInfo tokenInfo = AISQLService.TokenContext.getTokenInfo();
+                if (tokenInfo != null) {
+                    logDTO.setPromptTokens(tokenInfo.promptTokens);
+                    logDTO.setCompletionTokens(tokenInfo.completionTokens);
+                    logDTO.setTotalTokens(tokenInfo.totalTokens);
+                    logDTO.setEstimatedCost(tokenInfo.estimatedCost);
+                }
+                
                 nlQueryLogService.logQuery(logDTO);
+                
+                // 清理 ThreadLocal
+                AISQLService.TokenContext.clear();
             }
         } catch (Exception e) {
             System.err.println("⚠️ 记录日志失败：" + e.getMessage());

@@ -27,8 +27,10 @@ public class NLQueryLogService {
             String sql = "INSERT INTO AI_NL_QUERY_LOG (" +
                 "LOG_ID, SESSION_ID, USER_QUESTION, GENERATED_SQL, IS_RETRY, " +
                 "ORIGINAL_SQL, FINAL_SQL, EXEC_STATUS, ERROR_MESSAGE, " +
-                "EXEC_TIME_MS, RESPONSE_TIME_MS, GENERATED_TIME_MS, MODEL_NAME, CREATED_BY, CREATED_TIME " +
-                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, SYSDATE)";
+                "EXEC_TIME_MS, RESPONSE_TIME_MS, GENERATED_TIME_MS, MODEL_NAME, " +
+                "PROMPT_TOKENS, COMPLETION_TOKENS, TOTAL_TOKENS, ESTIMATED_COST, " +
+                "CREATED_BY, CREATED_TIME " +
+                ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, SYSDATE)";
             
             jdbcTemplate.update(sql,
                 logId,
@@ -44,6 +46,10 @@ public class NLQueryLogService {
                 logDTO.getResponseTimeMs(),
                 logDTO.getGeneratedTimeMs() != null ? logDTO.getGeneratedTimeMs() : logDTO.getSqlGenTimeMs(),
                 logDTO.getModelName(),
+                logDTO.getPromptTokens(),
+                logDTO.getCompletionTokens(),
+                logDTO.getTotalTokens(),
+                logDTO.getEstimatedCost(),
                 logDTO.getCreatedBy()
             );
             

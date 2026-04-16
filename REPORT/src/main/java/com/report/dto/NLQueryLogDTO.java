@@ -74,6 +74,26 @@ public class NLQueryLogDTO {
     private String modelName;
     
     /**
+     * Prompt Token 数（输入）
+     */
+    private Integer promptTokens;
+    
+    /**
+     * Completion Token 数（输出）
+     */
+    private Integer completionTokens;
+    
+    /**
+     * 总 Token 数
+     */
+    private Integer totalTokens;
+    
+    /**
+     * 预估费用（元）
+     */
+    private Double estimatedCost;
+    
+    /**
      * 创建人（用户 ID）
      */
     private String createdBy;

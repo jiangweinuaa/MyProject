@@ -24,6 +24,39 @@ import java.util.concurrent.TimeUnit;
 public class AISQLService {
     
     /**
+     * Token 上下文（ThreadLocal 存储）
+     */
+    public static class TokenContext {
+        private static final ThreadLocal<TokenInfo> context = new ThreadLocal<>();
+        
+        public static class TokenInfo {
+            public int promptTokens;
+            public int completionTokens;
+            public int totalTokens;
+            public double estimatedCost;
+            
+            TokenInfo(int promptTokens, int completionTokens, int totalTokens, double estimatedCost) {
+                this.promptTokens = promptTokens;
+                this.completionTokens = completionTokens;
+                this.totalTokens = totalTokens;
+                this.estimatedCost = estimatedCost;
+            }
+        }
+        
+        public static void setTokenInfo(int promptTokens, int completionTokens, int totalTokens, double estimatedCost) {
+            context.set(new TokenInfo(promptTokens, completionTokens, totalTokens, estimatedCost));
+        }
+        
+        public static TokenInfo getTokenInfo() {
+            return context.get();
+        }
+        
+        public static void clear() {
+            context.remove();
+        }
+    }
+    
+    /**
      * 平台 JdbcTemplate
      * 用于：AI 配置、Prompt 配置、表结构过滤
      */
@@ -562,7 +595,32 @@ public class AISQLService {
                     throw new RuntimeException("API 响应中未找到文本内容");
                 }
                 
+                // 解析 token 消耗
+                int promptTokens = 0;
+                int completionTokens = 0;
+                int totalTokens = 0;
+                double estimatedCost = 0.0;
+                
+                JSONObject usage = result.getJSONObject("usage");
+                if (usage != null) {
+                    promptTokens = usage.getIntValue("prompt_tokens", 0);
+                    completionTokens = usage.getIntValue("completion_tokens", 0);
+                    totalTokens = usage.getIntValue("total_tokens", 0);
+                    
+                    // 计算预估费用（根据模型）
+                    estimatedCost = calculateTokenCost(model, promptTokens, completionTokens);
+                    
+                    System.out.println("📊 Token 消耗：prompt=" + promptTokens + 
+                        ", completion=" + completionTokens + 
+                        ", total=" + totalTokens +
+                        ", 预估费用=" + estimatedCost + "元");
+                }
+                
                 System.out.println("✅ 解析后的文本：" + text.substring(0, Math.min(100, text.length())) + "...");
+                
+                // 将 token 信息存储到 ThreadLocal 供 NLQueryService 使用
+                TokenContext.setTokenInfo(promptTokens, completionTokens, totalTokens, estimatedCost);
+                
                 return text;
             }
             
@@ -660,5 +718,41 @@ public class AISQLService {
         }
         
         return allowedTablesList.toArray(new String[0]);
+    }
+    
+    /**
+     * 计算 token 费用
+     * @param model 模型名称
+     * @param promptTokens 输入 token 数
+     * @param completionTokens 输出 token 数
+     * @return 预估费用（元）
+     */
+    private double calculateTokenCost(String model, int promptTokens, int completionTokens) {
+        // 阿里云 DashScope 价格（每 1K tokens）
+        double promptPricePer1K = 0.002;  // 默认 qwen-plus 输入价格
+        double completionPricePer1K = 0.006;  // 默认 qwen-plus 输出价格
+        
+        String modelLower = model != null ? model.toLowerCase() : "";
+        
+        // 根据模型设置价格
+        if (modelLower.contains("qwen-max") || modelLower.contains("qwen2.5-max")) {
+            promptPricePer1K = 0.04;
+            completionPricePer1K = 0.12;
+        } else if (modelLower.contains("qwen3.5-plus") || modelLower.contains("qwen-plus-2025")) {
+            promptPricePer1K = 0.004;
+            completionPricePer1K = 0.012;
+        } else if (modelLower.contains("qwen-plus")) {
+            promptPricePer1K = 0.002;
+            completionPricePer1K = 0.006;
+        } else if (modelLower.contains("deepseek")) {
+            // DeepSeek 价格
+            promptPricePer1K = 0.002;
+            completionPricePer1K = 0.008;
+        }
+        
+        double promptCost = (promptTokens / 1000.0) * promptPricePer1K;
+        double completionCost = (completionTokens / 1000.0) * completionPricePer1K;
+        
+        return Math.round((promptCost + completionCost) * 10000.0) / 10000.0;  // 保留 4 位小数
     }
 }
