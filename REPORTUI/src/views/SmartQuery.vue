@@ -355,10 +355,10 @@ export default {
         console.log('图表检测：折线图（日期字段）')
       }
       
-      // 3. 有 GROUP BY + 2-4 列 → 柱状图/饼图（支持占比列）
+      // 3. 有 GROUP BY + 2-10 列 → 柱状图/饼图（支持占比列）
       const hasGroupBy = sqlUpper.includes('GROUP BY')
       console.log('图表检测：hasGroupBy=', hasGroupBy, 'columnCount=', columnCount)
-      if (hasGroupBy && columnCount >= 2 && columnCount <= 4) {
+      if (hasGroupBy && columnCount >= 2 && columnCount <= 10) {
         // 检查是否有占比/百分比列
         const hasRatioColumn = columns.some(col => {
           const colUpper = col.toUpperCase()
@@ -419,8 +419,9 @@ export default {
       const categoryColumn = columns.find(col => {
         const sample = data[0][col]
         const colUpper = col.toUpperCase()
-        // 跳过 ID、代码等列
-        if (colUpper.includes('_ID') || colUpper.includes('CODE') || colUpper.includes('NO')) {
+        // 跳过 ID、代码等列（用 endsWith 判断）
+        const idSuffixes = ['_ID', 'ID', 'CODE', 'NO', 'NUMBER', 'PLUNO', 'SHOPID', 'EID', 'SALNO', '编码']
+        if (idSuffixes.some(suffix => colUpper.endsWith(suffix))) {
           return false
         }
         return typeof sample === 'string'

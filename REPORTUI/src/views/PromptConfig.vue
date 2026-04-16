@@ -316,10 +316,12 @@ const getCategoryType = (category) => {
 // 加载当前模型
 const loadCurrentModel = async () => {
   try {
-    const res = await fetch('http://47.100.138.89:8110/api/ai-model/current')
+    const token = localStorage.getItem('token') || ''
+    const res = await fetch('http://47.100.138.89:8110/api/ai-model/current' + (token ? '?token=' + token : ''))
     const data = await res.json()
+    console.log('当前模型响应:', data)
     if (data.success) {
-      currentModel.value = data.data || ''
+      currentModel.value = data.datas || ''
     }
   } catch (error) {
     console.error('加载当前模型失败:', error)
@@ -329,10 +331,12 @@ const loadCurrentModel = async () => {
 // 加载模型列表
 const loadModelList = async () => {
   try {
-    const res = await fetch('http://47.100.138.89:8110/api/ai-model/list')
+    const token = localStorage.getItem('token') || ''
+    const res = await fetch('http://47.100.138.89:8110/api/ai-model/list' + (token ? '?token=' + token : ''))
     const data = await res.json()
+    console.log('模型列表响应:', data)
     if (data.success) {
-      modelList.value = data.data || []
+      modelList.value = data.datas || []
     }
   } catch (error) {
     ElMessage.error('加载模型列表失败：' + error.message)
@@ -350,12 +354,14 @@ const switchToModel = async (row) => {
   switchingModel.value = true
   switchingModelId.value = row.MODEL_ID
   try {
-    const res = await fetch('http://47.100.138.89:8110/api/ai-model/switch', {
+    const token = localStorage.getItem('token') || ''
+    const res = await fetch('http://47.100.138.89:8110/api/ai-model/switch' + (token ? '?token=' + token : ''), {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ modelId: row.MODEL_ID })
     })
     const data = await res.json()
+    console.log('切换模型响应:', data)
     if (data.success) {
       ElMessage.success('✅ 已切换到 ' + row.MODEL_NAME)
       currentModel.value = row.MODEL_ID
@@ -363,7 +369,7 @@ const switchToModel = async (row) => {
       // 刷新 Prompt 缓存
       await refreshCache()
     } else {
-      ElMessage.error('切换失败：' + data.message)
+      ElMessage.error('切换失败：' + (data.message || data.serviceDescription))
     }
   } catch (error) {
     ElMessage.error('切换失败：' + error.message)
