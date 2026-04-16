@@ -556,7 +556,7 @@ export default {
     },
     
     handleInput(e) {
-      // 中文输入期间不更新，等 compositionend
+      // 中文输入期间不更新 question，避免拼音上屏
       if (this.isComposing) return
       this.question = e.target.value
     },
