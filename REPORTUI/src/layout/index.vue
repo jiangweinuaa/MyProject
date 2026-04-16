@@ -1,5 +1,14 @@
 <template>
-  <div class="layout-container">
+  <div class="layout-container" :class="{ 'embed-mode': isEmbed }">
+    <!-- 嵌入模式：只显示内容 -->
+    <template v-if="isEmbed">
+      <el-main class="embed-content">
+        <router-view />
+      </el-main>
+    </template>
+    
+    <!-- 正常模式：完整布局 -->
+    <template v-else>
     <!-- 左侧菜单 (PC 端) -->
     <el-aside width="200px" class="sidebar pc-sidebar" :class="{ 'sidebar-collapse': sidebarCollapse }">
       <div class="logo">
@@ -115,6 +124,7 @@
     >
       <SmartQuery />
     </el-dialog>
+    </template>
   </div>
 </template>
 
@@ -208,6 +218,11 @@ const activeMenu = computed(() => route.path)
 const currentTitle = computed(() => {
   const menu = menus.find(m => m.path === route.path)
   return menu ? menu.title : '首页'
+})
+
+// 是否为嵌入模式（URL 带 embed=1 参数）
+const isEmbed = computed(() => {
+  return route.query.embed === '1'
 })
 
 // 侧边栏状态
@@ -524,6 +539,22 @@ onUnmounted(() => {
   background-color: #f0f2f5;
   padding: 20px;
   overflow-y: auto;
+}
+
+/* 嵌入模式样式 */
+.embed-mode .sidebar,
+.embed-mode .mobile-drawer,
+.embed-mode .header {
+  display: none !important;
+}
+
+.embed-mode .embed-content {
+  padding: 0;
+  background: #f0f2f5;
+}
+
+.embed-mode .layout-container {
+  display: block;
 }
 
 /* 响应式样式 */
