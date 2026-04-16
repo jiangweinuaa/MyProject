@@ -107,6 +107,11 @@
                 />
               </el-table>
             </div>
+            
+            <!-- 文字回复内容（不显示 markdown 表格） -->
+            <div class="text-content" v-if="msg.content && !msg.content.includes('|')">
+              {{ msg.content }}
+            </div>
             </template>
           </div>
           <div class="message-time">{{ msg.time }}</div>
