@@ -89,6 +89,25 @@
               </div>
             </div>
             
+            <!-- 表格视图（始终显示） -->
+            <div class="table-view" v-if="msg.data && msg.data.length > 0">
+              <el-table 
+                :data="msg.data" 
+                style="width: 100%" 
+                border 
+                stripe
+                :default-sort="{ prop: Object.keys(msg.data[0])[0], order: 'descending' }"
+              >
+                <el-table-column
+                  v-for="column in getColumns(msg.data)"
+                  :key="column"
+                  :prop="column"
+                  :label="column"
+                  sortable
+                />
+              </el-table>
+            </div>
+            
             <div class="text-content" v-html="formatContent(msg.content)"></div>
             </template>
           </div>
