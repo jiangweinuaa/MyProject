@@ -131,6 +131,9 @@
         <el-input
           v-model="question"
           placeholder="问我：今天销售额是多少？"
+          @compositionstart="isComposing = true"
+          @compositionend="handleCompositionEnd"
+          @input="handleInput"
           @keyup.enter="send"
           :disabled="loading"
           size="large"
@@ -174,6 +177,7 @@ export default {
       question: '',
       loading: false,
       messages: [],
+      isComposing: false,  // 中文输入法状态
       examples: [
         '今天销售额是多少？',
         '昨天销售额是多少？',
@@ -544,6 +548,17 @@ export default {
           container.scrollTop = container.scrollHeight;
         }
       });
+    },
+    
+    handleInput(e) {
+      // 中文输入期间不更新，等 compositionend
+      if (this.isComposing) return
+      this.question = e.target.value
+    },
+    
+    handleCompositionEnd(e) {
+      this.isComposing = false
+      this.question = e.target.value
     },
     
     askExample(question) {
