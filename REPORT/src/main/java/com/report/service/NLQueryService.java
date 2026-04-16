@@ -64,7 +64,6 @@ public class NLQueryService extends BaseService {
         
         try {
             ConversationContext context = contextManager.getOrCreateSession(sessionId);
-            enhancedQuestion = questionEnhancer.enhance(question, context.getVariables());
             
             long sqlStart = System.currentTimeMillis();
             
@@ -72,8 +71,12 @@ public class NLQueryService extends BaseService {
             if (question.trim().toUpperCase().startsWith("SELECT")) {
                 sql = question.trim();
                 sqlGenTime = 0;
+                enhancedQuestion = question;  // 直接执行的 SQL 不需要增强
                 System.out.println("⚡ 直接执行 SQL：" + sql.substring(0, Math.min(100, sql.length())) + "...");
             } else {
+                // 自然语言查询，需要增强并调用大模型
+                enhancedQuestion = questionEnhancer.enhance(question, context.getVariables());
+                
                 // 从 token 解析 EID
                 String eid = "99";
                 if (token != null && !token.trim().isEmpty()) {
