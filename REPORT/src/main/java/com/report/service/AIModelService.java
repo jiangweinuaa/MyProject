@@ -29,14 +29,15 @@ public class AIModelService {
      * @return 可用模型 ID，如果没有可用模型则返回 null
      */
     public String getAvailableModel(String excludeModelId) {
-        // 支持字符串 '100' 和数字 100 两种格式，并排除指定模型
-        String sql = "SELECT MODEL_ID FROM AI_MODEL_LIST WHERE (STATUS = '100' OR STATUS = 100) ORDER BY SORT_ORDER ASC";
-        
+        String sql;
         List<Map<String, Object>> list;
+        
         if (excludeModelId != null && !excludeModelId.isEmpty()) {
-            sql += " AND MODEL_ID != ?";
+            // 排除条件放在 WHERE 子句中，ORDER BY 之前
+            sql = "SELECT MODEL_ID FROM AI_MODEL_LIST WHERE (STATUS = '100' OR STATUS = 100) AND MODEL_ID != ? ORDER BY SORT_ORDER ASC";
             list = jdbcTemplate.queryForList(sql, excludeModelId);
         } else {
+            sql = "SELECT MODEL_ID FROM AI_MODEL_LIST WHERE (STATUS = '100' OR STATUS = 100) ORDER BY SORT_ORDER ASC";
             list = jdbcTemplate.queryForList(sql);
         }
         
