@@ -29,10 +29,17 @@ public class ConversationController {
      */
     private String getUserIdFromToken(String token) {
         if (token == null || token.trim().isEmpty()) {
-            return "default_user";
+            return "anonymous";
         }
-        // 使用 TokenUtil 解析 OPNO（用户 ID）
-        return TokenUtil.getOpnoFromToken(jdbcTemplate, token);
+        try {
+            String opno = TokenUtil.getOpnoFromToken(jdbcTemplate, token);
+            if (opno != null && !opno.trim().isEmpty()) {
+                return opno;
+            }
+        } catch (Exception e) {
+            // Token 解析失败
+        }
+        return "anonymous";
     }
     
     /**

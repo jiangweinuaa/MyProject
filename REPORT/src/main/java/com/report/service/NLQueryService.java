@@ -91,11 +91,8 @@ public class NLQueryService extends BaseService {
             
             // 保存对话到数据库（包含完整结果集）
             try {
-                // 从 token 解析 OPNO（用户 ID，如果没有 token，使用 default_user）
-                String userId = "default_user";
-                if (token != null && !token.trim().isEmpty()) {
-                    userId = com.report.util.TokenUtil.getOpnoFromToken(platformJdbcTemplate, token);
-                }
+                // 从 token 解析 OPNO（用户 ID）
+                String userId = getUserIdFromToken(token);
                 
                 // 先保存会话（MERGE 模式，自动判断插入或更新）
                 String title = generateTitle(question);
@@ -245,10 +242,7 @@ public class NLQueryService extends BaseService {
                 logDTO.setSqlGenTimeMs(sqlGenTime);
                 
                 // 从 token 解析用户 ID（createdBy）
-                String userId = "system";
-                if (token != null && !token.trim().isEmpty()) {
-                    userId = com.report.util.TokenUtil.getOpnoFromToken(platformJdbcTemplate, token);
-                }
+                String userId = getUserIdFromToken(token);
                 logDTO.setCreatedBy(userId);
                 
                 // 从 TokenContext 获取 token 信息
@@ -284,5 +278,25 @@ public class NLQueryService extends BaseService {
             if (model != null && !model.trim().isEmpty()) return model;
         }
         throw new RuntimeException("PRODUCT_APPKEY 表中没有配置有效的模型");
+    }
+    
+    /**
+     * 从 token 解析用户 ID（OPNO）
+     * @param token 用户 token
+     * @return 用户 ID（OPNO），如果 token 无效则返回 "anonymous"
+     */
+    private String getUserIdFromToken(String token) {
+        if (token == null || token.trim().isEmpty()) {
+            return "anonymous";
+        }
+        try {
+            String opno = com.report.util.TokenUtil.getOpnoFromToken(platformJdbcTemplate, token);
+            if (opno != null && !opno.trim().isEmpty()) {
+                return opno;
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ 解析 token 失败：" + e.getMessage());
+        }
+        return "anonymous";
     }
 }
