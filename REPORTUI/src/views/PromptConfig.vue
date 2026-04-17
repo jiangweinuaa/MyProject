@@ -12,11 +12,11 @@
         <div class="ai-version-switch">
           <el-radio-group v-model="aiVersion" @change="handleAiVersionChange" size="large">
             <el-radio-button label="ALI_MODEL">
-              <el-icon><Platform /></el-icon>
+              <el-icon><Switch /></el-icon>
               直接使用大模型
             </el-radio-button>
             <el-radio-button label="ALI_AGENT">
-              <el-icon><Robot /></el-icon>
+              <el-icon><Cpu /></el-icon>
               使用智能体
             </el-radio-button>
           </el-radio-group>
@@ -220,8 +220,8 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Platform, Robot } from '@element-plus/icons-vue'
-import request from '@/utils/request'
+import { Switch, Cpu } from '@element-plus/icons-vue'
+import request from '@/api/request'
 
 // AI 版本
 const aiVersion = ref('ALI_MODEL')
