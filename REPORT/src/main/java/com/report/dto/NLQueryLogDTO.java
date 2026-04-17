@@ -74,6 +74,11 @@ public class NLQueryLogDTO {
     private String modelName;
     
     /**
+     * AI 版本：V1=大模型版，V2=智能体版
+     */
+    private String aiVersion;
+    
+    /**
      * Prompt Token 数（输入）
      */
     private Integer promptTokens;

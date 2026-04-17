@@ -250,7 +250,17 @@ public class NLQueryService extends BaseService {
                 logDTO.setErrorMessage(errorMessage);
                 logDTO.setExecTimeMs(sqlExecTime);
                 logDTO.setResponseTimeMs(System.currentTimeMillis() - startTime);
-                logDTO.setModelName(getCurrentModel());
+                
+                // 设置 AI 版本和模型名称
+                String currentModel = getCurrentModel();
+                if ("ALI_AGENT".equals(currentModel)) {
+                    logDTO.setAiVersion("V2");
+                    logDTO.setModelName("ALI_AGENT");
+                } else {
+                    logDTO.setAiVersion("V1");
+                    logDTO.setModelName(currentModel);
+                }
+                
                 logDTO.setSqlGenTimeMs(sqlGenTime);
                 
                 // 从 token 解析用户 ID（createdBy）
@@ -283,6 +293,15 @@ public class NLQueryService extends BaseService {
     }
     
     private String getCurrentModel() {
+        // 先获取 AI 版本配置
+        String versionSql = "SELECT ACCESSKEYID FROM PRODUCT_APPKEY WHERE PLATFORM = 'AI_VERSION'";
+        String aiVersion = platformJdbcTemplate.queryForObject(versionSql, String.class);
+        
+        if ("ALI_AGENT".equals(aiVersion)) {
+            return "ALI_AGENT";
+        }
+        
+        // 默认从 ALI_QWEN 读取模型
         String sql = "SELECT ACCESSKEYID FROM PRODUCT_APPKEY WHERE PLATFORM = 'ALI_QWEN'";
         List<Map<String, Object>> list = platformJdbcTemplate.queryForList(sql);
         if (list != null && !list.isEmpty()) {
