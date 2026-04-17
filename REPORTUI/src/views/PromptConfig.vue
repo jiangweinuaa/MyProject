@@ -180,40 +180,22 @@
     <el-dialog
       v-model="modelDialogVisible"
       title="切换模型"
-      width="800px"
+      width="600px"
     >
-      <el-alert
-        title="模型状态说明"
-        type="info"
-        :closable="false"
-        show-icon
-        style="margin-bottom: 15px"
-      >
-        🟢 可用（STATUS=100）：可正常切换使用 | 🔴 已耗尽（STATUS=403）：Token 已用完，不可切换
-      </el-alert>
-      
       <el-table :data="modelList" style="width: 100%" border stripe>
-        <el-table-column prop="MODEL_NAME" label="模型名称" width="200" />
         <el-table-column prop="MODEL_ID" label="模型 ID" min-width="280" />
-        <el-table-column prop="SORT_ORDER" label="排序" width="80" />
-        <el-table-column label="状态" width="120">
-          <template #default="{ row }">
-            <el-tag :type="row.STATUS === '100' || row.STATUS === 100 ? 'success' : 'danger'" size="small">
-              {{ row.STATUS === '100' || row.STATUS === 100 ? '🟢 可用' : '🔴 已耗尽' }}
-            </el-tag>
-          </template>
-        </el-table-column>
         <el-table-column label="操作" width="140" fixed="right">
           <template #default="{ row }">
             <el-button 
+              v-if="row.STATUS === '100' || row.STATUS === 100"
               type="primary" 
               size="small"
-              :disabled="row.STATUS !== '100' && row.STATUS !== 100"
               :loading="switchingModel && switchingModelId === row.MODEL_ID"
               @click="switchToModel(row)"
             >
-              {{ currentModel === row.MODEL_ID ? '当前使用' : '切换到此模型' }}
+              {{ currentModel === row.MODEL_ID ? '当前使用' : '切换' }}
             </el-button>
+            <span v-else style="color: #F56C6C; font-size: 14px;">已耗尽</span>
           </template>
         </el-table-column>
       </el-table>
