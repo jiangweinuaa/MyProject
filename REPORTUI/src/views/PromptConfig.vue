@@ -140,6 +140,49 @@
           </el-table-column>
         </el-table>
       </el-card>
+
+      <!-- 给大模型的表结构配置 -->
+      <el-card class="config-card" shadow="hover">
+        <template #header>
+          <div class="card-header">
+            <span>📊 给大模型的表结构（AI_TABLE_FILTER）</span>
+            <div>
+              <el-button type="primary" size="small" @click="showAddTableDialog()">
+                ➕ 添加表
+              </el-button>
+            </div>
+          </div>
+        </template>
+
+        <el-alert
+          title="说明"
+          type="info"
+          :closable="false"
+          show-icon
+          style="margin-bottom: 15px"
+        >
+          配置哪些表的结构会发送给大模型，只有启用的表才会包含在 Prompt 中。
+        </el-alert>
+
+        <el-table :data="tableFilter" style="width: 100%" border stripe>
+          <el-table-column prop="TABLE_NAME" label="表名" width="200" />
+          <el-table-column prop="TABLE_COMMENT" label="表注释" min-width="300" />
+          <el-table-column prop="ENABLED" label="状态" width="80">
+            <template #default="{ row }">
+              <el-tag :type="row.ENABLED === 'Y' ? 'success' : 'danger'" size="small">
+                {{ row.ENABLED === 'Y' ? '启用' : '禁用' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="SORT_ORDER" label="排序" width="80" />
+          <el-table-column label="操作" width="200" fixed="right">
+            <template #default="{ row }">
+              <el-button size="small" @click="editTableFilter(row)">编辑</el-button>
+              <el-button size="small" type="danger" @click="deleteTableFilter(row.TABLE_NAME)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </el-card>
     </div>
 
     <!-- 添加/编辑对话框 -->
@@ -202,6 +245,32 @@
         </el-table-column>
       </el-table>
     </el-dialog>
+
+    <!-- 添加/编辑表结构对话框 -->
+    <el-dialog
+      v-model="tableDialogVisible"
+      :title="isEditTable ? '编辑表结构' : '添加表结构'"
+      width="600px"
+    >
+      <el-form :model="tableFormData" label-width="100px">
+        <el-form-item label="表名" required>
+          <el-input v-model="tableFormData.tableName" placeholder="请输入表名（大写）" :disabled="isEditTable" />
+        </el-form-item>
+        <el-form-item label="表注释" required>
+          <el-input v-model="tableFormData.tableComment" type="textarea" :rows="3" placeholder="请输入表注释" />
+        </el-form-item>
+        <el-form-item label="是否启用">
+          <el-switch v-model="tableFormData.enabled" active-value="Y" inactive-value="N" />
+        </el-form-item>
+        <el-form-item label="排序">
+          <el-input-number v-model="tableFormData.sortOrder" :min="0" :max="999" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="tableDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveTableFilter" :loading="savingTable">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -229,6 +298,9 @@ const roleRequirements = ref([])
 // 要求列表
 const requirements = ref([])
 
+// 表结构配置
+const tableFilter = ref([])
+
 // 对话框
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
@@ -237,6 +309,17 @@ const formData = ref({
   REQUIREMENT: '',
   CATEGORY: '',
   ENABLED: 'Y'
+})
+
+// 表结构对话框
+const tableDialogVisible = ref(false)
+const isEditTable = ref(false)
+const savingTable = ref(false)
+const tableFormData = ref({
+  tableName: '',
+  tableComment: '',
+  enabled: 'Y',
+  sortOrder: 99
 })
 
 // 刷新缓存
@@ -456,6 +539,109 @@ const deleteRequirement = async (sortOrder) => {
   }
 }
 
+// 加载表结构配置
+const loadTableFilter = async () => {
+  try {
+    const res = await request({
+      url: '/prompt-config/table-filter',
+      method: 'get'
+    })
+    
+    if (res.success) {
+      tableFilter.value = res.data || []
+    }
+  } catch (error) {
+    console.error('加载表结构配置失败:', error)
+  }
+}
+
+// 显示添加表结构对话框
+const showAddTableDialog = () => {
+  isEditTable.value = false
+  tableFormData.value = {
+    tableName: '',
+    tableComment: '',
+    enabled: 'Y',
+    sortOrder: 99
+  }
+  tableDialogVisible.value = true
+}
+
+// 编辑表结构
+const editTableFilter = (row) => {
+  isEditTable.value = true
+  tableFormData.value = { ...row }
+  tableDialogVisible.value = true
+}
+
+// 保存表结构
+const saveTableFilter = async () => {
+  if (!tableFormData.value.tableName.trim()) {
+    ElMessage.warning('请输入表名')
+    return
+  }
+  if (!tableFormData.value.tableComment.trim()) {
+    ElMessage.warning('请输入表注释')
+    return
+  }
+  
+  savingTable.value = true
+  try {
+    const url = isEditTable.value 
+      ? `/prompt-config/table-filter/${tableFormData.value.tableName}`
+      : '/prompt-config/table-filter'
+    
+    const res = await request({
+      url: url,
+      method: isEditTable.value ? 'put' : 'post',
+      data: tableFormData.value
+    })
+    
+    if (res.success) {
+      ElMessage.success('保存成功，配置已立刻生效！')
+      tableDialogVisible.value = false
+      await loadTableFilter()
+      await refreshCache()
+    } else {
+      ElMessage.error('保存失败：' + res.message)
+    }
+  } catch (error) {
+    console.error('保存表结构失败:', error)
+    ElMessage.error('保存失败：' + error.message)
+  } finally {
+    savingTable.value = false
+  }
+}
+
+// 删除表结构
+const deleteTableFilter = async (tableName) => {
+  try {
+    await ElMessageBox.confirm(`确定要删除表 ${tableName} 的配置吗？`, '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    
+    const res = await request({
+      url: `/prompt-config/table-filter/${tableName}`,
+      method: 'delete'
+    })
+    
+    if (res.success) {
+      ElMessage.success('删除成功，配置已立刻生效！')
+      await loadTableFilter()
+      await refreshCache()
+    } else {
+      ElMessage.error('删除失败：' + res.message)
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除表结构失败:', error)
+      ElMessage.error('删除失败：' + error.message)
+    }
+  }
+}
+
 // 获取分类类型
 const getCategoryType = (category) => {
   const types = {
@@ -472,6 +658,7 @@ onMounted(() => {
   loadAiVersion()
   loadCurrentModel()
   loadRequirements()
+  loadTableFilter()
 })
 </script>
 
