@@ -81,18 +81,9 @@ public class AIConfigController {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            // 先获取 AI 版本
-            String versionSql = "SELECT ACCESSKEYID FROM PRODUCT_APPKEY WHERE PLATFORM = 'AI_VERSION'";
-            String aiVersion = platformJdbcTemplate.queryForObject(versionSql, String.class);
-            
-            String model;
-            if ("ALI_AGENT".equals(aiVersion)) {
-                model = "ALI_AGENT";
-            } else {
-                // 从 ALI_QWEN 读取模型
-                String sql = "SELECT ACCESSKEYID FROM PRODUCT_APPKEY WHERE PLATFORM = 'ALI_QWEN'";
-                model = platformJdbcTemplate.queryForObject(sql, String.class);
-            }
+            // 从 ALI_QWEN 读取模型 ID（无论 AI 版本是什么，都显示实际配置的模型）
+            String sql = "SELECT ACCESSKEYID FROM PRODUCT_APPKEY WHERE PLATFORM = 'ALI_QWEN'";
+            String model = platformJdbcTemplate.queryForObject(sql, String.class);
             
             response.put("success", true);
             response.put("model", model != null ? model : "qwen-plus");
