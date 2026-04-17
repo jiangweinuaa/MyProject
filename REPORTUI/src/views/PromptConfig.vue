@@ -262,7 +262,7 @@ const refreshing = ref(false)
 const loadAiVersion = async () => {
   try {
     const res = await request({
-      url: '/api/ai/version',
+      url: '/ai/version',
       method: 'get'
     })
     if (res.success) {
@@ -277,7 +277,7 @@ const loadAiVersion = async () => {
 const handleAiVersionChange = async (value) => {
   try {
     const res = await request({
-      url: '/api/ai/switch-version',
+      url: '/ai/switch-version',
       method: 'post',
       data: { version: value }
     })
@@ -303,7 +303,7 @@ const handleAiVersionChange = async (value) => {
 const loadCurrentModel = async () => {
   try {
     const res = await request({
-      url: '/api/ai/current-model',
+      url: '/ai/current-model',
       method: 'get'
     })
     if (res.success) {
