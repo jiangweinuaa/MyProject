@@ -180,11 +180,13 @@
     <el-dialog
       v-model="modelDialogVisible"
       title="切换模型"
-      width="600px"
+      width="90%"
+      :fullscreen="false"
+      class="model-switch-dialog"
     >
-      <el-table :data="modelList" style="width: 100%" border stripe>
-        <el-table-column prop="MODEL_ID" label="模型 ID" min-width="280" />
-        <el-table-column label="操作" width="140" fixed="right">
+      <el-table :data="modelList" style="width: 100%" border stripe size="small">
+        <el-table-column prop="MODEL_ID" label="模型" min-width="180" show-overflow-tooltip />
+        <el-table-column label="操作" width="80" fixed="right">
           <template #default="{ row }">
             <el-button 
               v-if="row.STATUS === '100' || row.STATUS === 100"
@@ -193,9 +195,9 @@
               :loading="switchingModel && switchingModelId === row.MODEL_ID"
               @click="switchToModel(row)"
             >
-              {{ currentModel === row.MODEL_ID ? '当前使用' : '切换' }}
+              {{ currentModel === row.MODEL_ID ? '使用中' : '切换' }}
             </el-button>
-            <span v-else style="color: #F56C6C; font-size: 14px;">已耗尽</span>
+            <span v-else style="color: #F56C6C; font-size: 13px;">耗尽</span>
           </template>
         </el-table-column>
       </el-table>
@@ -510,5 +512,16 @@ onMounted(() => {
 .model-desc {
   color: #909399;
   font-size: 14px;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  .prompt-config-page {
+    padding: 10px;
+  }
+  
+  .model-switch-dialog :deep(.el-dialog__body) {
+    padding: 10px;
+  }
 }
 </style>
