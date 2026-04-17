@@ -192,34 +192,48 @@ public class AISQLService {
         config.put("apiKey", apiKey);
         
         // 根据模型类型设置 API 端点
-        String apiEndpoint = getAPIEndpoint(model);
-        config.put("apiEndpoint", apiEndpoint);
+        config.put("apiEndpoint", getApiEndpoint(model));
         
         return config;
     }
     
     /**
-     * 根据模型名称获取 API 端点
-     * @param model 模型名称
-     * @return API 端点 URL
+     * 获取知识库 ID（用于 RAG 检索增强）
+     * @return 知识库 ID，如果没有配置则返回 null
      */
-    private String getAPIEndpoint(String model) {
-        if (model == null || model.trim().isEmpty()) {
-            throw new RuntimeException("模型名称为空");
+    private String getKnowledgeBaseId() {
+        try {
+            // 从 PRODUCT_APPKEY 表读取知识库 ID
+            String sql = "SELECT ACCESSKEYID FROM PRODUCT_APPKEY WHERE PLATFORM = 'ALI_QWEN_KNOWLEDGE'";
+            List<Map<String, Object>> list = platformJdbcTemplate.queryForList(sql);
+            
+            if (list == null || list.isEmpty()) {
+                // 没有配置知识库
+                return null;
+            }
+            
+            String knowledgeBaseId = (String) list.get(0).get("ACCESSKEYID");
+            
+            if (knowledgeBaseId == null || knowledgeBaseId.trim().isEmpty()) {
+                // 字段为空
+                return null;
+            }
+            
+            return knowledgeBaseId.trim();
+        } catch (Exception e) {
+            // 查询失败，返回 null
+            System.out.println("ℹ️ 知识库 ID 获取失败，跳过 RAG 增强");
+            return null;
         }
-        
-        // qwen-plus 使用纯文本模型端点
-        if ("qwen-plus".equalsIgnoreCase(model)) {
-            return "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation";
-        }
-        
-        // qwen3 开头的模型使用多模态模型端点
-        if (model.toLowerCase().startsWith("qwen3")) {
-            return "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
-        }
-        
-        // 其他未知模型默认使用多模态端点
-        return "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
+    }
+    
+    /**
+     * 根据模型类型获取 API 端点
+     * 使用 OpenAI 兼容模式
+     */
+    private String getApiEndpoint(String model) {
+        // 统一使用 OpenAI 兼容模式端点
+        return "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
     }
     
     // 模型切换消息
@@ -508,9 +522,7 @@ public class AISQLService {
             Map<String, String> config = getAIModelConfig();
             String model = config.get("model");
             String apiKey = config.get("apiKey");
-            
-            // 使用 OpenAI 兼容模式端点
-            String apiEndpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
+            String apiEndpoint = config.get("apiEndpoint");
             
             if (apiKey == null || apiKey.trim().isEmpty()) {
                 throw new RuntimeException("API Key 未配置，请在 PRODUCT_APPKEY 表中添加 PLATFORM='ALI_QWEN'的记录");
@@ -528,6 +540,14 @@ public class AISQLService {
             messages.add(userMessage);
             
             requestBody.put("messages", messages);
+            
+            // 知识库 ID（用于 RAG 检索增强）
+            String knowledgeBaseId = getKnowledgeBaseId();
+            System.out.println("🔍 知识库 ID: " + (knowledgeBaseId != null ? knowledgeBaseId : "未配置"));
+            if (knowledgeBaseId != null && !knowledgeBaseId.isEmpty()) {
+                requestBody.put("knowledge_base_id", knowledgeBaseId);
+                System.out.println("📚 已添加知识库 ID 到请求参数");
+            }
             
             // 构建 HTTP 请求
             RequestBody body = RequestBody.create(
@@ -683,26 +703,13 @@ public class AISQLService {
             }
         }
         
-        // 3. 从 AI_TABLE_FILTER 表读取允许的表（使用平台库）
-        String[] allowedTables = getAllowedTables();
-        
-        boolean hasAllowedTable = false;
-        for (String table : allowedTables) {
-            if (upperSQL.contains(table)) {
-                hasAllowedTable = true;
-                break;
-            }
-        }
-        
-        if (!hasAllowedTable) {
-            return false;
-        }
-        
+        // 只检查危险关键词，不限制表名访问
+        // 注意：AI_TABLE_FILTER 表仍然用于构建 prompt 时过滤表结构
         return true;
     }
     
     /**
-     * 从 AI_TABLE_FILTER 表读取允许的表（使用平台库）
+     * 从 AI_TABLE_FILTER 表读取允许的表（用于构建 prompt）
      * @return 允许的表名数组
      */
     private String[] getAllowedTables() {

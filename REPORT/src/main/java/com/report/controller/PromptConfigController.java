@@ -256,10 +256,16 @@ public class PromptConfigController {
                 params.add(newSortOrder);
             }
             
-            sql.append("UPDATED_TIME = SYSDATE WHERE TABLE_NAME = ?");
+            // 删除末尾的逗号和空格
+            String sqlStr = sql.toString();
+            if (sqlStr.endsWith(", ")) {
+                sqlStr = sqlStr.substring(0, sqlStr.length() - 2);
+            }
+            
+            sqlStr += " WHERE TABLE_NAME = ?";
             params.add(tableName);
             
-            jdbcTemplate.update(sql.toString(), params.toArray());
+            jdbcTemplate.update(sqlStr, params.toArray());
             
             // 刷新缓存
             aiSQLService.refreshPromptCache();
