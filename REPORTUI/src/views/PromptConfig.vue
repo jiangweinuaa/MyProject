@@ -570,7 +570,12 @@ const showAddTableDialog = () => {
 // 编辑表结构
 const editTableFilter = (row) => {
   isEditTable.value = true
-  tableFormData.value = { ...row }
+  tableFormData.value = {
+    tableName: row.TABLE_NAME,
+    tableComment: row.TABLE_COMMENT,
+    enabled: row.ENABLED,
+    sortOrder: row.SORT_ORDER
+  }
   tableDialogVisible.value = true
 }
 
@@ -591,10 +596,18 @@ const saveTableFilter = async () => {
       ? `/prompt-config/table-filter/${tableFormData.value.tableName}`
       : '/prompt-config/table-filter'
     
+    // 后端期望大写字段名
+    const requestData = {
+      tableName: tableFormData.value.tableName,
+      tableComment: tableFormData.value.tableComment,
+      enabled: tableFormData.value.enabled,
+      sortOrder: tableFormData.value.sortOrder
+    }
+    
     const res = await request({
       url: url,
       method: isEditTable.value ? 'put' : 'post',
-      data: tableFormData.value
+      data: requestData
     })
     
     if (res.success) {
