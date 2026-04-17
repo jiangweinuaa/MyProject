@@ -1,6 +1,45 @@
 <template>
   <div class="prompt-config-page">
     <div class="config-container">
+      <!-- AI 版本切换 -->
+      <el-card class="config-card" shadow="hover">
+        <template #header>
+          <div class="card-header">
+            <span>🤖 AI 版本切换</span>
+          </div>
+        </template>
+        
+        <div class="ai-version-switch">
+          <el-radio-group v-model="aiVersion" @change="handleAiVersionChange" size="large">
+            <el-radio-button label="ALI_MODEL">
+              <el-icon><Platform /></el-icon>
+              直接使用大模型
+            </el-radio-button>
+            <el-radio-button label="ALI_AGENT">
+              <el-icon><Robot /></el-icon>
+              使用智能体
+            </el-radio-button>
+          </el-radio-group>
+          
+          <div class="version-desc">
+            <el-alert
+              v-if="aiVersion === 'ALI_MODEL'"
+              title="大模型模式：直接调用阿里大模型，需要手动传递表结构，Token 消耗较大"
+              type="info"
+              :closable="false"
+              show-icon
+            />
+            <el-alert
+              v-else
+              title="智能体模式：调用阿里百炼智能体，自动从知识库检索表结构，Token 消耗较小"
+              type="success"
+              :closable="false"
+              show-icon
+            />
+          </div>
+        </div>
+      </el-card>
+
       <!-- 模型管理 -->
       <el-card class="config-card" shadow="hover">
         <template #header>
@@ -101,109 +140,39 @@
           </el-table-column>
         </el-table>
       </el-card>
-
-      <!-- 给大模型的表结构配置 -->
-      <el-card class="config-card" shadow="hover">
-        <template #header>
-          <div class="card-header">
-            <span>📊 给大模型的表结构（AI_TABLE_FILTER）</span>
-            <div>
-              <el-button type="primary" size="small" @click="showAddTableDialog()">
-                ➕ 添加表
-              </el-button>
-            </div>
-          </div>
-        </template>
-
-        <el-alert
-          title="说明"
-          type="info"
-          :closable="false"
-          show-icon
-          style="margin-bottom: 15px"
-        >
-          配置哪些表的结构会发送给大模型，只有启用的表才会包含在 Prompt 中。
-        </el-alert>
-
-        <el-table :data="tableFilter" style="width: 100%" border stripe>
-          <el-table-column prop="TABLE_NAME" label="表名" width="200" />
-          <el-table-column prop="TABLE_COMMENT" label="表注释" min-width="300" />
-          <el-table-column prop="ENABLED" label="状态" width="80">
-            <template #default="{ row }">
-              <el-tag :type="row.ENABLED === 'Y' ? 'success' : 'danger'" size="small">
-                {{ row.ENABLED === 'Y' ? '启用' : '禁用' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="SORT_ORDER" label="排序" width="80" />
-          <el-table-column label="操作" width="200" fixed="right">
-            <template #default="{ row }">
-              <el-button size="small" @click="editTableFilter(row)">编辑</el-button>
-              <el-button size="small" type="danger" @click="deleteTableFilter(row.TABLE_NAME)">删除</el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
     </div>
 
     <!-- 添加/编辑对话框 -->
     <el-dialog
       v-model="dialogVisible"
-      :title="isEdit ? '编辑要求' : '添加要求'"
+      :title="dialogTitle"
       width="600px"
     >
-      <el-form :model="formData" label-width="80px">
-        <el-form-item label="要求内容" required>
-          <el-input v-model="formData.requirement" type="textarea" :rows="3" placeholder="请输入要求内容" />
+      <el-form :model="formData" label-width="100px">
+        <el-form-item label="排序">
+          <el-input-number v-model="formData.SORT_ORDER" :min="1" :max="9999" />
+        </el-form-item>
+        <el-form-item label="内容">
+          <el-input
+            v-model="formData.REQUIREMENT"
+            type="textarea"
+            :rows="6"
+            placeholder="请输入配置内容"
+          />
         </el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="formData.category" placeholder="请选择分类">
-            <el-option label="GENERAL" value="GENERAL" />
-            <el-option label="SECURITY" value="SECURITY" />
-            <el-option label="ORACLE" value="ORACLE" />
-            <el-option label="FORMAT" value="FORMAT" />
-            <el-option label="PERFORMANCE" value="PERFORMANCE" />
-          </el-select>
+          <el-input v-model="formData.CATEGORY" placeholder="CATEGORY = 'ROLE' 为角色定义，其他为要求" />
         </el-form-item>
-        <el-form-item label="是否启用">
-          <el-switch v-model="formData.enabled" active-value="Y" inactive-value="N" />
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="formData.sortOrder" :min="0" :max="999" />
-        </el-form-item>
-        <el-form-item label="备注">
-          <el-input v-model="formData.remark" type="textarea" :rows="2" placeholder="备注说明" />
+        <el-form-item label="状态">
+          <el-radio-group v-model="formData.ENABLED">
+            <el-radio label="Y">启用</el-radio>
+            <el-radio label="N">禁用</el-radio>
+          </el-radio-group>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveRequirement" :loading="saving">保存</el-button>
-      </template>
-    </el-dialog>
-
-    <!-- 添加/编辑表结构对话框 -->
-    <el-dialog
-      v-model="tableDialogVisible"
-      :title="isEditTable ? '编辑表结构' : '添加表结构'"
-      width="600px"
-    >
-      <el-form :model="tableFormData" label-width="100px">
-        <el-form-item label="表名" required>
-          <el-input v-model="tableFormData.tableName" placeholder="请输入表名（大写）" :disabled="isEditTable" />
-        </el-form-item>
-        <el-form-item label="表注释" required>
-          <el-input v-model="tableFormData.tableComment" type="textarea" :rows="3" placeholder="请输入表注释" />
-        </el-form-item>
-        <el-form-item label="是否启用">
-          <el-switch v-model="tableFormData.enabled" active-value="Y" inactive-value="N" />
-        </el-form-item>
-        <el-form-item label="排序">
-          <el-input-number v-model="tableFormData.sortOrder" :min="0" :max="999" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="tableDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveTableFilter" :loading="savingTable">保存</el-button>
+        <el-button type="primary" @click="saveRequirement">保存</el-button>
       </template>
     </el-dialog>
 
@@ -211,185 +180,173 @@
     <el-dialog
       v-model="modelDialogVisible"
       title="切换模型"
-      width="800px"
+      width="500px"
     >
       <el-alert
-        title="模型状态说明"
+        title="提示信息"
         type="info"
         :closable="false"
         show-icon
-        style="margin-bottom: 15px"
+        style="margin-bottom: 20px"
       >
-        🟢 可用（STATUS=100）：可正常切换使用 | 🔴 已耗尽（STATUS=403）：Token 已用完，不可切换
+        当前 AI 版本：{{ aiVersion === 'ALI_MODEL' ? '大模型版' : '智能体版' }}
+        <br>
+        如需切换 AI 版本，请在上方"AI 版本切换"区域操作。
       </el-alert>
       
-      <el-table :data="modelList" style="width: 100%" border stripe>
-        <el-table-column prop="MODEL_NAME" label="模型名称" width="200" />
-        <el-table-column prop="MODEL_ID" label="模型 ID" min-width="280" />
-        <el-table-column prop="SORT_ORDER" label="排序" width="80" />
-        <el-table-column label="状态" width="120">
-          <template #default="{ row }">
-            <el-tag :type="row.STATUS === '100' || row.STATUS === 100 ? 'success' : 'danger'" size="small">
-              {{ row.STATUS === '100' || row.STATUS === 100 ? '🟢 可用' : '🔴 已耗尽' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="140" fixed="right">
-          <template #default="{ row }">
-            <el-button 
-              type="primary" 
-              size="small"
-              :disabled="row.STATUS !== '100' && row.STATUS !== 100"
-              :loading="switchingModel && switchingModelId === row.MODEL_ID"
-              @click="switchToModel(row)"
-            >
-              {{ currentModel === row.MODEL_ID ? '当前使用' : '切换到此模型' }}
-            </el-button>
-          </template>
-        </el-table-column>
-      </el-table>
+      <el-form label-width="100px">
+        <el-form-item label="当前模型">
+          <el-tag size="large" type="success">{{ currentModel }}</el-tag>
+        </el-form-item>
+        <el-form-item label="选择模型">
+          <el-select v-model="selectedModel" placeholder="请选择模型" style="width: 100%">
+            <el-option
+              v-for="model in availableModels"
+              :key="model.MODEL_ID"
+              :label="model.MODEL_NAME"
+              :value="model.MODEL_ID"
+            />
+          </el-select>
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="modelDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="switchModel">确定</el-button>
+      </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Platform, Robot } from '@element-plus/icons-vue'
+import request from '@/utils/request'
 
-// 角色定义列表
+// AI 版本
+const aiVersion = ref('ALI_MODEL')
+
+// 当前模型
+const currentModel = ref('')
+
+// 模型对话框
+const modelDialogVisible = ref(false)
+const selectedModel = ref('')
+const availableModels = ref([])
+
+// 角色定义
 const roleRequirements = ref([])
 
 // 要求列表
 const requirements = ref([])
-const refreshing = ref(false)
-
-// 表结构配置
-const tableFilter = ref([])
 
 // 对话框
 const dialogVisible = ref(false)
-const isEdit = ref(false)
-const saving = ref(false)
-const defaultCategory = ref('GENERAL')
-
-// 表结构对话框
-const tableDialogVisible = ref(false)
-const isEditTable = ref(false)
-const savingTable = ref(false)
-
-// 模型管理
-const currentModel = ref('')
-const modelList = ref([])
-const modelDialogVisible = ref(false)
-const switchingModel = ref(false)
-const switchingModelId = ref('')
-
-// 表单数据
+const dialogTitle = ref('')
 const formData = ref({
-  requirement: '',
-  category: 'GENERAL',
-  enabled: 'Y',
-  sortOrder: 99,
-  remark: ''
+  SORT_ORDER: 1,
+  REQUIREMENT: '',
+  CATEGORY: '',
+  ENABLED: 'Y'
 })
 
-// 表结构表单数据
-const tableFormData = ref({
-  tableName: '',
-  tableComment: '',
-  enabled: 'Y',
-  sortOrder: 99
-})
+// 刷新缓存
+const refreshing = ref(false)
 
-// 获取分类对应的标签颜色
-const getCategoryType = (category) => {
-  const types = {
-    'GENERAL': '',
-    'SECURITY': 'danger',
-    'ORACLE': 'warning',
-    'FORMAT': 'primary',
-    'PERFORMANCE': 'success'
+// 加载 AI 版本
+const loadAiVersion = async () => {
+  try {
+    const res = await request({
+      url: '/api/ai/version',
+      method: 'get'
+    })
+    if (res.success) {
+      aiVersion.value = res.version
+    }
+  } catch (error) {
+    console.error('加载 AI 版本失败:', error)
   }
-  return types[category] || ''
+}
+
+// 切换 AI 版本
+const handleAiVersionChange = async (value) => {
+  try {
+    const res = await request({
+      url: '/api/ai/switch-version',
+      method: 'post',
+      data: { version: value }
+    })
+    
+    if (res.success) {
+      ElMessage.success('已切换到' + (value === 'ALI_MODEL' ? '大模型模式' : '智能体模式'))
+      // 重新加载当前模型
+      loadCurrentModel()
+    } else {
+      ElMessage.error(res.message)
+      // 恢复原值
+      aiVersion.value = value === 'ALI_MODEL' ? 'ALI_AGENT' : 'ALI_MODEL'
+    }
+  } catch (error) {
+    console.error('切换 AI 版本失败:', error)
+    ElMessage.error('切换失败：' + error.message)
+    // 恢复原值
+    aiVersion.value = value === 'ALI_MODEL' ? 'ALI_AGENT' : 'ALI_MODEL'
+  }
 }
 
 // 加载当前模型
 const loadCurrentModel = async () => {
   try {
-    const token = localStorage.getItem('token') || ''
-    const res = await fetch('http://47.100.138.89:8110/api/ai-model/current' + (token ? '?token=' + token : ''))
-    const data = await res.json()
-    console.log('当前模型响应:', data)
-    if (data.success) {
-      currentModel.value = data.datas || ''
+    const res = await request({
+      url: '/api/ai/current-model',
+      method: 'get'
+    })
+    if (res.success) {
+      currentModel.value = res.model
     }
   } catch (error) {
     console.error('加载当前模型失败:', error)
   }
 }
 
-// 加载模型列表
-const loadModelList = async () => {
-  try {
-    const token = localStorage.getItem('token') || ''
-    const res = await fetch('http://47.100.138.89:8110/api/ai-model/list' + (token ? '?token=' + token : ''))
-    const data = await res.json()
-    console.log('模型列表响应:', data)
-    if (data.success) {
-      modelList.value = data.datas || []
-    }
-  } catch (error) {
-    ElMessage.error('加载模型列表失败：' + error.message)
-  }
-}
-
 // 显示模型切换对话框
 const showModelSwitchDialog = async () => {
-  await loadModelList()
   modelDialogVisible.value = true
-}
-
-// 切换到指定模型
-const switchToModel = async (row) => {
-  switchingModel.value = true
-  switchingModelId.value = row.MODEL_ID
+  selectedModel.value = currentModel.value
+  
+  // 加载可用模型列表
   try {
-    const token = localStorage.getItem('token') || ''
-    const res = await fetch('http://47.100.138.89:8110/api/ai-model/switch' + (token ? '?token=' + token : ''), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ modelId: row.MODEL_ID })
+    const res = await request({
+      url: '/api/ai/models',
+      method: 'get'
     })
-    const data = await res.json()
-    console.log('切换模型响应:', data)
-    if (data.success) {
-      ElMessage.success('✅ 已切换到 ' + row.MODEL_NAME)
-      currentModel.value = row.MODEL_ID
-      modelDialogVisible.value = false
-      // 刷新 Prompt 缓存
-      await refreshCache()
-    } else {
-      ElMessage.error('切换失败：' + (data.message || data.serviceDescription))
+    if (res.success) {
+      availableModels.value = res.data || []
     }
   } catch (error) {
-    ElMessage.error('切换失败：' + error.message)
-  } finally {
-    switchingModel.value = false
-    switchingModelId.value = ''
+    console.error('加载模型列表失败:', error)
   }
 }
 
-// 加载角色定义
-const loadRoleRequirements = async () => {
+// 切换模型
+const switchModel = async () => {
   try {
-    const res = await fetch('http://47.100.138.89:8110/api/prompt-config/requirements')
-    const data = await res.json()
-    if (data.success) {
-      roleRequirements.value = (data.data || []).filter(item => item.CATEGORY === 'ROLE')
-      requirements.value = (data.data || []).filter(item => item.CATEGORY !== 'ROLE')
+    const res = await request({
+      url: '/api/ai/switch-model',
+      method: 'post',
+      data: { modelId: selectedModel.value }
+    })
+    
+    if (res.success) {
+      ElMessage.success('模型切换成功')
+      currentModel.value = selectedModel.value
+      modelDialogVisible.value = false
+    } else {
+      ElMessage.error(res.message)
     }
   } catch (error) {
-    ElMessage.error('加载配置失败：' + error.message)
+    console.error('切换模型失败:', error)
+    ElMessage.error('切换失败：' + error.message)
   }
 }
 
@@ -397,230 +354,137 @@ const loadRoleRequirements = async () => {
 const refreshCache = async () => {
   refreshing.value = true
   try {
-    const res = await fetch('http://47.100.138.89:8110/api/prompt-config/refresh', {
-      method: 'POST'
+    const res = await request({
+      url: '/api/prompt/refresh',
+      method: 'post'
     })
-    const data = await res.json()
-    if (data.success) {
-      ElMessage.success('✅ 配置已立刻生效！')
-      // 重新加载数据
-      await loadRoleRequirements()
+    
+    if (res.success) {
+      ElMessage.success('缓存刷新成功')
     } else {
-      ElMessage.error('刷新失败：' + data.message)
+      ElMessage.error(res.message)
     }
   } catch (error) {
+    console.error('刷新缓存失败:', error)
     ElMessage.error('刷新失败：' + error.message)
   } finally {
     refreshing.value = false
   }
 }
 
-// 显示添加对话框
-const showAddDialog = (category = 'GENERAL') => {
-  isEdit.value = false
-  defaultCategory.value = category
-  formData.value = {
-    requirement: category === 'ROLE' ? '你是一个专业的 Oracle SQL 专家，请根据以下数据库表结构，将用户的自然语言问题转换为 Oracle SQL 查询。' : '',
-    category: category,
-    enabled: 'Y',
-    sortOrder: 99,
-    remark: ''
-  }
-  dialogVisible.value = true
-}
-
-// 编辑要求
-const editRequirement = (row) => {
-  isEdit.value = true
-  formData.value = {
-    requirement: row.REQUIREMENT,
-    category: row.CATEGORY,
-    enabled: row.ENABLED,
-    sortOrder: row.SORT_ORDER,
-    remark: row.REMARK || ''
-  }
-  dialogVisible.value = true
-}
-
-// 保存要求
-const saveRequirement = async () => {
-  if (!formData.value.requirement.trim()) {
-    ElMessage.warning('请输入要求内容')
-    return
-  }
-
-  saving.value = true
+// 加载配置
+const loadRequirements = async () => {
   try {
-    const url = isEdit.value
-      ? `http://47.100.138.89:8110/api/prompt-config/requirements/${formData.value.sortOrder}`
-      : 'http://47.100.138.89:8110/api/prompt-config/requirements'
-    
-    const method = isEdit.value ? 'PUT' : 'POST'
-    
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData.value)
+    const res = await request({
+      url: '/api/prompt/requirements',
+      method: 'get'
     })
-    const data = await res.json()
-    if (data.success) {
-      ElMessage.success('保存成功，配置已立刻生效！')
-      dialogVisible.value = false
-      await loadRequirements()
-    } else {
-      ElMessage.error('保存失败：' + data.message)
+    
+    if (res.success) {
+      const list = res.data || []
+      roleRequirements.value = list.filter(item => item.CATEGORY === 'ROLE')
+      requirements.value = list.filter(item => item.CATEGORY !== 'ROLE')
     }
   } catch (error) {
-    ElMessage.error('保存失败：' + error.message)
-  } finally {
-    saving.value = false
+    console.error('加载配置失败:', error)
   }
 }
 
-// 删除要求
+// 显示添加对话框
+const showAddDialog = (category = '') => {
+  dialogTitle.value = '添加配置'
+  formData.value = {
+    SORT_ORDER: roleRequirements.value.length + requirements.value.length + 1,
+    REQUIREMENT: '',
+    CATEGORY: category,
+    ENABLED: 'Y'
+  }
+  dialogVisible.value = true
+}
+
+// 编辑配置
+const editRequirement = (row) => {
+  dialogTitle.value = '编辑配置'
+  formData.value = { ...row }
+  dialogVisible.value = true
+}
+
+// 保存配置
+const saveRequirement = async () => {
+  try {
+    const res = await request({
+      url: '/api/prompt/requirement',
+      method: 'post',
+      data: formData.value
+    })
+    
+    if (res.success) {
+      ElMessage.success('保存成功')
+      dialogVisible.value = false
+      loadRequirements()
+    } else {
+      ElMessage.error(res.message)
+    }
+  } catch (error) {
+    console.error('保存配置失败:', error)
+    ElMessage.error('保存失败：' + error.message)
+  }
+}
+
+// 删除配置
 const deleteRequirement = async (sortOrder) => {
   try {
-    await ElMessageBox.confirm('确定要删除这条要求吗？', '提示', {
+    await ElMessageBox.confirm('确定要删除这条配置吗？', '提示', {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     })
     
-    const res = await fetch(`http://47.100.138.89:8110/api/prompt-config/requirements/${sortOrder}`, {
-      method: 'DELETE'
+    const res = await request({
+      url: '/api/prompt/requirement/' + sortOrder,
+      method: 'delete'
     })
-    const data = await res.json()
-    if (data.success) {
-      ElMessage.success('删除成功，配置已立刻生效！')
-      await loadRequirements()
+    
+    if (res.success) {
+      ElMessage.success('删除成功')
+      loadRequirements()
     } else {
-      ElMessage.error('删除失败：' + data.message)
+      ElMessage.error(res.message)
     }
   } catch (error) {
     if (error !== 'cancel') {
+      console.error('删除配置失败:', error)
       ElMessage.error('删除失败：' + error.message)
     }
   }
 }
 
-// 加载表结构配置
-const loadTableFilter = async () => {
-  try {
-    const res = await fetch('http://47.100.138.89:8110/api/prompt-config/table-filter')
-    const data = await res.json()
-    if (data.success) {
-      tableFilter.value = data.data || []
-    }
-  } catch (error) {
-    ElMessage.error('加载表结构配置失败：' + error.message)
+// 获取分类类型
+const getCategoryType = (category) => {
+  const types = {
+    'ROLE': 'success',
+    'SQL': 'primary',
+    'ORACLE': 'warning',
+    'TABLE': 'info'
   }
+  return types[category] || 'info'
 }
 
-// 显示添加表结构对话框
-const showAddTableDialog = () => {
-  isEditTable.value = false
-  tableFormData.value = {
-    tableName: '',
-    tableComment: '',
-    enabled: 'Y',
-    sortOrder: 99
-  }
-  tableDialogVisible.value = true
-}
-
-// 编辑表结构
-const editTableFilter = (row) => {
-  isEditTable.value = true
-  tableFormData.value = {
-    tableName: row.TABLE_NAME,
-    tableComment: row.TABLE_COMMENT,
-    enabled: row.ENABLED,
-    sortOrder: row.SORT_ORDER
-  }
-  tableDialogVisible.value = true
-}
-
-// 保存表结构配置
-const saveTableFilter = async () => {
-  if (!tableFormData.value.tableName.trim()) {
-    ElMessage.warning('请输入表名')
-    return
-  }
-  if (!tableFormData.value.tableComment.trim()) {
-    ElMessage.warning('请输入表注释')
-    return
-  }
-
-  savingTable.value = true
-  try {
-    const url = isEditTable.value
-      ? `http://47.100.138.89:8110/api/prompt-config/table-filter/${tableFormData.value.tableName}`
-      : 'http://47.100.138.89:8110/api/prompt-config/table-filter'
-    
-    const method = isEditTable.value ? 'PUT' : 'POST'
-    
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(tableFormData.value)
-    })
-    const data = await res.json()
-    if (data.success) {
-      ElMessage.success('保存成功，配置已立刻生效！')
-      tableDialogVisible.value = false
-      await loadTableFilter()
-    } else {
-      ElMessage.error('保存失败：' + data.message)
-    }
-  } catch (error) {
-    ElMessage.error('保存失败：' + error.message)
-  } finally {
-    savingTable.value = false
-  }
-}
-
-// 删除表结构配置
-const deleteTableFilter = async (tableName) => {
-  try {
-    await ElMessageBox.confirm(`确定要删除表 ${tableName} 的配置吗？`, '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    
-    const res = await fetch(`http://47.100.138.89:8110/api/prompt-config/table-filter/${tableName}`, {
-      method: 'DELETE'
-    })
-    const data = await res.json()
-    if (data.success) {
-      ElMessage.success('删除成功，配置已立刻生效！')
-      await loadTableFilter()
-    } else {
-      ElMessage.error('删除失败：' + data.message)
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
-      ElMessage.error('删除失败：' + error.message)
-    }
-  }
-}
-
+// 初始化
 onMounted(() => {
+  loadAiVersion()
   loadCurrentModel()
-  loadRoleRequirements()
-  loadTableFilter()
+  loadRequirements()
 })
 </script>
 
 <style scoped>
 .prompt-config-page {
   padding: 20px;
-  background: #f0f2f5;
-  min-height: calc(100vh - 84px);
 }
 
 .config-container {
-  max-width: 1400px;
+  max-width: 1200px;
   margin: 0 auto;
 }
 
@@ -634,25 +498,22 @@ onMounted(() => {
   align-items: center;
 }
 
-.card-header span {
-  font-size: 16px;
-  font-weight: bold;
+.ai-version-switch {
+  padding: 10px 0;
+}
+
+.version-desc {
+  margin-top: 15px;
 }
 
 .current-model-display {
   display: flex;
   align-items: center;
   gap: 15px;
-  padding: 10px 0;
-}
-
-.current-model-display .el-tag {
-  font-size: 16px;
-  padding: 8px 16px;
 }
 
 .model-desc {
-  color: #666;
+  color: #909399;
   font-size: 14px;
 }
 </style>
