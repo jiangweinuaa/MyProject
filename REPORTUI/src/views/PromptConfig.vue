@@ -41,7 +41,7 @@
       </el-card>
 
       <!-- 模型管理 -->
-      <el-card class="config-card" shadow="hover">
+      <el-card v-if="aiVersion === 'ALI_MODEL'" class="config-card" shadow="hover">
         <template #header>
           <div class="card-header">
             <span>🤖 当前使用模型</span>
@@ -60,7 +60,7 @@
       </el-card>
 
       <!-- 角色定义 -->
-      <el-card class="config-card" shadow="hover">
+      <el-card v-if="aiVersion === 'ALI_MODEL'" class="config-card" shadow="hover">
         <template #header>
           <div class="card-header">
             <span>🤖 角色定义（CATEGORY = 'ROLE'）</span>
@@ -103,7 +103,7 @@
       </el-card>
 
       <!-- 要求列表 -->
-      <el-card class="config-card" shadow="hover">
+      <el-card v-if="aiVersion === 'ALI_MODEL'" class="config-card" shadow="hover">
         <template #header>
           <div class="card-header">
             <span>📋 Prompt 要求列表（CATEGORY != 'ROLE'）</span>
@@ -142,7 +142,7 @@
       </el-card>
 
       <!-- 给大模型的表结构配置 -->
-      <el-card class="config-card" shadow="hover">
+      <el-card v-if="aiVersion === 'ALI_MODEL'" class="config-card" shadow="hover">
         <template #header>
           <div class="card-header">
             <span>📊 给大模型的表结构（AI_TABLE_FILTER）</span>
