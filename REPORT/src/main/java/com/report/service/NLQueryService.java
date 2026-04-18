@@ -166,9 +166,22 @@ public class NLQueryService extends BaseService {
                     try {
                         JdbcTemplate businessJdbc = aiSQLService.getBusinessJdbcTemplate();
                         List<Map<String, Object>> result = businessJdbc.queryForList(correctedSQL);
+                        long retryExecTime = System.currentTimeMillis() - sqlExecStart;
                         
                         contextManager.addDialogue(sessionId, question, correctedSQL);
                         extractAndUpdateVariables(sessionId, correctedSQL);
+                        
+                        // 保存重试成功的对话记录
+                        try {
+                            String userId = getUserIdFromToken(token);
+                            String title = generateTitle(question);
+                            conversationRepository.saveConversation(sessionId, userId, title);
+                            
+                            String resultData = JSON.toJSONString(result);
+                            conversationRepository.saveDialogue(sessionId, question, correctedSQL, resultData, result.size(), retryExecTime);
+                        } catch (Exception saveEx) {
+                            System.err.println("⚠️ 保存重试对话失败：" + saveEx.getMessage());
+                        }
                         
                         Map<String, Object> response = new HashMap<>();
                         response.put("success", true);
