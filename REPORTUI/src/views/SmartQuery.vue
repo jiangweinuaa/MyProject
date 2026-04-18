@@ -562,16 +562,8 @@ export default {
      */
     shouldShowAiChart(msg) {
       const isAi = msg.chartType === 'ai'
-      const configExists = msg.chartConfig !== null && msg.chartConfig !== undefined
-      const isObjectType = typeof msg.chartConfig === 'object'
-      const hasKeys = configExists && isObjectType && Object.keys(msg.chartConfig).length > 0
-      const result = isAi && hasKeys
-      
-      if (result) {
-        console.log('✅ AiChart 条件满足，组件应该显示')
-      }
-      
-      return result
+      const hasConfig = msg.chartConfig && typeof msg.chartConfig === 'object' && Object.keys(msg.chartConfig).length > 0
+      return isAi && hasConfig
     },
     
     /**

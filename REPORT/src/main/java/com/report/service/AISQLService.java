@@ -1038,7 +1038,9 @@ public class AISQLService {
         sb.append("4. 坐标轴标签自动旋转避免重叠（axisLabel: { rotate: 45 }）\n");
         sb.append("5. 根据数据自动选择合适的图表类型（柱状图/折线图/饼图/散点图）\n");
         sb.append("6. 如果数据有日期，使用折线图；如果是分类对比，使用柱状图；如果是占比，使用饼图\n");
-        sb.append("7. 确保 JSON 格式正确，可以被 ECharts 直接渲染\n");
+        sb.append("7. **重要规则**：如果生成饼图（pie），必须同时生成柱状图（bar），将两个图表放在一个配置中\n");
+        sb.append("8. 饼图和柱状图同时存在时，使用 grid 布局，饼图在上，柱状图在下\n");
+        sb.append("9. 确保 JSON 格式正确，可以被 ECharts 直接渲染\n");
         sb.append("\n只返回 JSON 配置对象：");
         return sb.toString();
     }
