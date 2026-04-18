@@ -132,23 +132,36 @@ public class NLQueryService extends BaseService {
             // 生成图表配置
             String chartType = "auto";
             String chartConfig = null;
-            try {
-                String chartModel = getChartModel();
-                if (chartModel != null && !chartModel.isEmpty() && !"NONE".equals(chartModel)) {
-                    // 调用大模型生成图表配置
-                    String chartConfigJson = aiSQLService.callChartModel(chartModel, result, question);
-                    if (chartConfigJson != null && !chartConfigJson.trim().isEmpty()) {
-                        try {
-                            chartConfig = chartConfigJson;
-                            chartType = "ai";
-                            System.out.println("✅ AI 图表配置生成成功");
-                        } catch (Exception e) {
-                            System.err.println("⚠️ 解析 AI 图表配置失败：" + e.getMessage());
+            
+            // 优化：如果只有一条数据并且只有一个字段，不生成图表
+            boolean skipChart = false;
+            if (result != null && result.size() == 1) {
+                Map<String, Object> firstRow = result.get(0);
+                if (firstRow != null && firstRow.size() == 1) {
+                    skipChart = true;
+                    System.out.println("ℹ️ 只有一条数据且只有一个字段，不生成图表");
+                }
+            }
+            
+            if (!skipChart) {
+                try {
+                    String chartModel = getChartModel();
+                    if (chartModel != null && !chartModel.isEmpty() && !"NONE".equals(chartModel)) {
+                        // 调用大模型生成图表配置
+                        String chartConfigJson = aiSQLService.callChartModel(chartModel, result, question);
+                        if (chartConfigJson != null && !chartConfigJson.trim().isEmpty()) {
+                            try {
+                                chartConfig = chartConfigJson;
+                                chartType = "ai";
+                                System.out.println("✅ AI 图表配置生成成功");
+                            } catch (Exception e) {
+                                System.err.println("⚠️ 解析 AI 图表配置失败：" + e.getMessage());
+                            }
                         }
                     }
+                } catch (Exception e) {
+                    System.err.println("⚠️ 生成图表配置失败：" + e.getMessage());
                 }
-            } catch (Exception e) {
-                System.err.println("⚠️ 生成图表配置失败：" + e.getMessage());
             }
             
             response.put("chartType", chartType);
