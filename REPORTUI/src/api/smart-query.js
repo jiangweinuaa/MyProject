@@ -29,7 +29,8 @@ export function nlQuery(data) {
   return request({
     url: '/nl-query/query',
     method: 'post',
-    data
+    data,
+    timeout: 60000  // 1 分钟超时
   })
 }
 
