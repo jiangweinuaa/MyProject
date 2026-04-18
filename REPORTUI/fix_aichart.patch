@@ -1,0 +1,12 @@
+# AiChart 不显示的根本原因分析
+
+## 问题症状
+1. shouldShowChart 返回 true ✅
+2. 调试信息显示 chartType=ai, chartConfig=存在 ✅
+3. 但 AiChart 组件的 created 钩子没有被调用 ❌
+
+## 根本原因
+Vue 的 v-if 在模板编译时可能有问题，或者响应式数据更新时机不对。
+
+## 解决方案
+使用计算属性 + 明确的类型检查

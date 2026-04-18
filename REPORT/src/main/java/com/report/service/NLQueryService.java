@@ -130,6 +130,8 @@ public class NLQueryService extends BaseService {
             response.put("sessionId", sessionId);
             
             // 生成图表配置
+            String chartType = "auto";
+            String chartConfig = null;
             try {
                 String chartModel = getChartModel();
                 if (chartModel != null && !chartModel.isEmpty() && !"NONE".equals(chartModel)) {
@@ -137,39 +139,40 @@ public class NLQueryService extends BaseService {
                     String chartConfigJson = aiSQLService.callChartModel(chartModel, result, question);
                     if (chartConfigJson != null && !chartConfigJson.trim().isEmpty()) {
                         try {
-                            Object chartConfig = JSON.parse(chartConfigJson);
-                            response.put("chartConfig", chartConfig);
-                            response.put("chartType", "ai");
+                            chartConfig = chartConfigJson;
+                            chartType = "ai";
                             System.out.println("✅ AI 图表配置生成成功");
                         } catch (Exception e) {
                             System.err.println("⚠️ 解析 AI 图表配置失败：" + e.getMessage());
-                            // 降级到自动图表
-                            Map<String, Object> autoChart = generateAutoChart(result);
-                            response.put("chartConfig", autoChart);
-                            response.put("chartType", "auto");
                         }
-                    } else {
-                        // 大模型返回为空，降级到自动图表
-                        Map<String, Object> autoChart = generateAutoChart(result);
-                        response.put("chartConfig", autoChart);
-                        response.put("chartType", "auto");
                     }
-                } else {
-                    // 使用自动图表
-                    Map<String, Object> autoChart = generateAutoChart(result);
-                    response.put("chartConfig", autoChart);
-                    response.put("chartType", "auto");
                 }
             } catch (Exception e) {
                 System.err.println("⚠️ 生成图表配置失败：" + e.getMessage());
-                // 降级到自动图表
-                try {
-                    Map<String, Object> autoChart = generateAutoChart(result);
-                    response.put("chartConfig", autoChart);
-                    response.put("chartType", "auto");
-                } catch (Exception ex) {
-                    System.err.println("⚠️ 生成自动图表也失败：" + ex.getMessage());
-                }
+            }
+            
+            response.put("chartType", chartType);
+            if ("ai".equals(chartType) && chartConfig != null) {
+                response.put("chartConfig", JSON.parse(chartConfig));
+            }
+            
+            // 保存对话到数据库（包含完整结果集和图表配置）
+            try {
+                // 从 token 解析 OPNO（用户 ID）
+                String userId = getUserIdFromToken(token);
+                
+                // 先保存会话（MERGE 模式，自动判断插入或更新）
+                String title = generateTitle(question);
+                conversationRepository.saveConversation(sessionId, userId, title);
+                
+                // 再保存对话记录（包含图表配置）
+                String resultData = JSON.toJSONString(result);
+                conversationRepository.saveDialogue(sessionId, question, sql, resultData, result.size(), sqlExecTime, chartType, chartConfig);
+                
+            } catch (Exception e) {
+                System.err.println("⚠️ 保存对话历史失败：" + e.getMessage());
+                e.printStackTrace();
+                // 不影响主流程
             }
             
             // 添加 token 消耗信息

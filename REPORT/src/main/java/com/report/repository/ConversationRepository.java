@@ -36,10 +36,17 @@ public class ConversationRepository {
      * 保存对话记录（包含完整结果集）
      */
     public void saveDialogue(String sessionId, String question, String sql, String resultData, int rowCount, long executionTimeMs) {
+        saveDialogue(sessionId, question, sql, resultData, rowCount, executionTimeMs, null, null);
+    }
+    
+    /**
+     * 保存对话记录（包含图表配置）
+     */
+    public void saveDialogue(String sessionId, String question, String sql, String resultData, int rowCount, long executionTimeMs, String chartType, String chartConfig) {
         String id = UUID.randomUUID().toString().replace("-", "");
-        String insertSql = "INSERT INTO AI_NL_DIALOGUE (ID, SESSION_ID, QUESTION, SQL_GENERATED, RESULT_DATA, ROW_COUNT, EXECUTION_TIME_MS, CREATED_TIME) " +
-                          "VALUES (?, ?, ?, ?, ?, ?, ?, SYSDATE)";
-        jdbcTemplate.update(insertSql, id, sessionId, question, sql, resultData, rowCount, executionTimeMs);
+        String insertSql = "INSERT INTO AI_NL_DIALOGUE (ID, SESSION_ID, QUESTION, SQL_GENERATED, RESULT_DATA, ROW_COUNT, EXECUTION_TIME_MS, CHART_TYPE, CHART_CONFIG, CREATED_TIME) " +
+                          "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, SYSDATE)";
+        jdbcTemplate.update(insertSql, id, sessionId, question, sql, resultData, rowCount, executionTimeMs, chartType, chartConfig);
     }
     
     /**
@@ -51,7 +58,7 @@ public class ConversationRepository {
         
         String sql = "SELECT * FROM (" +
                      "  SELECT d.*, ROWNUM rn FROM (" +
-                     "    SELECT ID, SESSION_ID, QUESTION, SQL_GENERATED, RESULT_DATA, ROW_COUNT, EXECUTION_TIME_MS, CREATED_TIME " +
+                     "    SELECT ID, SESSION_ID, QUESTION, SQL_GENERATED, RESULT_DATA, ROW_COUNT, EXECUTION_TIME_MS, CHART_TYPE, CHART_CONFIG, CREATED_TIME " +
                      "    FROM AI_NL_DIALOGUE " +
                      "    WHERE SESSION_ID = ? " +
                      "    ORDER BY CREATED_TIME DESC" +
@@ -139,6 +146,8 @@ public class ConversationRepository {
         dto.setResultData(clobToString(row.get("RESULT_DATA")));
         dto.setRowCount(((Number) row.get("ROW_COUNT")).intValue());
         dto.setExecutionTimeMs(row.get("EXECUTION_TIME_MS") != null ? ((Number) row.get("EXECUTION_TIME_MS")).longValue() : null);
+        dto.setChartType((String) row.get("CHART_TYPE"));
+        dto.setChartConfig(clobToString(row.get("CHART_CONFIG")));
         dto.setCreatedTime((Date) row.get("CREATED_TIME"));
         return dto;
     }

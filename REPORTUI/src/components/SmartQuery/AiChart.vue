@@ -1,8 +1,5 @@
 <template>
   <div class="ai-chart-container">
-    <div class="chart-header">
-      <el-tag type="success" size="small">🤖 AI 生成</el-tag>
-    </div>
     <div ref="chartContainer" class="chart-wrapper"></div>
   </div>
 </template>
@@ -23,9 +20,14 @@ export default {
       chart: null
     }
   },
+  created() {
+    console.log('🎨 AiChart: created 钩子被调用')
+    console.log('🎨 AiChart: props.config =', this.config)
+  },
   watch: {
     config: {
       handler(newConfig) {
+        console.log('🎨 AiChart: watch 检测到 config 变化')
         this.renderChart(newConfig)
       },
       deep: true,
@@ -33,7 +35,11 @@ export default {
     }
   },
   mounted() {
+    console.log('🎨 AiChart: mounted 钩子被调用')
+    console.log('🎨 AiChart: $refs.chartContainer =', this.$refs.chartContainer)
+    
     this.$nextTick(() => {
+      console.log('🎨 AiChart: nextTick 回调执行')
       this.initChart()
     })
     
@@ -48,28 +54,53 @@ export default {
   },
   methods: {
     initChart() {
-      if (!this.$refs.chartContainer) return
+      console.log('📊 AiChart: initChart 被调用')
+      console.log('📊 AiChart: chartContainer DOM 存在吗？', !!this.$refs.chartContainer)
+      console.log('📊 AiChart: config 是什么？', this.config)
       
-      // 初始化图表
-      this.chart = echarts.init(this.$refs.chartContainer)
+      if (!this.$refs.chartContainer) {
+        console.error('❌ AiChart: chartContainer DOM 不存在！')
+        return
+      }
       
-      // 渲染图表
-      this.renderChart(this.config)
+      try {
+        // 初始化图表
+        this.chart = echarts.init(this.$refs.chartContainer)
+        console.log('📊 AiChart: 图表实例已创建', !!this.chart, this.chart)
+        
+        // 渲染图表
+        this.renderChart(this.config)
+      } catch (error) {
+        console.error('❌ AiChart: echarts.init 失败:', error)
+      }
     },
     
     renderChart(config) {
-      if (!this.chart) return
+      console.log('📊 AiChart: renderChart 被调用')
+      console.log('📊 AiChart: this.chart 存在吗？', !!this.chart)
+      
+      if (!this.chart) {
+        console.error('❌ AiChart: chart 实例不存在！')
+        return
+      }
+      
+      if (!config) {
+        console.error('❌ AiChart: config 为空！')
+        return
+      }
       
       try {
+        console.log('📊 AiChart: 设置配置项...')
         // 设置配置项
         this.chart.setOption(config, true)
+        console.log('📊 AiChart: 配置项设置成功！')
         
         // 添加点击事件
         this.chart.on('click', (params) => {
           console.log('图表点击:', params)
         })
       } catch (error) {
-        console.error('AI 图表渲染失败:', error)
+        console.error('❌ AI 图表渲染失败:', error)
         console.error('配置:', config)
       }
     },

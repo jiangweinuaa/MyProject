@@ -39,7 +39,8 @@
             <div class="chart-section" v-if="shouldShowChart(msg)">
               <!-- AI 生成的图表 -->
               <AiChart 
-                v-if="msg.chartType === 'ai' && msg.chartConfig" 
+                v-if="shouldShowAiChart(msg)" 
+                :key="msg.sessionId + '-ai'"
                 :config="msg.chartConfig"
               />
               
@@ -161,6 +162,7 @@ export default {
     PieChart,
     HorizontalBarChart,
     CompareBarChart,
+    AiChart,
     ChatInput
   },
   data() {
@@ -250,11 +252,23 @@ export default {
               console.error('解析结果数据失败:', e);
             }
             
+            // 解析图表配置（如果有）
+            let chartConfig = null;
+            if (dialogue.chartConfig) {
+              try {
+                chartConfig = typeof dialogue.chartConfig === 'string' ? JSON.parse(dialogue.chartConfig) : dialogue.chartConfig;
+              } catch (e) {
+                console.error('解析图表配置失败:', e);
+              }
+            }
+            
             this.messages.push({
               type: 'bot',
               content: `查询完成，共 ${dialogue.rowCount} 条数据`,
               sql: dialogue.sqlGenerated,
               data: chartData,
+              chartType: dialogue.chartType || 'auto',
+              chartConfig: chartConfig,
               time: this.formatTime(dialogue.createdTime)
             });
           });
@@ -544,20 +558,36 @@ export default {
     },
     
     /**
-     * 是否显示图表
+     * 是否显示 AI 图表
+     */
+    shouldShowAiChart(msg) {
+      const isAi = msg.chartType === 'ai'
+      const configExists = msg.chartConfig !== null && msg.chartConfig !== undefined
+      const isObjectType = typeof msg.chartConfig === 'object'
+      const hasKeys = configExists && isObjectType && Object.keys(msg.chartConfig).length > 0
+      const result = isAi && hasKeys
+      
+      if (result) {
+        console.log('✅ AiChart 条件满足，组件应该显示')
+      }
+      
+      return result
+    },
+    
+    /**
+     * 是否显示图表（自动检测）
      */
     shouldShowChart(msg) {
       // 如果是 AI 生成的图表配置，直接显示
-      if (msg.chartType === 'ai' && msg.chartConfig) {
+      if (this.shouldShowAiChart(msg)) {
+        console.log('✅ AI 图表：显示')
         return true
       }
       
       if (!msg.data || msg.data.length === 0 || !msg.sql) {
-        console.log('不显示图表：data=', msg.data, 'sql=', msg.sql)
         return false
       }
       const chartTypes = this.detectChartTypes(msg.data, msg.sql, msg.question || '')
-      console.log('图表检测结果：', chartTypes, 'data:', msg.data, 'sql:', msg.sql)
       return chartTypes.length > 0
     },
     

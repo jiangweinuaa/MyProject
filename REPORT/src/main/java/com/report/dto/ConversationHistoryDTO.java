@@ -36,6 +36,8 @@ public class ConversationHistoryDTO implements Serializable {
         private String resultData;      // JSON 格式的完整结果集
         private int rowCount;
         private Long executionTimeMs;
+        private String chartType;       // 'ai' 或 'auto'
+        private String chartConfig;     // AI 生成的图表配置（JSON 字符串）
         private Date createdTime;
     }
 }
