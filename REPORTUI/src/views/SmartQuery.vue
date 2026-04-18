@@ -166,7 +166,7 @@ export default {
         '今天销售额是多少？',
         '昨天销售额是多少？',
         '本月销售额是多少？',
-        '哪个商品卖得最好？'
+        '哪类商品卖的最好？'
       ],
       hasHistory: false,
       sessionId: null
