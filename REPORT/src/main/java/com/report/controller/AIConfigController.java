@@ -1,5 +1,8 @@
 package com.report.controller;
 
+import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -115,6 +118,86 @@ public class AIConfigController {
             response.put("success", false);
             response.put("message", e.getMessage());
             response.put("data", new java.util.ArrayList<>());
+        }
+        
+        return response;
+    }
+    
+    /**
+     * 从阿里云同步模型列表
+     */
+    @PostMapping("/sync-models")
+    public Map<String, Object> syncModels() {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // 获取 API Key
+            String apiKeySql = "SELECT ACCESSKEYSECRET FROM PRODUCT_APPKEY WHERE PLATFORM = 'ALI_QWEN'";
+            List<Map<String, Object>> apiKeyList = platformJdbcTemplate.queryForList(apiKeySql);
+            String apiKey = "";
+            if (apiKeyList != null && !apiKeyList.isEmpty()) {
+                apiKey = (String) apiKeyList.get(0).get("ACCESSKEYSECRET");
+            }
+            
+            if (apiKey == null || apiKey.trim().isEmpty()) {
+                response.put("success", false);
+                response.put("message", "未配置 API Key");
+                return response;
+            }
+            
+            // 调用阿里云 DashScope API
+            String apiUrl = "https://dashscope.aliyuncs.com/api/v1/models";
+            
+            java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder().build();
+            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                .uri(java.net.URI.create(apiUrl))
+                .header("Authorization", "Bearer " + apiKey)
+                .header("Content-Type", "application/json")
+                .GET()
+                .build();
+            
+            java.net.http.HttpResponse<String> httpResponse = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            
+            if (httpResponse.statusCode() != 200) {
+                response.put("success", false);
+                response.put("message", "阿里云 API 调用失败：" + httpResponse.statusCode());
+                return response;
+            }
+            
+            JSONObject result = JSON.parseObject(httpResponse.body());
+            JSONArray modelsArray = result.getJSONArray("data");
+            
+            if (modelsArray == null) {
+                response.put("success", false);
+                response.put("message", "阿里云 API 返回数据格式异常");
+                return response;
+            }
+            
+            // 清空现有模型列表
+            platformJdbcTemplate.update("DELETE FROM AI_MODEL_LIST");
+            
+            // 插入新模型
+            String insertSql = "INSERT INTO AI_MODEL_LIST (MODEL_ID, MODEL_NAME, STATUS, SORT_ORDER, CREATED_TIME) VALUES (?, ?, '100', ?, SYSDATE)";
+            int sort = 0;
+            
+            for (int i = 0; i < modelsArray.size(); i++) {
+                JSONObject model = modelsArray.getJSONObject(i);
+                String modelId = model.getString("model_id");
+                String modelName = model.getString("model_name");
+                
+                if (modelId != null && !modelId.trim().isEmpty()) {
+                    platformJdbcTemplate.update(insertSql, modelId, modelName != null ? modelName : modelId, sort++);
+                }
+            }
+            
+            response.put("success", true);
+            response.put("message", "同步成功，共同步 " + sort + " 个模型");
+            response.put("count", sort);
+            
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "同步失败：" + e.getMessage());
+            e.printStackTrace();
         }
         
         return response;

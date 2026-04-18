@@ -45,9 +45,14 @@
         <template #header>
           <div class="card-header">
             <span>🤖 当前使用模型</span>
-            <el-button type="primary" size="small" @click="showModelSwitchDialog">
-              切换模型
-            </el-button>
+            <div>
+              <el-button type="success" size="small" @click="syncModels" :loading="syncing">
+                🔄 同步阿里云模型
+              </el-button>
+              <el-button type="primary" size="small" @click="showModelSwitchDialog">
+                切换模型
+              </el-button>
+            </div>
           </div>
         </template>
         
@@ -55,7 +60,7 @@
           <el-tag size="large" type="success">
             🟢 {{ currentModel || '加载中...' }}
           </el-tag>
-          <span class="model-desc">点击"切换模型"可更换为其他可用模型</span>
+          <span class="model-desc">点击"同步阿里云模型"从阿里云获取最新模型列表</span>
         </div>
       </el-card>
 
@@ -326,6 +331,7 @@ const modelList = ref([])
 const modelDialogVisible = ref(false)
 const switchingModel = ref(false)
 const switchingModelId = ref('')
+const syncing = ref(false)
 
 // 续费对话框
 const renewDialogVisible = ref(false)
@@ -438,6 +444,30 @@ const loadModelList = async () => {
     }
   } catch (error) {
     ElMessage.error('加载模型列表失败：' + error.message)
+  }
+}
+
+// 同步阿里云模型
+const syncModels = async () => {
+  syncing.value = true
+  try {
+    const token = localStorage.getItem('token') || ''
+    const res = await fetch('http://47.100.138.89:8110/api/ai/sync-models' + (token ? '?token=' + token : ''), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    })
+    const data = await res.json()
+    if (data.success) {
+      ElMessage.success('✅ ' + (data.message || '同步成功'))
+      // 刷新模型列表
+      await loadModelList()
+    } else {
+      ElMessage.error('同步失败：' + (data.message || '未知错误'))
+    }
+  } catch (error) {
+    ElMessage.error('同步失败：' + error.message)
+  } finally {
+    syncing.value = false
   }
 }
 
