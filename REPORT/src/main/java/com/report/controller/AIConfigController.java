@@ -145,85 +145,107 @@ public class AIConfigController {
                 return response;
             }
             
-            // 调用阿里云 DashScope API
+            // 调用阿里云 DashScope API（分页获取所有模型）
             String apiUrl = "https://dashscope.aliyuncs.com/api/v1/models";
+            int pageNo = 1;
+            int pageSize = 100;
+            int totalModels = 0;
             
             java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder().build();
-            java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
-                .uri(java.net.URI.create(apiUrl))
-                .header("Authorization", "Bearer " + apiKey)
-                .header("Content-Type", "application/json")
-                .GET()
-                .build();
-            
-            java.net.http.HttpResponse<String> httpResponse = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
-            
-            if (httpResponse.statusCode() != 200) {
-                response.put("success", false);
-                response.put("message", "阿里云 API 调用失败：" + httpResponse.statusCode());
-                return response;
-            }
-            
-            String responseBody = httpResponse.body();
-            System.out.println("🔍 阿里云 API 返回：" + responseBody);
-            
-            JSONObject result = JSON.parseObject(responseBody);
-            
-            // 阿里云新版 API 格式：output.models
-            JSONArray modelsArray = null;
-            if (result.containsKey("output")) {
-                JSONObject output = result.getJSONObject("output");
-                if (output != null && output.containsKey("models")) {
-                    modelsArray = output.getJSONArray("models");
-                }
-            }
-            
-            // 兼容旧版 API 格式：data
-            if (modelsArray == null) {
-                modelsArray = result.getJSONArray("data");
-            }
-            
-            if (modelsArray == null) {
-                response.put("success", false);
-                response.put("message", "阿里云 API 返回数据格式异常，原始响应：" + responseBody);
-                System.err.println("❌ 阿里云 API 返回数据格式异常：" + responseBody);
-                return response;
-            }
-            
-            System.out.println("✅ 解析到 " + modelsArray.size() + " 个模型");
-            
-            // 只插入不存在的模型（保留已有数据）
-            String checkSql = "SELECT COUNT(*) FROM AI_MODEL_LIST WHERE MODEL_ID = ?";
-            String insertSql = "INSERT INTO AI_MODEL_LIST (MODEL_ID, MODEL_NAME, STATUS, SORT_ORDER, CREATED_TIME) VALUES (?, ?, '100', ?, SYSDATE)";
-            String updateSql = "UPDATE AI_MODEL_LIST SET MODEL_NAME = ?, STATUS = '100' WHERE MODEL_ID = ?";
             
             int insertCount = 0;
             int updateCount = 0;
             
-            for (int i = 0; i < modelsArray.size(); i++) {
-                JSONObject model = modelsArray.getJSONObject(i);
-                // 阿里云 API 字段名：model, name
-                String modelId = model.getString("model");
-                String modelName = model.getString("name");
+            while (true) {
+                String paginatedUrl = apiUrl + "?page_no=" + pageNo + "&page_size=" + pageSize;
+                System.out.println("🔍 请求第 " + pageNo + " 页：" + paginatedUrl);
                 
-                if (modelId != null && !modelId.trim().isEmpty()) {
-                    // 检查模型是否已存在
-                    Integer count = platformJdbcTemplate.queryForObject(checkSql, Integer.class, modelId);
-                    
-                    if (count != null && count > 0) {
-                        // 已存在，更新模型名称
-                        platformJdbcTemplate.update(updateSql, modelName != null ? modelName : modelId, modelId);
-                        updateCount++;
-                    } else {
-                        // 不存在，插入新模型（STATUS=100, SORT_ORDER=100）
-                        platformJdbcTemplate.update(insertSql, modelId, modelName != null ? modelName : modelId, 100);
-                        insertCount++;
+                java.net.http.HttpRequest request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(paginatedUrl))
+                    .header("Authorization", "Bearer " + apiKey)
+                    .header("Content-Type", "application/json")
+                    .GET()
+                    .build();
+                
+                java.net.http.HttpResponse<String> httpResponse = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+                
+                if (httpResponse.statusCode() != 200) {
+                    response.put("success", false);
+                    response.put("message", "阿里云 API 调用失败：" + httpResponse.statusCode());
+                    return response;
+                }
+                
+                String responseBody = httpResponse.body();
+                JSONObject result = JSON.parseObject(responseBody);
+                
+                // 阿里云新版 API 格式：output.models
+                JSONArray modelsArray = null;
+                if (result.containsKey("output")) {
+                    JSONObject output = result.getJSONObject("output");
+                    if (output != null && output.containsKey("models")) {
+                        modelsArray = output.getJSONArray("models");
                     }
                 }
+                
+                // 兼容旧版 API 格式：data
+                if (modelsArray == null) {
+                    modelsArray = result.getJSONArray("data");
+                }
+                
+                if (modelsArray == null || modelsArray.size() == 0) {
+                    System.out.println("✅ 没有更多模型了");
+                    break;
+                }
+                
+                System.out.println("✅ 第 " + pageNo + " 页解析到 " + modelsArray.size() + " 个模型");
+                
+                // 只插入不存在的模型（保留已有数据）
+                String checkSql = "SELECT COUNT(*) FROM AI_MODEL_LIST WHERE MODEL_ID = ?";
+                String insertSql = "INSERT INTO AI_MODEL_LIST (MODEL_ID, MODEL_NAME, STATUS, SORT_ORDER, CREATED_TIME) VALUES (?, ?, '100', 100, SYSDATE)";
+                String updateSql = "UPDATE AI_MODEL_LIST SET MODEL_NAME = ?, STATUS = '100' WHERE MODEL_ID = ?";
+                
+                for (int i = 0; i < modelsArray.size(); i++) {
+                    JSONObject model = modelsArray.getJSONObject(i);
+                    // 阿里云 API 字段名：model, name
+                    String modelId = model.getString("model");
+                    String modelName = model.getString("name");
+                    
+                    if (modelId != null && !modelId.trim().isEmpty()) {
+                        // 检查模型是否已存在
+                        Integer count = platformJdbcTemplate.queryForObject(checkSql, Integer.class, modelId);
+                        
+                        if (count != null && count > 0) {
+                            // 已存在，更新模型名称
+                            platformJdbcTemplate.update(updateSql, modelName != null ? modelName : modelId, modelId);
+                            updateCount++;
+                        } else {
+                            // 不存在，插入新模型
+                            platformJdbcTemplate.update(insertSql, modelId, modelName != null ? modelName : modelId);
+                            insertCount++;
+                        }
+                        totalModels++;
+                    }
+                }
+                
+                // 检查是否还有下一页
+                if (result.containsKey("output")) {
+                    JSONObject output = result.getJSONObject("output");
+                    if (output != null) {
+                        Integer total = output.getInteger("total");
+                        if (total != null && totalModels >= total) {
+                            System.out.println("✅ 已同步所有 " + total + " 个模型");
+                            break;
+                        }
+                    }
+                }
+                
+                pageNo++;
             }
             
+            
             response.put("success", true);
-            response.put("message", "同步成功，新增 " + insertCount + " 个模型，更新 " + updateCount + " 个模型");
+            response.put("message", "同步成功，共 " + totalModels + " 个模型，新增 " + insertCount + " 个，更新 " + updateCount + " 个");
+            response.put("totalModels", totalModels);
             response.put("insertCount", insertCount);
             response.put("updateCount", updateCount);
             
