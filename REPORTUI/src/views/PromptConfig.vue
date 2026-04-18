@@ -193,21 +193,21 @@
     >
       <el-form :model="formData" label-width="100px">
         <el-form-item label="排序">
-          <el-input-number v-model="formData.SORT_ORDER" :min="1" :max="9999" />
+          <el-input-number v-model="formData.sortOrder" :min="1" :max="9999" />
         </el-form-item>
-        <el-form-item label="内容">
+        <el-form-item label="内容" required>
           <el-input
-            v-model="formData.REQUIREMENT"
+            v-model="formData.requirement"
             type="textarea"
             :rows="6"
             placeholder="请输入配置内容"
           />
         </el-form-item>
         <el-form-item label="分类">
-          <el-input v-model="formData.CATEGORY" placeholder="CATEGORY = 'ROLE' 为角色定义，其他为要求" />
+          <el-input v-model="formData.category" placeholder="CATEGORY = 'ROLE' 为角色定义，其他为要求" />
         </el-form-item>
         <el-form-item label="状态">
-          <el-radio-group v-model="formData.ENABLED">
+          <el-radio-group v-model="formData.enabled">
             <el-radio label="Y">启用</el-radio>
             <el-radio label="N">禁用</el-radio>
           </el-radio-group>
@@ -345,10 +345,10 @@ const tableFilter = ref([])
 const dialogVisible = ref(false)
 const dialogTitle = ref('')
 const formData = ref({
-  SORT_ORDER: 1,
-  REQUIREMENT: '',
-  CATEGORY: '',
-  ENABLED: 'Y'
+  sortOrder: 1,
+  requirement: '',
+  category: '',
+  enabled: 'Y'
 })
 
 // 表结构对话框
@@ -546,10 +546,10 @@ const loadRequirements = async () => {
 const showAddDialog = (category = '') => {
   dialogTitle.value = '添加配置'
   formData.value = {
-    SORT_ORDER: roleRequirements.value.length + requirements.value.length + 1,
-    REQUIREMENT: '',
-    CATEGORY: category,
-    ENABLED: 'Y'
+    sortOrder: roleRequirements.value.length + requirements.value.length + 1,
+    requirement: '',
+    category: category,
+    enabled: 'Y'
   }
   dialogVisible.value = true
 }
@@ -557,7 +557,12 @@ const showAddDialog = (category = '') => {
 // 编辑配置
 const editRequirement = (row) => {
   dialogTitle.value = '编辑配置'
-  formData.value = { ...row }
+  formData.value = {
+    sortOrder: row.SORT_ORDER,
+    requirement: row.REQUIREMENT,
+    category: row.CATEGORY,
+    enabled: row.ENABLED
+  }
   dialogVisible.value = true
 }
 
