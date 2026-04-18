@@ -52,7 +52,7 @@ public class NLQueryController {
         response.put("examples", new String[]{
             "今天销售额是多少？",
             "本月销售额是多少？",
-            "哪个品类卖得最好？",
+            "哪类商品卖的最好？",
             "A 门店的库存还有多少？",
             "上周的销量趋势如何？"
         });
