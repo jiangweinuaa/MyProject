@@ -185,6 +185,20 @@ export default {
     this.loadRecentHistory();
   },
   methods: {
+    /**
+     * 简单字符串 hash 函数
+     * 将字符串转换为 36 进制的 8 位字符串
+     */
+    simpleHash(str) {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+      }
+      return Math.abs(hash).toString(36).substring(0, 8);
+    },
+    
     async loadRecentHistory() {
       try {
         console.log('===== 智问页面加载历史记录 =====');
@@ -690,7 +704,14 @@ export default {
       try {
         // 如果没有 sessionId，创建新的
         if (!this.sessionId) {
-          this.sessionId = 'session_' + Date.now();
+          // 从 localStorage 获取 token
+          const token = localStorage.getItem('token') || '';
+          
+          // 使用 token 的简单 hash 作为用户标识
+          // 如果 token 为空，使用 'anonymous'
+          const userHash = token ? this.simpleHash(token) : 'anonymous';
+          
+          this.sessionId = 'session_' + userHash + '_' + Date.now();
         }
         
         console.log('发送问题，sessionId:', this.sessionId);

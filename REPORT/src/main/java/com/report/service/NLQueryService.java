@@ -41,7 +41,7 @@ public class NLQueryService extends BaseService {
     
     public Map<String, Object> query(String question) {
         if (sessionId == null) {
-            sessionId = generateSessionId();
+            sessionId = generateSessionId(null);
         }
         return query(sessionId, question, null, false);
     }
@@ -293,8 +293,20 @@ public class NLQueryService extends BaseService {
         return value;
     }
     
-    private String generateSessionId() {
-        return "SESSION_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().replace("-", "").substring(0, 9);
+    private String generateSessionId(String token) {
+        String eid = "99";
+        String opno = "anonymous";
+        
+        if (token != null && !token.trim().isEmpty()) {
+            try {
+                eid = com.report.util.TokenUtil.getEidFromToken(platformJdbcTemplate, token);
+                opno = com.report.util.TokenUtil.getOpnoFromToken(platformJdbcTemplate, token);
+            } catch (Exception e) {
+                System.err.println("⚠️ 解析 token 失败，使用默认值：" + e.getMessage());
+            }
+        }
+        
+        return "SESSION_" + eid + "_" + opno + "_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().replace("-", "").substring(0, 9);
     }
     
     private String generateTitle(String question) {
