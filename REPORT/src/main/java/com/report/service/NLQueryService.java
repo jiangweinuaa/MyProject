@@ -129,6 +129,49 @@ public class NLQueryService extends BaseService {
             response.put("rowCount", result.size());
             response.put("sessionId", sessionId);
             
+            // 生成图表配置
+            try {
+                String chartModel = getChartModel();
+                if (chartModel != null && !chartModel.isEmpty() && !"NONE".equals(chartModel)) {
+                    // 调用大模型生成图表配置
+                    String chartConfigJson = aiSQLService.callChartModel(chartModel, result, question);
+                    if (chartConfigJson != null && !chartConfigJson.trim().isEmpty()) {
+                        try {
+                            Object chartConfig = JSON.parse(chartConfigJson);
+                            response.put("chartConfig", chartConfig);
+                            response.put("chartType", "ai");
+                            System.out.println("✅ AI 图表配置生成成功");
+                        } catch (Exception e) {
+                            System.err.println("⚠️ 解析 AI 图表配置失败：" + e.getMessage());
+                            // 降级到自动图表
+                            Map<String, Object> autoChart = generateAutoChart(result);
+                            response.put("chartConfig", autoChart);
+                            response.put("chartType", "auto");
+                        }
+                    } else {
+                        // 大模型返回为空，降级到自动图表
+                        Map<String, Object> autoChart = generateAutoChart(result);
+                        response.put("chartConfig", autoChart);
+                        response.put("chartType", "auto");
+                    }
+                } else {
+                    // 使用自动图表
+                    Map<String, Object> autoChart = generateAutoChart(result);
+                    response.put("chartConfig", autoChart);
+                    response.put("chartType", "auto");
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ 生成图表配置失败：" + e.getMessage());
+                // 降级到自动图表
+                try {
+                    Map<String, Object> autoChart = generateAutoChart(result);
+                    response.put("chartConfig", autoChart);
+                    response.put("chartType", "auto");
+                } catch (Exception ex) {
+                    System.err.println("⚠️ 生成自动图表也失败：" + ex.getMessage());
+                }
+            }
+            
             // 添加 token 消耗信息
             AISQLService.TokenContext.TokenInfo tokenInfo = AISQLService.TokenContext.getTokenInfo();
             if (tokenInfo != null) {
@@ -322,6 +365,82 @@ public class NLQueryService extends BaseService {
             if (model != null && !model.trim().isEmpty()) return model;
         }
         throw new RuntimeException("PRODUCT_APPKEY 表中没有配置有效的模型");
+    }
+    
+    /**
+     * 获取图表模型配置
+     * @return 模型 ID，如 "qwen-plus"，"NONE" 或 null
+     */
+    private String getChartModel() {
+        try {
+            String sql = "SELECT ACCESSKEYID FROM PRODUCT_APPKEY WHERE PLATFORM = ?";
+            List<Map<String, Object>> list = platformJdbcTemplate.queryForList(sql, "AI_ECHARTS_MODEL");
+            if (list != null && !list.isEmpty()) {
+                return (String) list.get(0).get("ACCESSKEYID");
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ 读取图表模型配置失败：" + e.getMessage());
+        }
+        return null;
+    }
+    
+    /**
+     * 自动生成图表配置（硬编码逻辑）
+     * @param data 查询结果数据
+     * @return ECharts 配置对象
+     */
+    private Map<String, Object> generateAutoChart(List<Map<String, Object>> data) {
+        Map<String, Object> config = new HashMap<>();
+        
+        if (data == null || data.isEmpty()) {
+            return config;
+        }
+        
+        // 获取列名
+        Map<String, Object> firstRow = data.get(0);
+        List<String> columns = new ArrayList<>(firstRow.keySet());
+        
+        // 简单判断：如果有 2 列，假设第 1 列是类别，第 2 列是数值
+        if (columns.size() >= 2) {
+            String categoryColumn = columns.get(0);
+            String valueColumn = columns.get(1);
+            
+            List<String> categories = new ArrayList<>();
+            List<Object> values = new ArrayList<>();
+            
+            for (Map<String, Object> row : data) {
+                categories.add(String.valueOf(row.get(categoryColumn)));
+                values.add(row.get(valueColumn));
+            }
+            
+            // 构建 ECharts 配置
+            Map<String, Object> title = new HashMap<>();
+            title.put("text", "查询结果");
+            config.put("title", title);
+            
+            Map<String, Object> tooltip = new HashMap<>();
+            config.put("tooltip", tooltip);
+            
+            Map<String, Object> xAxis = new HashMap<>();
+            xAxis.put("type", "category");
+            xAxis.put("data", categories);
+            config.put("xAxis", xAxis);
+            
+            Map<String, Object> yAxis = new HashMap<>();
+            yAxis.put("type", "value");
+            config.put("yAxis", yAxis);
+            
+            Map<String, Object> series = new HashMap<>();
+            series.put("type", "bar");
+            series.put("data", values);
+            series.put("itemStyle", Map.of("color", "#5470c6"));
+            
+            List<Map<String, Object>> seriesList = new ArrayList<>();
+            seriesList.add(series);
+            config.put("series", seriesList);
+        }
+        
+        return config;
     }
     
     /**

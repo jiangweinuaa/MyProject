@@ -923,4 +923,123 @@ public class AISQLService {
             throw new RuntimeException("V2 智能体调用失败：" + e.getMessage(), e);
         }
     }
+    
+    /**
+     * 调用图表大模型生成 ECharts 配置
+     * @param modelId 模型 ID
+     * @param data 查询结果数据
+     * @param question 用户问题
+     * @return ECharts 配置 JSON 字符串
+     */
+    public String callChartModel(String modelId, List<Map<String, Object>> data, String question) {
+        try {
+            // 获取 API Key
+            String sql = "SELECT ACCESSKEYSECRET FROM PRODUCT_APPKEY WHERE PLATFORM = ?";
+            List<Map<String, Object>> list = platformJdbcTemplate.queryForList(sql, "ALI_QWEN");
+            String apiKey = "";
+            if (list != null && !list.isEmpty()) {
+                apiKey = (String) list.get(0).get("ACCESSKEYSECRET");
+            }
+            
+            if (apiKey == null || apiKey.trim().isEmpty()) {
+                System.err.println("⚠️ API Key 为空，无法调用图表模型");
+                return null;
+            }
+            
+            // 构建 Prompt
+            String prompt = buildChartPrompt(data, question);
+            
+            System.out.println("========================================");
+            System.out.println("📊 调用图表模型：" + modelId);
+            System.out.println("Prompt 长度：" + prompt.length());
+            
+            // 构建请求体（OpenAI 兼容格式）
+            JSONObject requestBody = new JSONObject();
+            requestBody.put("model", modelId);
+            
+            JSONArray messages = new JSONArray();
+            JSONObject userMsg = new JSONObject();
+            userMsg.put("role", "user");
+            userMsg.put("content", prompt);
+            messages.add(userMsg);
+            requestBody.put("messages", messages);
+            
+            // 设置参数
+            requestBody.put("temperature", 0.1);  // 低温度，保证输出稳定
+            requestBody.put("max_tokens", 2000);
+            
+            String apiEndpoint = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
+            
+            RequestBody body = RequestBody.create(
+                requestBody.toJSONString(), 
+                MediaType.parse("application/json")
+            );
+            
+            Request request = new Request.Builder()
+                .url(apiEndpoint)
+                .addHeader("Authorization", "Bearer " + apiKey)
+                .addHeader("Content-Type", "application/json")
+                .post(body)
+                .build();
+            
+            try (Response response = httpClient.newCall(request).execute()) {
+                int statusCode = response.code();
+                System.out.println("HTTP 状态码：" + statusCode);
+                
+                if (!response.isSuccessful()) {
+                    String errorBody = response.body() != null ? response.body().string() : "无响应内容";
+                    System.err.println("❌ 图表模型调用失败：" + statusCode + " - " + errorBody);
+                    return null;
+                }
+                
+                String responseBody = response.body().string();
+                System.out.println("========================================");
+                System.out.println("📊 图表模型响应：");
+                System.out.println(responseBody);
+                System.out.println("========================================");
+                
+                JSONObject result = JSON.parseObject(responseBody);
+                JSONArray choices = result.getJSONArray("choices");
+                if (choices != null && choices.size() > 0) {
+                    JSONObject choice = choices.getJSONObject(0);
+                    JSONObject message = choice.getJSONObject("message");
+                    String content = message.getString("content");
+                    
+                    // 清理 markdown 格式
+                    if (content != null) {
+                        content = content.replace("```json", "").replace("```", "").trim();
+                    }
+                    
+                    System.out.println("📊 生成的图表配置：" + (content != null ? content.substring(0, Math.min(200, content.length())) : "null"));
+                    return content;
+                }
+                
+                return null;
+            }
+        } catch (Exception e) {
+            System.err.println("❌ 调用图表模型失败：" + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    /**
+     * 构建图表生成的 Prompt
+     */
+    private String buildChartPrompt(List<Map<String, Object>> data, String question) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("你是一个数据可视化专家。请根据以下数据生成 ECharts 图表配置。\n\n");
+        sb.append("【用户问题】\n").append(question).append("\n\n");
+        sb.append("【数据】\n").append(JSON.toJSONString(data)).append("\n\n");
+        sb.append("【要求】\n");
+        sb.append("1. 返回纯 JSON，不要 markdown 格式，不要任何解释\n");
+        sb.append("2. 必须包含：title、tooltip、legend、xAxis、yAxis、series\n");
+        sb.append("3. 颜色使用 ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de', '#3ba272']\n");
+        sb.append("4. 坐标轴标签自动旋转避免重叠（axisLabel: { rotate: 45 }）\n");
+        sb.append("5. 根据数据自动选择合适的图表类型（柱状图/折线图/饼图/散点图）\n");
+        sb.append("6. 如果数据有日期，使用折线图；如果是分类对比，使用柱状图；如果是占比，使用饼图\n");
+        sb.append("7. 确保 JSON 格式正确，可以被 ECharts 直接渲染\n");
+        sb.append("\n只返回 JSON 配置对象：");
+        return sb.toString();
+    }
 }

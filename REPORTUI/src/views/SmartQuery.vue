@@ -37,6 +37,12 @@
             
             <!-- 图表区域（自动显示多个图表） -->
             <div class="chart-section" v-if="shouldShowChart(msg)">
+              <!-- AI 生成的图表 -->
+              <AiChart 
+                v-if="msg.chartType === 'ai' && msg.chartConfig" 
+                :config="msg.chartConfig"
+              />
+              
               <!-- 指标卡 -->
               <MetricCard 
                 v-if="hasChartType(msg, 'metric')" 
@@ -140,6 +146,7 @@ import LineChart from '@/components/SmartQuery/LineChart.vue'
 import PieChart from '@/components/SmartQuery/PieChart.vue'
 import HorizontalBarChart from '@/components/SmartQuery/HorizontalBarChart.vue'
 import CompareBarChart from '@/components/SmartQuery/CompareBarChart.vue'
+import AiChart from '@/components/SmartQuery/AiChart.vue'
 import ChatInput from '@/components/SmartQuery/ChatInput.vue'
 
 // 导入 API
@@ -540,6 +547,11 @@ export default {
      * 是否显示图表
      */
     shouldShowChart(msg) {
+      // 如果是 AI 生成的图表配置，直接显示
+      if (msg.chartType === 'ai' && msg.chartConfig) {
+        return true
+      }
+      
       if (!msg.data || msg.data.length === 0 || !msg.sql) {
         console.log('不显示图表：data=', msg.data, 'sql=', msg.sql)
         return false
@@ -553,6 +565,11 @@ export default {
      * 检查是否包含指定图表类型
      */
     hasChartType(msg, type) {
+      // 如果是 AI 生成的图表配置，使用 AI 配置渲染，不使用自动检测
+      if (msg.chartType === 'ai' && msg.chartConfig) {
+        return false  // AI 模式下不显示自动图表组件
+      }
+      
       if (!msg.data || msg.data.length === 0 || !msg.sql) return false
       const chartTypes = this.detectChartTypes(msg.data, msg.sql, msg.question || '')
       return chartTypes.includes(type)
@@ -587,12 +604,14 @@ export default {
       return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
     },
     
-    addMessage(content, type, sql = '', data = null) {
+    addMessage(content, type, sql = '', data = null, chartConfig = null, chartType = 'auto') {
       this.messages.push({
         type,
         content,
         sql,
         data,
+        chartConfig,  // AI 生成的图表配置
+        chartType,    // 'ai' 或 'auto'
         time: this.now()
       })
       
@@ -680,7 +699,8 @@ export default {
             content = '暂无数据'
           }
           
-          this.addMessage(content, 'bot', response.sql, chartData)
+          // 保存图表配置和类型（用于 AI 生成的图表）
+          this.addMessage(content, 'bot', response.sql, chartData, response.chartConfig, response.chartType)
         } else {
           this.addMessage('❌ ' + (response.message || '查询失败'), 'bot')
         }
