@@ -164,14 +164,33 @@ public class AIConfigController {
                 return response;
             }
             
-            JSONObject result = JSON.parseObject(httpResponse.body());
-            JSONArray modelsArray = result.getJSONArray("data");
+            String responseBody = httpResponse.body();
+            System.out.println("🔍 阿里云 API 返回：" + responseBody);
+            
+            JSONObject result = JSON.parseObject(responseBody);
+            
+            // 阿里云新版 API 格式：output.models
+            JSONArray modelsArray = null;
+            if (result.containsKey("output")) {
+                JSONObject output = result.getJSONObject("output");
+                if (output != null && output.containsKey("models")) {
+                    modelsArray = output.getJSONArray("models");
+                }
+            }
+            
+            // 兼容旧版 API 格式：data
+            if (modelsArray == null) {
+                modelsArray = result.getJSONArray("data");
+            }
             
             if (modelsArray == null) {
                 response.put("success", false);
-                response.put("message", "阿里云 API 返回数据格式异常");
+                response.put("message", "阿里云 API 返回数据格式异常，原始响应：" + responseBody);
+                System.err.println("❌ 阿里云 API 返回数据格式异常：" + responseBody);
                 return response;
             }
+            
+            System.out.println("✅ 解析到 " + modelsArray.size() + " 个模型");
             
             // 只插入不存在的模型（保留已有数据）
             String checkSql = "SELECT COUNT(*) FROM AI_MODEL_LIST WHERE MODEL_ID = ?";
@@ -183,8 +202,9 @@ public class AIConfigController {
             
             for (int i = 0; i < modelsArray.size(); i++) {
                 JSONObject model = modelsArray.getJSONObject(i);
-                String modelId = model.getString("model_id");
-                String modelName = model.getString("model_name");
+                // 阿里云 API 字段名：model, name
+                String modelId = model.getString("model");
+                String modelName = model.getString("name");
                 
                 if (modelId != null && !modelId.trim().isEmpty()) {
                     // 检查模型是否已存在
