@@ -74,6 +74,12 @@ const routes = [
         meta: { title: '⚙️ 智问配置', icon: 'Setting' }
       },
       {
+        path: '/my-models',
+        name: 'MyModels',
+        component: () => import('@/views/MyModels.vue'),
+        meta: { title: '🤖 我的模型', icon: 'Cpu' }
+      },
+      {
         path: '/retrain',
         name: 'Retrain',
         component: () => import('@/views/Retrain.vue'),

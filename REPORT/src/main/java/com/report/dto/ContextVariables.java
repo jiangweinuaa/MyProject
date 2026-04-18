@@ -56,6 +56,13 @@ public class ContextVariables implements Serializable {
         }
     }
     
+    // 显式添加 getter 方法（避免 Lombok 问题）
+    public String getShopId() { return shopId; }
+    public String getStartDate() { return startDate; }
+    public String getEndDate() { return endDate; }
+    public String getPluno() { return pluno; }
+    public Map<String, String> getExtra() { return extra; }
+    
     /**
      * 获取变量文本（用于 Prompt 增强）
      */

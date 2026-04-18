@@ -3,6 +3,7 @@ package com.report.controller;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import com.report.service.ModelService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +22,9 @@ public class AIConfigController {
     
     @Autowired
     private JdbcTemplate platformJdbcTemplate;
+    
+    @Autowired
+    private ModelService modelService;
     
     /**
      * 获取当前 AI 版本
@@ -284,6 +288,30 @@ public class AIConfigController {
         } catch (Exception e) {
             response.put("success", false);
             response.put("message", e.getMessage());
+        }
+        
+        return response;
+    }
+    
+    /**
+     * 获取模型列表（直接从阿里云 API 获取实时数据）
+     */
+    @GetMapping("/models")
+    public Map<String, Object> getModels() {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // 直接从阿里云获取最新数据
+            List<Map<String, Object>> models = modelService.getModelsFromAliyun();
+            response.put("success", true);
+            response.put("data", models);
+            response.put("count", models.size());
+            response.put("message", "获取成功，共 " + models.size() + " 个模型");
+            
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "获取失败：" + e.getMessage());
+            response.put("data", new java.util.ArrayList<>());
         }
         
         return response;

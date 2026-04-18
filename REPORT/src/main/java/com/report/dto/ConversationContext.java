@@ -20,6 +20,10 @@ public class ConversationContext implements Serializable {
      */
     private String sessionId;
     
+    // 显式添加 getter/setter
+    public String getSessionId() { return sessionId; }
+    public void setSessionId(String sessionId) { this.sessionId = sessionId; }
+    
     /**
      * 用户 ID（可选）
      */
@@ -35,10 +39,18 @@ public class ConversationContext implements Serializable {
      */
     private ContextVariables variables = new ContextVariables();
     
+    // 显式添加 getter/setter
+    public ContextVariables getVariables() { return variables; }
+    public void setVariables(ContextVariables variables) { this.variables = variables; }
+    
     /**
      * 最后活跃时间
      */
     private long lastActiveTime = System.currentTimeMillis();
+    
+    // 显式添加 getter/setter
+    public long getLastActiveTime() { return lastActiveTime; }
+    public void setLastActiveTime(long lastActiveTime) { this.lastActiveTime = lastActiveTime; }
     
     /**
      * 添加对话记录
