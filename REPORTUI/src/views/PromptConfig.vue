@@ -229,7 +229,14 @@
     >
       <el-table :data="modelList" style="width: 100%" border stripe size="small">
         <el-table-column prop="MODEL_ID" label="模型" min-width="180" show-overflow-tooltip />
-        <el-table-column label="操作" width="80" fixed="right">
+        <el-table-column label="状态" width="80">
+          <template #default="{ row }">
+            <el-tag :type="row.STATUS === '100' || row.STATUS === 100 ? 'success' : 'danger'" size="small">
+              {{ row.STATUS === '100' || row.STATUS === 100 ? '可用' : '耗尽' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
             <el-button 
               v-if="row.STATUS === '100' || row.STATUS === 100"
@@ -240,10 +247,38 @@
             >
               {{ currentModel === row.MODEL_ID ? '使用中' : '切换' }}
             </el-button>
-            <span v-else style="color: #F56C6C; font-size: 13px;">耗尽</span>
+            <el-button 
+              v-else
+              type="danger" 
+              size="small"
+              @click="showRenewDialog(row)"
+            >
+              耗尽
+            </el-button>
           </template>
         </el-table-column>
       </el-table>
+    </el-dialog>
+
+    <!-- 模型续费确认对话框 -->
+    <el-dialog
+      v-model="renewDialogVisible"
+      title="模型已耗尽"
+      width="400px"
+      :close-on-click-modal="false"
+    >
+      <div style="text-align: center; padding: 20px;">
+        <p style="font-size: 16px; margin-bottom: 20px;">
+          模型 <strong style="color: #F56C6C;">{{ renewModelId }}</strong> 的 Token 已用完
+        </p>
+        <p style="color: #909399; font-size: 14px;">
+          如果您已续费，请点击"我已续费"按钮更新状态
+        </p>
+      </div>
+      <template #footer>
+        <el-button @click="renewDialogVisible = false">关闭</el-button>
+        <el-button type="success" @click="confirmRenew">我已续费</el-button>
+      </template>
     </el-dialog>
 
     <!-- 添加/编辑表结构对话框 -->
@@ -291,6 +326,11 @@ const modelList = ref([])
 const modelDialogVisible = ref(false)
 const switchingModel = ref(false)
 const switchingModelId = ref('')
+
+// 续费对话框
+const renewDialogVisible = ref(false)
+const renewModelId = ref('')
+const renewingModel = ref('')
 
 // 角色定义
 const roleRequirements = ref([])
@@ -414,7 +454,7 @@ const switchToModel = async (row) => {
     })
     const data = await res.json()
     if (data.success) {
-      ElMessage.success('✅ 已切换到 ' + row.MODEL_NAME)
+      ElMessage.success('✅ 已切换到 ' + (row.MODEL_NAME || row.MODEL_ID))
       currentModel.value = row.MODEL_ID
       modelDialogVisible.value = false
       // 刷新 Prompt 缓存
@@ -427,6 +467,38 @@ const switchToModel = async (row) => {
   } finally {
     switchingModel.value = false
     switchingModelId.value = ''
+  }
+}
+
+// 显示续费对话框
+const showRenewDialog = (row) => {
+  renewModelId.value = row.MODEL_ID
+  renewDialogVisible.value = true
+}
+
+// 确认续费
+const confirmRenew = async () => {
+  renewingModel.value = true
+  try {
+    const token = localStorage.getItem('token') || ''
+    const res = await fetch('http://47.100.138.89:8110/api/ai-model/renew' + (token ? '?token=' + token : ''), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ modelId: renewModelId.value })
+    })
+    const data = await res.json()
+    if (data.success) {
+      ElMessage.success('✅ 模型状态已更新为可用')
+      renewDialogVisible.value = false
+      // 刷新模型列表
+      await loadModelList()
+    } else {
+      ElMessage.error('更新失败：' + (data.message || data.serviceDescription))
+    }
+  } catch (error) {
+    ElMessage.error('更新失败：' + error.message)
+  } finally {
+    renewingModel.value = false
   }
 }
 

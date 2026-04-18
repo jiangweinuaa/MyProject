@@ -218,6 +218,32 @@ public class ServiceController {
     }
 
     /**
+     * 更新模型状态（续费后调用）
+     * PUT /api/ai-model/renew
+     */
+    @PutMapping("/ai-model/renew")
+    public ServiceResponse<?> renewModel(@RequestBody Map<String, Object> params) {
+        try {
+            String modelId = params.get("modelId") != null ? params.get("modelId").toString() : null;
+            if (modelId == null || modelId.trim().isEmpty()) {
+                return ServiceResponse.error("400", "模型 ID 不能为空");
+            }
+            
+            // 更新 AI_MODEL_LIST 表中的状态为 100（可用）
+            String sql = "UPDATE AI_MODEL_LIST SET STATUS = '100' WHERE MODEL_ID = ?";
+            int rows = platformJdbcTemplate.update(sql, modelId);
+            
+            if (rows > 0) {
+                return ServiceResponse.success(modelId, "模型状态已更新为可用");
+            } else {
+                return ServiceResponse.error("404", "模型不存在：" + modelId);
+            }
+        } catch (Exception e) {
+            return ServiceResponse.error("500", "更新模型状态失败：" + e.getMessage());
+        }
+    }
+
+    /**
      * 内部请求参数类 (用于 GET 请求)
      */
     public static class QueryMemberRequest {
