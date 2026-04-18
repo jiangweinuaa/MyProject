@@ -537,7 +537,10 @@ public class AISQLService {
         try {
             String aiVersion = getAIVersion();
             if ("ALI_AGENT".equals(aiVersion)) {
-                return callV2Agent(prompt);
+                // 智能体模式：只传用户问题，不传完整 Prompt
+                // 从 prompt 中提取用户问题（去掉角色定义、表结构等）
+                String question = extractQuestionFromPrompt(prompt);
+                return callV2Agent(question);
             } else {
                 return callV1Model(prompt, isRetry);
             }
@@ -545,6 +548,34 @@ public class AISQLService {
             System.err.println("AI 调用异常：" + e.getMessage());
             throw e;
         }
+    }
+    
+    /**
+     * 从完整 Prompt 中提取用户问题（智能体模式使用）
+     */
+    private String extractQuestionFromPrompt(String prompt) {
+        // 查找"## 当前问题"部分
+        int currentQuestionIndex = prompt.indexOf("## 当前问题");
+        if (currentQuestionIndex == -1) {
+            // 如果没有标记，直接返回原 prompt（兼容简单情况）
+            return prompt;
+        }
+        
+        // 提取当前问题部分
+        int start = currentQuestionIndex + "## 当前问题".length();
+        int end = prompt.indexOf("## 数据库表结构", start);
+        if (end == -1) {
+            end = prompt.length();
+        }
+        
+        String question = prompt.substring(start, end).trim();
+        // 移除可能的"## SQL"标记
+        int sqlIndex = question.indexOf("## SQL");
+        if (sqlIndex > 0) {
+            question = question.substring(0, sqlIndex).trim();
+        }
+        
+        return question;
     }
     
     /**
@@ -799,8 +830,9 @@ public class AISQLService {
     
     /**
      * 调用 V2 百炼智能体 API（Apps API）
+     * 智能体模式：只传用户问题，表结构和角色定义在智能体配置中
      */
-    private String callV2Agent(String prompt) {
+    private String callV2Agent(String question) {
         try {
             String sql = "SELECT ACCESSKEYID AS APPID, ACCESSKEYSECRET AS APIKEY FROM PRODUCT_APPKEY WHERE PLATFORM = ?";
             List<Map<String, Object>> list = platformJdbcTemplate.queryForList(sql, "ALI_AGENT");
@@ -823,12 +855,15 @@ public class AISQLService {
             System.out.println("========================================");
             System.out.println("V2 智能体调用开始");
             System.out.println("APPID: " + appId);
+            System.out.println("用户问题：" + question);
             
             String apiEndpoint = "https://dashscope.aliyuncs.com/api/v1/apps/{APP_ID}/completion".replace("{APP_ID}", appId);
             
+            // 智能体模式：只传用户问题，不传完整 Prompt
+            // 表结构、角色定义、要求都在智能体的知识库和系统指令中配置
             JSONObject requestBody = new JSONObject();
             JSONObject inputObj = new JSONObject();
-            inputObj.put("prompt", prompt);
+            inputObj.put("prompt", question);  // 只传用户问题
             requestBody.put("input", inputObj);
             
             System.out.println("请求体：" + requestBody.toJSONString());
