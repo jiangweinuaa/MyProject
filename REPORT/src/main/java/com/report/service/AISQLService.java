@@ -537,7 +537,7 @@ public class AISQLService {
         try {
             String aiVersion = getAIVersion();
             if ("ALI_AGENT".equals(aiVersion)) {
-                return callAssistantAPI(prompt);
+                return callV2Agent(prompt);
             } else {
                 return callV1Model(prompt, isRetry);
             }
@@ -798,13 +798,11 @@ public class AISQLService {
     }
     
     /**
-     * 调用新版 Assistant API（支持动态指定模型）
-     * 文档：https://help.aliyun.com/zh/model-studio/assistant-api-reference
+     * 调用 V2 百炼智能体 API（Apps API）
      */
-    private String callAssistantAPI(String prompt) {
+    private String callV2Agent(String prompt) {
         try {
-            // 获取 Assistant ID（从 ALI_AGENT 配置）
-            String sql = "SELECT ACCESSKEYID AS ASSISTANT_ID, ACCESSKEYSECRET AS APIKEY FROM PRODUCT_APPKEY WHERE PLATFORM = ?";
+            String sql = "SELECT ACCESSKEYID AS APPID, ACCESSKEYSECRET AS APIKEY FROM PRODUCT_APPKEY WHERE PLATFORM = ?";
             List<Map<String, Object>> list = platformJdbcTemplate.queryForList(sql, "ALI_AGENT");
             
             if (list == null || list.isEmpty()) {
@@ -812,42 +810,26 @@ public class AISQLService {
             }
             
             Map<String, Object> row = list.get(0);
-            String assistantId = (String) row.get("ASSISTANT_ID");
+            String appId = (String) row.get("APPID");
             String apiKey = (String) row.get("APIKEY");
             
-            // 获取当前配置的模型（从 ALI_QWEN 配置）
-            String modelId = null;
-            try {
-                List<Map<String, Object>> modelList = platformJdbcTemplate.queryForList(
-                    "SELECT ACCESSKEYID FROM PRODUCT_APPKEY WHERE PLATFORM = ?", "ALI_QWEN");
-                if (modelList != null && !modelList.isEmpty()) {
-                    modelId = (String) modelList.get(0).get("ACCESSKEYID");
-                }
-            } catch (Exception e) {
-                System.out.println("未配置 ALI_QWEN，使用 Assistant 默认模型");
-            }
-            
-            if (assistantId == null || assistantId.trim().isEmpty()) {
-                throw new RuntimeException("ALI_AGENT 的 ASSISTANT_ID 为空");
+            if (appId == null || appId.trim().isEmpty()) {
+                throw new RuntimeException("ALI_AGENT 的 APPID 为空");
             }
             if (apiKey == null || apiKey.trim().isEmpty()) {
                 throw new RuntimeException("ALI_AGENT 的 APIKEY 为空");
             }
             
             System.out.println("========================================");
-            System.out.println("Assistant API 调用开始");
-            System.out.println("Assistant ID: " + assistantId);
-            System.out.println("Model: " + (modelId != null ? modelId : "default"));
+            System.out.println("V2 智能体调用开始");
+            System.out.println("APPID: " + appId);
             
-            // 新版 API 端点
-            String apiEndpoint = "https://dashscope.aliyuncs.com/api/v1/assistant/" + assistantId + "/completions";
+            String apiEndpoint = "https://dashscope.aliyuncs.com/api/v1/apps/{APP_ID}/completion".replace("{APP_ID}", appId);
             
-            // 构建请求体
             JSONObject requestBody = new JSONObject();
-            if (modelId != null && !modelId.trim().isEmpty()) {
-                requestBody.put("model", modelId);
-            }
-            requestBody.put("input", new JSONObject().put("prompt", prompt));
+            JSONObject inputObj = new JSONObject();
+            inputObj.put("prompt", prompt);
+            requestBody.put("input", inputObj);
             
             System.out.println("请求体：" + requestBody.toJSONString());
             
@@ -865,19 +847,18 @@ public class AISQLService {
                 
                 if (!response.isSuccessful()) {
                     String errorBody = response.body() != null ? response.body().string() : "无响应内容";
-                    throw new IOException("Assistant API 调用失败：" + statusCode + " - " + errorBody);
+                    throw new IOException("V2 API 调用失败：" + statusCode + " - " + errorBody);
                 }
                 
                 String responseBody = response.body().string();
                 System.out.println("========================================");
-                System.out.println("Assistant API 完整响应：");
+                System.out.println("V2 API 完整响应：");
                 System.out.println(responseBody);
                 System.out.println("========================================");
                 
                 JSONObject result = JSON.parseObject(responseBody);
                 String sqlResult = null;
                 
-                // 解析响应：新版 API 返回格式
                 JSONObject output = result.getJSONObject("output");
                 if (output != null) {
                     sqlResult = output.getString("text");
@@ -886,39 +867,25 @@ public class AISQLService {
                 if (sqlResult == null || sqlResult.trim().isEmpty()) {
                     JSONArray choices = result.getJSONArray("choices");
                     if (choices != null && choices.size() > 0) {
-                        JSONObject choice = choices.getJSONObject(0);
-                        JSONObject message = choice.getJSONObject("message");
-                        if (message != null) {
-                            sqlResult = message.getString("content");
-                        } else {
-                            sqlResult = choice.getString("text");
-                        }
+                        sqlResult = choices.getJSONObject(0).getString("text");
                     }
                 }
                 
                 if (sqlResult == null || sqlResult.trim().isEmpty()) {
-                    throw new RuntimeException("Assistant API 响应中未找到 SQL 内容");
+                    throw new RuntimeException("V2 API 响应中未找到 SQL 内容");
                 }
                 
-                System.out.println("Assistant 生成的 SQL: " + sqlResult);
+                System.out.println("V2 生成的 SQL: " + sqlResult);
                 System.out.println("========================================");
                 
-                // Token 统计（新版 API 响应中包含 usage 信息）
-                JSONObject usage = result.getJSONObject("usage");
-                if (usage != null) {
-                    int inputTokens = usage.getIntValue("input_tokens");
-                    int outputTokens = usage.getIntValue("output_tokens");
-                    TokenContext.setTokenInfo(inputTokens, outputTokens, inputTokens + outputTokens, 0.0);
-                    System.out.println("Token 统计：输入=" + inputTokens + ", 输出=" + outputTokens);
-                } else {
-                    TokenContext.setTokenInfo(0, 0, 0, 0.0);
-                }
+                TokenContext.setTokenInfo(0, 0, 0, 0.0);
+                System.out.println("Token 统计：待实现");
                 
                 return sqlResult.trim();
             }
         } catch (IOException e) {
-            System.err.println("Assistant API 调用失败：" + e.getMessage());
-            throw new RuntimeException("Assistant 智能体调用失败：" + e.getMessage(), e);
+            System.err.println("V2 调用失败：" + e.getMessage());
+            throw new RuntimeException("V2 智能体调用失败：" + e.getMessage(), e);
         }
     }
 }
