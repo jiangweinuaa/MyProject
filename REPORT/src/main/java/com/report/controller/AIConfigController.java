@@ -195,8 +195,8 @@ public class AIConfigController {
                         platformJdbcTemplate.update(updateSql, modelName != null ? modelName : modelId, modelId);
                         updateCount++;
                     } else {
-                        // 不存在，插入新模型
-                        platformJdbcTemplate.update(insertSql, modelId, modelName != null ? modelName : modelId, i);
+                        // 不存在，插入新模型（STATUS=100, SORT_ORDER=100）
+                        platformJdbcTemplate.update(insertSql, modelId, modelName != null ? modelName : modelId, 100);
                         insertCount++;
                     }
                 }
