@@ -218,7 +218,7 @@ export default {
         const response = await getConversationHistory({
           sessionId: sessionId,
           page: 0,
-          size: 50
+          size: 20
         });
         
         console.log('会话历史响应:', response);
