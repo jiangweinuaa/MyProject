@@ -458,7 +458,7 @@ const syncModels = async () => {
     })
     const data = await res.json()
     if (data.success) {
-      ElMessage.success('✅ ' + (data.message || '同步成功'))
+      ElMessage.success(data.message || '同步成功')
       // 刷新模型列表
       await loadModelList()
     } else {

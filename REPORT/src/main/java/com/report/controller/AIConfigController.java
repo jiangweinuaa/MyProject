@@ -173,12 +173,13 @@ public class AIConfigController {
                 return response;
             }
             
-            // 清空现有模型列表
-            platformJdbcTemplate.update("DELETE FROM AI_MODEL_LIST");
-            
-            // 插入新模型
+            // 只插入不存在的模型（保留已有数据）
+            String checkSql = "SELECT COUNT(*) FROM AI_MODEL_LIST WHERE MODEL_ID = ?";
             String insertSql = "INSERT INTO AI_MODEL_LIST (MODEL_ID, MODEL_NAME, STATUS, SORT_ORDER, CREATED_TIME) VALUES (?, ?, '100', ?, SYSDATE)";
-            int sort = 0;
+            String updateSql = "UPDATE AI_MODEL_LIST SET MODEL_NAME = ?, STATUS = '100' WHERE MODEL_ID = ?";
+            
+            int insertCount = 0;
+            int updateCount = 0;
             
             for (int i = 0; i < modelsArray.size(); i++) {
                 JSONObject model = modelsArray.getJSONObject(i);
@@ -186,13 +187,25 @@ public class AIConfigController {
                 String modelName = model.getString("model_name");
                 
                 if (modelId != null && !modelId.trim().isEmpty()) {
-                    platformJdbcTemplate.update(insertSql, modelId, modelName != null ? modelName : modelId, sort++);
+                    // 检查模型是否已存在
+                    Integer count = platformJdbcTemplate.queryForObject(checkSql, Integer.class, modelId);
+                    
+                    if (count != null && count > 0) {
+                        // 已存在，更新模型名称
+                        platformJdbcTemplate.update(updateSql, modelName != null ? modelName : modelId, modelId);
+                        updateCount++;
+                    } else {
+                        // 不存在，插入新模型
+                        platformJdbcTemplate.update(insertSql, modelId, modelName != null ? modelName : modelId, i);
+                        insertCount++;
+                    }
                 }
             }
             
             response.put("success", true);
-            response.put("message", "同步成功，共同步 " + sort + " 个模型");
-            response.put("count", sort);
+            response.put("message", "同步成功，新增 " + insertCount + " 个模型，更新 " + updateCount + " 个模型");
+            response.put("insertCount", insertCount);
+            response.put("updateCount", updateCount);
             
         } catch (Exception e) {
             response.put("success", false);
