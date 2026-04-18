@@ -105,22 +105,23 @@ public class AIConfigController {
     }
     
     /**
-     * 获取可用模型列表
+     * 获取模型列表（直接从阿里云 API 获取实时数据）
      */
     @GetMapping("/models")
     public Map<String, Object> getModels() {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            String sql = "SELECT MODEL_ID, MODEL_NAME FROM AI_MODEL_LIST WHERE STATUS IN ('100', 100) ORDER BY SORT_ORDER";
-            List<Map<String, Object>> models = platformJdbcTemplate.queryForList(sql);
-            
+            // 直接从阿里云获取最新数据
+            List<Map<String, Object>> models = modelService.getModelsFromAliyun();
             response.put("success", true);
             response.put("data", models);
+            response.put("count", models.size());
+            response.put("message", "获取成功，共 " + models.size() + " 个模型");
             
         } catch (Exception e) {
             response.put("success", false);
-            response.put("message", e.getMessage());
+            response.put("message", "获取失败：" + e.getMessage());
             response.put("data", new java.util.ArrayList<>());
         }
         
@@ -128,7 +129,7 @@ public class AIConfigController {
     }
     
     /**
-     * 从阿里云同步模型列表
+     * 从阿里云同步模型列表（只插入不存在的，不更新已存在的）
      */
     @PostMapping("/sync-models")
     public Map<String, Object> syncModels() {
@@ -158,7 +159,11 @@ public class AIConfigController {
             java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder().build();
             
             int insertCount = 0;
-            int updateCount = 0;
+            int skipCount = 0;
+            
+            // 只插入不存在的模型，已存在的不做任何更新
+            String checkSql = "SELECT COUNT(*) FROM AI_MODEL_LIST WHERE MODEL_ID = ?";
+            String insertSql = "INSERT INTO AI_MODEL_LIST (MODEL_ID, MODEL_NAME, STATUS, SORT_ORDER, CREATED_TIME) VALUES (?, ?, '100', ?, SYSDATE)";
             
             while (true) {
                 String paginatedUrl = apiUrl + "?page_no=" + pageNo + "&page_size=" + pageSize;
@@ -203,11 +208,7 @@ public class AIConfigController {
                 
                 System.out.println("✅ 第 " + pageNo + " 页解析到 " + modelsArray.size() + " 个模型");
                 
-                // 只插入不存在的模型（保留已有数据）
-                String checkSql = "SELECT COUNT(*) FROM AI_MODEL_LIST WHERE MODEL_ID = ?";
-                String insertSql = "INSERT INTO AI_MODEL_LIST (MODEL_ID, MODEL_NAME, STATUS, SORT_ORDER, CREATED_TIME) VALUES (?, ?, '100', 100, SYSDATE)";
-                String updateSql = "UPDATE AI_MODEL_LIST SET MODEL_NAME = ?, STATUS = '100' WHERE MODEL_ID = ?";
-                
+                // 只插入不存在的模型，已存在的不做任何更新
                 for (int i = 0; i < modelsArray.size(); i++) {
                     JSONObject model = modelsArray.getJSONObject(i);
                     // 阿里云 API 字段名：model, name
@@ -219,15 +220,16 @@ public class AIConfigController {
                         Integer count = platformJdbcTemplate.queryForObject(checkSql, Integer.class, modelId);
                         
                         if (count != null && count > 0) {
-                            // 已存在，更新模型名称
-                            platformJdbcTemplate.update(updateSql, modelName != null ? modelName : modelId, modelId);
-                            updateCount++;
+                            // 已存在，跳过不更新
+                            System.out.println("⏭️ 跳过已存在的模型：" + modelId);
+                            skipCount++;
                         } else {
                             // 不存在，插入新模型
-                            platformJdbcTemplate.update(insertSql, modelId, modelName != null ? modelName : modelId);
+                            platformJdbcTemplate.update(insertSql, modelId, modelName != null ? modelName : modelId, totalModels);
                             insertCount++;
+                            System.out.println("✅ 插入新模型：" + modelId);
+                            totalModels++;
                         }
-                        totalModels++;
                     }
                 }
                 
@@ -248,10 +250,10 @@ public class AIConfigController {
             
             
             response.put("success", true);
-            response.put("message", "同步成功，共 " + totalModels + " 个模型，新增 " + insertCount + " 个，更新 " + updateCount + " 个");
+            response.put("message", "同步成功，新增 " + insertCount + " 个模型，跳过 " + skipCount + " 个已存在模型");
             response.put("totalModels", totalModels);
             response.put("insertCount", insertCount);
-            response.put("updateCount", updateCount);
+            response.put("skipCount", skipCount);
             
         } catch (Exception e) {
             response.put("success", false);
@@ -293,27 +295,4 @@ public class AIConfigController {
         return response;
     }
     
-    /**
-     * 获取模型列表（直接从阿里云 API 获取实时数据）
-     */
-    @GetMapping("/models")
-    public Map<String, Object> getModels() {
-        Map<String, Object> response = new HashMap<>();
-        
-        try {
-            // 直接从阿里云获取最新数据
-            List<Map<String, Object>> models = modelService.getModelsFromAliyun();
-            response.put("success", true);
-            response.put("data", models);
-            response.put("count", models.size());
-            response.put("message", "获取成功，共 " + models.size() + " 个模型");
-            
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", "获取失败：" + e.getMessage());
-            response.put("data", new java.util.ArrayList<>());
-        }
-        
-        return response;
-    }
 }

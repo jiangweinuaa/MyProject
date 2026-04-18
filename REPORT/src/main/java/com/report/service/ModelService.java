@@ -99,8 +99,9 @@ public class ModelService {
                 for (int i = 0; i < modelsArray.size(); i++) {
                     JSONObject model = modelsArray.getJSONObject(i);
                     Map<String, Object> modelMap = new java.util.HashMap<>();
-                    modelMap.put("model_id", model.getString("model"));
-                    modelMap.put("model_name", model.getString("name"));
+                    // 使用与阿里云 API 一致的字段名，方便前端直接绑定
+                    modelMap.put("model", model.getString("model"));
+                    modelMap.put("name", model.getString("name"));
                     modelMap.put("description", model.getString("description"));
                     modelMap.put("provider", model.getString("provider"));
                     modelMap.put("capabilities", model.getJSONArray("capabilities"));

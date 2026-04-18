@@ -48,7 +48,11 @@ public class ConversationContext implements Serializable {
      */
     private long lastActiveTime = System.currentTimeMillis();
     
-    // 显式添加 getter/setter
+    // 显式添加所有 getter/setter
+    public String getUserId() { return userId; }
+    public void setUserId(String userId) { this.userId = userId; }
+    public java.util.List<Dialogue> getHistory() { return history; }
+    public void setHistory(java.util.List<Dialogue> history) { this.history = history; }
     public long getLastActiveTime() { return lastActiveTime; }
     public void setLastActiveTime(long lastActiveTime) { this.lastActiveTime = lastActiveTime; }
     
@@ -117,5 +121,10 @@ public class ConversationContext implements Serializable {
             this.sql = sql;
             this.timestamp = timestamp;
         }
+        
+        // 显式添加 getter
+        public String getQuestion() { return question; }
+        public String getSql() { return sql; }
+        public long getTimestamp() { return timestamp; }
     }
 }

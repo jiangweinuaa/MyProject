@@ -42,4 +42,11 @@ public class MatchResult {
     public static MatchResult categoryMatch(String pluno) {
         return new MatchResult(pluno, "CATEGORY", null, null);
     }
+    
+    // 显式添加 getter 和默认构造函数
+    public MatchResult() {}
+    public String getPluno() { return pluno; }
+    public String getMatchType() { return matchType; }
+    public Double getVectorSimilarity() { return vectorSimilarity; }
+    public String getFeatureId() { return featureId; }
 }
