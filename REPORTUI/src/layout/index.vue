@@ -160,7 +160,7 @@ const route = useRoute()
 const router = useRouter()
 
 // 版本号（格式：1.0.yymmdd.HHMM）
-const version = '1.0.260408.2240'
+const version = '1.0.260419.0900'
 
 const menus = [
   { path: '/sales-analysis', title: '销售分析', icon: 'DataAnalysis' },
@@ -174,6 +174,7 @@ const menus = [
   { path: '/training-library', title: '训练库管理', icon: 'FolderOpened' },
   { path: '/retrain', title: '商品重新训练', icon: 'RefreshRight' },
   { path: '/smart-query', title: '🤖 智问', icon: 'ChatDotRound' },
+  { path: '/report-designer', title: '📊 AI 报表设计器', icon: 'DataBoard' },
   { path: '/prompt-config', title: '⚙️ 智问配置', icon: 'Setting' },
   { path: '/my-models', title: '🤖 我的模型', icon: 'Cpu' },
   { path: '/sales-accuracy-analysis', title: '销售预估准确性', icon: 'TrendCharts' },
@@ -540,6 +541,12 @@ onUnmounted(() => {
   background-color: #f0f2f5;
   padding: 20px;
   overflow-y: auto;
+}
+
+/* 报表设计器页面 - 禁用外部滚动 */
+.content:has(.report-designer) {
+  overflow: hidden;
+  padding: 0;
 }
 
 /* 嵌入模式样式 */

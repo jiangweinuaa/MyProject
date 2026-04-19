@@ -68,6 +68,12 @@ const routes = [
         meta: { title: '🤖 智问', icon: 'ChatDotRound' }
       },
       {
+        path: '/report-designer',
+        name: 'ReportDesigner',
+        component: () => import('@/views/ReportDesigner.vue'),
+        meta: { title: '📊 AI 报表设计器', icon: 'DataBoard' }
+      },
+      {
         path: '/prompt-config',
         name: 'PromptConfig',
         component: () => import('@/views/PromptConfig.vue'),
