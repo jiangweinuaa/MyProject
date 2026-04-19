@@ -37,9 +37,18 @@
             
             <!-- 图表区域（自动显示多个图表） -->
             <div class="chart-section" v-if="shouldShowChart(msg)">
-              <!-- AI 生成的图表 -->
+              <!-- AI 生成的图表（统一从 charts 数组读取） -->
+              <template v-if="msg.charts && msg.charts.length > 0">
+                <AiChart 
+                  v-for="(chart, index) in msg.charts" 
+                  :key="'chart-' + index"
+                  :config="chart.config || chart"
+                />
+              </template>
+              
+              <!-- 兼容旧格式：单个 chartConfig -->
               <AiChart 
-                v-if="shouldShowAiChart(msg)" 
+                v-else-if="msg.chartConfig"
                 :key="msg.sessionId + '-ai'"
                 :config="msg.chartConfig"
               />
@@ -266,13 +275,24 @@ export default {
               console.error('解析结果数据失败:', e);
             }
             
-            // 解析图表配置（如果有）
-            let chartConfig = null;
-            if (dialogue.chartConfig) {
+            // 解析图表配置（统一使用 charts 数组）
+            let charts = [];
+            if (dialogue.charts) {
               try {
-                chartConfig = typeof dialogue.chartConfig === 'string' ? JSON.parse(dialogue.chartConfig) : dialogue.chartConfig;
+                charts = typeof dialogue.charts === 'string' ? JSON.parse(dialogue.charts) : dialogue.charts;
+                if (!Array.isArray(charts)) charts = [];
               } catch (e) {
-                console.error('解析图表配置失败:', e);
+                console.error('解析 charts 失败:', e);
+              }
+            } else if (dialogue.chartConfig) {
+              // 兼容旧格式：单个 chartConfig 转成 charts 数组
+              try {
+                const config = typeof dialogue.chartConfig === 'string' ? JSON.parse(dialogue.chartConfig) : dialogue.chartConfig;
+                if (config) {
+                  charts = [{ type: 'ai', config }];
+                }
+              } catch (e) {
+                console.error('解析 chartConfig 失败:', e);
               }
             }
             
@@ -281,8 +301,7 @@ export default {
               content: `查询完成，共 ${dialogue.rowCount} 条数据`,
               sql: dialogue.sqlGenerated,
               data: chartData,
-              chartType: dialogue.chartType || 'auto',
-              chartConfig: chartConfig,
+              charts: charts,  // 统一使用 charts 数组
               time: this.formatTime(dialogue.createdTime)
             });
           });
@@ -575,9 +594,13 @@ export default {
      * 是否显示 AI 图表
      */
     shouldShowAiChart(msg) {
-      const isAi = msg.chartType === 'ai'
+      // 优先检查 charts 数组
+      if (msg.charts && Array.isArray(msg.charts) && msg.charts.length > 0) {
+        return true
+      }
+      // 兼容旧格式
       const hasConfig = msg.chartConfig && typeof msg.chartConfig === 'object' && Object.keys(msg.chartConfig).length > 0
-      return isAi && hasConfig
+      return msg.chartType === 'ai' && hasConfig
     },
     
     /**
@@ -640,14 +663,13 @@ export default {
       return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
     },
     
-    addMessage(content, type, sql = '', data = null, chartConfig = null, chartType = 'auto') {
+    addMessage(content, type, sql = '', data = null, charts = []) {
       this.messages.push({
         type,
         content,
         sql,
         data,
-        chartConfig,  // AI 生成的图表配置
-        chartType,    // 'ai' 或 'auto'
+        charts: Array.isArray(charts) ? charts : [],  // 统一使用 charts 数组
         time: this.now()
       })
       
@@ -742,8 +764,16 @@ export default {
             content = '暂无数据'
           }
           
-          // 保存图表配置和类型（用于 AI 生成的图表）
-          this.addMessage(content, 'bot', response.sql, chartData, response.chartConfig, response.chartType)
+          // 统一使用 charts 数组
+          let charts = []
+          if (response.charts && Array.isArray(response.charts)) {
+            charts = response.charts
+          } else if (response.chartConfig) {
+            // 兼容旧格式
+            charts = [{ type: response.chartType || 'ai', config: response.chartConfig }]
+          }
+          
+          this.addMessage(content, 'bot', response.sql, chartData, charts)
         } else {
           this.addMessage('❌ ' + (response.message || '查询失败'), 'bot')
         }

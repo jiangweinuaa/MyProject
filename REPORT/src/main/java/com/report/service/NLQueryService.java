@@ -164,9 +164,14 @@ public class NLQueryService extends BaseService {
                 }
             }
             
-            response.put("chartType", chartType);
+            // 统一返回 charts 数组格式
             if ("ai".equals(chartType) && chartConfig != null) {
-                response.put("chartConfig", JSON.parse(chartConfig));
+                // 将单个图表配置包装成数组
+                com.alibaba.fastjson2.JSONArray chartsArray = new com.alibaba.fastjson2.JSONArray();
+                chartsArray.add(JSON.parse(chartConfig));
+                response.put("charts", chartsArray);
+            } else {
+                response.put("charts", new com.alibaba.fastjson2.JSONArray());
             }
             
             // 保存对话到数据库（包含完整结果集和图表配置）
@@ -251,6 +256,8 @@ public class NLQueryService extends BaseService {
                         response.put("rowCount", Integer.valueOf(result.size()));
                         response.put("retry", Boolean.valueOf(true));
                         response.put("sessionId", sessionId);
+                        // 重试时也返回 charts 数组（空数组）
+                        response.put("charts", new com.alibaba.fastjson2.JSONArray());
                         
                         return response;
                     } catch (Exception retryEx) {
