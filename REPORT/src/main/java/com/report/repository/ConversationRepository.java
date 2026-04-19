@@ -149,6 +149,18 @@ public class ConversationRepository {
         dto.setChartType((String) row.get("CHART_TYPE"));
         dto.setChartConfig(clobToString(row.get("CHART_CONFIG")));
         dto.setCreatedTime((Date) row.get("CREATED_TIME"));
+        
+        // 将旧 chartConfig 转换为 charts 数组格式（向前端统一返回 charts）
+        String chartConfig = dto.getChartConfig();
+        if (chartConfig != null && !chartConfig.trim().isEmpty()) {
+            try {
+                // 将单个图表配置包装成 JSON 数组
+                dto.setCharts("[{\"type\":\"" + (dto.getChartType() != null ? dto.getChartType() : "ai") + "\",\"config\":" + chartConfig + "}]");
+            } catch (Exception e) {
+                // 如果包装失败，保留原始 chartConfig，charts 为 null（前端会兼容）
+            }
+        }
+        
         return dto;
     }
     

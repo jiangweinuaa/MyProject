@@ -193,7 +193,20 @@ public class ReportSaveService {
             Map<String, Object> report = list.get(0);
             
             // 安全解析 JSON 字段
-            report.put("chartConfig", safeParseJson(report.get("CHART_CONFIG")));
+            Object chartConfigParsed = safeParseJson(report.get("CHART_CONFIG"));
+            report.put("chartConfig", chartConfigParsed);
+            
+            // 统一返回 charts 数组格式
+            if (chartConfigParsed instanceof java.util.List) {
+                report.put("charts", chartConfigParsed);
+            } else if (chartConfigParsed instanceof java.util.Map) {
+                com.alibaba.fastjson2.JSONArray chartsArray = new com.alibaba.fastjson2.JSONArray();
+                chartsArray.add(chartConfigParsed);
+                report.put("charts", chartsArray);
+            } else {
+                report.put("charts", new com.alibaba.fastjson2.JSONArray());
+            }
+            
             report.put("layoutConfig", safeParseJson(report.get("LAYOUT_CONFIG")));
             report.put("variablesConfig", safeParseJson(report.get("VARIABLES_CONFIG")));
             

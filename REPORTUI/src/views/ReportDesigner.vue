@@ -128,7 +128,8 @@ const previewData = ref(null)
 
 const reportConfig = reactive({
   sql: '',
-  chartConfig: null,
+  charts: [],        // 统一使用 charts 数组
+  chartConfig: null, // 兼容：取 charts[0]?.config 作为主图表
   variables: [],
   layout: null,
   name: '',
@@ -170,11 +171,20 @@ async function handleChat(message) {
     if (response.success) {
       console.log('handleChat response:', response)
       
-      // 更新预览数据
+      // 更新预览数据（统一使用 charts 数组）
+      let charts = []
+      if (response.charts && Array.isArray(response.charts)) {
+        charts = response.charts
+      } else if (response.chartConfig) {
+        // 兼容旧格式
+        charts = [{ type: response.chartType || 'ai', config: response.chartConfig }]
+      }
+      
       previewData.value = {
         sql: response.sql,
-        data: Array.isArray(response.data) ? response.data : [], // 确保是数组
-        chartConfig: response.chartConfig,
+        data: Array.isArray(response.data) ? response.data : [],
+        charts: charts,
+        chartConfig: charts.length > 0 ? (charts[0].config || charts[0]) : null,
         question: response.question,
         rowCount: response.rowCount || (Array.isArray(response.data) ? response.data.length : 0),
         execTime: response.execTime || 0
@@ -185,15 +195,10 @@ async function handleChat(message) {
       
       // 更新配置
       reportConfig.sql = response.sql
-      console.log('reportConfig.sql after update:', reportConfig.sql)
+      reportConfig.charts = charts
+      reportConfig.chartConfig = charts.length > 0 ? (charts[0].config || charts[0]) : null
       
-      // 保存所有图表配置（可能包含多个图表）
-      if (response.chartConfig) {
-        reportConfig.chartConfig = response.chartConfig
-      }
-      if (response.charts && Array.isArray(response.charts)) {
-        reportConfig.charts = response.charts
-      }
+      console.log('reportConfig.sql after update:', reportConfig.sql)
       
       // 更新最后一条消息为成功（替换"思考中..."）
       if (chatPanel.value && chatPanel.value.messages.length > 0) {
@@ -313,11 +318,19 @@ async function handleRegenerateSQL(sql) {
     })
     
     if (response.success) {
-      // 更新预览数据
+      // 更新预览数据（统一使用 charts 数组）
+      let charts = []
+      if (response.charts && Array.isArray(response.charts)) {
+        charts = response.charts
+      } else if (response.chartConfig) {
+        charts = [{ type: response.chartType || 'ai', config: response.chartConfig }]
+      }
+      
       previewData.value = {
         sql: response.sql,
         data: Array.isArray(response.data) ? response.data : [],
-        chartConfig: response.chartConfig,
+        charts: charts,
+        chartConfig: charts.length > 0 ? (charts[0].config || charts[0]) : null,
         question: response.question,
         rowCount: response.rowCount || (Array.isArray(response.data) ? response.data.length : 0),
         execTime: response.execTime || 0
@@ -325,9 +338,8 @@ async function handleRegenerateSQL(sql) {
       
       // 更新配置
       reportConfig.sql = response.sql
-      if (response.chartConfig) {
-        reportConfig.chartConfig = response.chartConfig
-      }
+      reportConfig.charts = charts
+      reportConfig.chartConfig = charts.length > 0 ? (charts[0].config || charts[0]) : null
       
       // 更新最后一条消息为成功（替换"正在重新生成..."）
       if (chatPanel.value && chatPanel.value.messages.length > 0) {
@@ -367,15 +379,15 @@ async function handleRegenerateSQL(sql) {
 
 // 图表选择
 function handleChartSelect(result) {
-  reportConfig.chartType = result.chartType
+  // 统一使用 charts 数组
+  reportConfig.charts = result.charts || (result.chartConfig ? [{ type: result.chartType || 'bar', config: result.chartConfig }] : [])
   reportConfig.chartConfig = result.chartConfig
-  reportConfig.charts = result.charts || []  // 保存所有图表
+  reportConfig.chartType = result.chartType
   reportConfig.layout = result.layout
   
   console.log('选择的图表配置:', {
-    chartType: reportConfig.chartType,
-    chartConfig: reportConfig.chartConfig,
     charts: reportConfig.charts,
+    chartConfig: reportConfig.chartConfig,
     layout: reportConfig.layout
   })
   
@@ -443,14 +455,14 @@ async function handleSaveFromForm(formData) {
     const sessionId = sessionStorage.getItem('designer_session_id')
     const token = localStorage.getItem('token')
     
-    // 保存所有图表配置（chartConfig 或 charts 数组）
+    // 保存所有图表配置（优先 charts 数组）
     const saveData = {
       sessionId,
       name: formData.name || reportConfig.name,
       description: formData.description || reportConfig.description || '',
       sql: reportConfig.sql,
-      chartConfig: reportConfig.chartConfig || null,  // 单个图表
-      charts: reportConfig.charts || null,  // 多个图表
+      charts: reportConfig.charts && reportConfig.charts.length > 0 ? reportConfig.charts : null,  // 优先数组
+      chartConfig: reportConfig.chartConfig || null,  // 兼容保留
       layout: reportConfig.layout || null,
       variables: reportConfig.variables || [],
       menuId: formData.menuId || reportConfig.menuId || '',
@@ -498,6 +510,7 @@ async function handlePublishFromForm(formData) {
       name: formData.name || reportConfig.name,
       description: formData.description || reportConfig.description || '',
       sql: reportConfig.sql,
+      charts: reportConfig.charts && reportConfig.charts.length > 0 ? reportConfig.charts : null,
       chartConfig: reportConfig.chartConfig || null,
       layout: reportConfig.layout || null,
       variables: reportConfig.variables || [],
@@ -527,6 +540,7 @@ function createNewReport() {
   // 重置所有状态
   currentStep.value = 1
   reportConfig.sql = ''
+  reportConfig.charts = []
   reportConfig.chartConfig = null
   reportConfig.layout = null
   reportConfig.variables = []
@@ -590,19 +604,21 @@ async function editReport(reportId) {
       // 安全解析 JSON 字段
       const parsedChartConfig = safeParseJSON(report.CHART_CONFIG, null)
       
-      // 处理图表配置：可能是单个对象或数组
+      // 处理图表配置：统一使用 charts 数组
       if (Array.isArray(parsedChartConfig)) {
-        // 多图表数组：取第一个作为主图表，保存完整数组
+        // 多图表数组
         reportConfig.charts = parsedChartConfig
-        // 从第一个图表提取 config
-        const firstChart = parsedChartConfig[0]
-        reportConfig.chartConfig = firstChart?.config || firstChart
-        reportConfig.chartType = firstChart?.type || 'bar'
+        reportConfig.chartConfig = parsedChartConfig[0]?.config || parsedChartConfig[0]
+        reportConfig.chartType = parsedChartConfig[0]?.type || 'bar'
         console.log('加载多图表配置:', reportConfig.charts)
-      } else {
-        // 单个图表对象
+      } else if (parsedChartConfig && typeof parsedChartConfig === 'object') {
+        // 单个图表对象，包装成数组
+        reportConfig.charts = [{ type: 'ai', config: parsedChartConfig }]
         reportConfig.chartConfig = parsedChartConfig
-        reportConfig.charts = null
+        console.log('加载单图表配置:', reportConfig.charts)
+      } else {
+        reportConfig.charts = []
+        reportConfig.chartConfig = null
       }
       
       reportConfig.layout = safeParseJSON(report.LAYOUT_CONFIG, null)

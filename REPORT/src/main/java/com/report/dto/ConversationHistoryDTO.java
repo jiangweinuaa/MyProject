@@ -36,8 +36,9 @@ public class ConversationHistoryDTO implements Serializable {
         private String resultData;      // JSON 格式的完整结果集
         private int rowCount;
         private Long executionTimeMs;
-        private String chartType;       // 'ai' 或 'auto'
-        private String chartConfig;     // AI 生成的图表配置（JSON 字符串）
+        private String chartType;       // 'ai' 或 'auto'（保留兼容）
+        private String chartConfig;     // AI 生成的图表配置（JSON 字符串，保留兼容）
+        private String charts;          // 图表配置数组（JSON 字符串，新格式）
         private Date createdTime;
         
         // 显式添加 getter/setter 方法（避免 Lombok 问题）
@@ -59,6 +60,8 @@ public class ConversationHistoryDTO implements Serializable {
         public void setChartType(String chartType) { this.chartType = chartType; }
         public String getChartConfig() { return chartConfig; }
         public void setChartConfig(String chartConfig) { this.chartConfig = chartConfig; }
+        public String getCharts() { return charts; }
+        public void setCharts(String charts) { this.charts = charts; }
         public Date getCreatedTime() { return createdTime; }
         public void setCreatedTime(Date createdTime) { this.createdTime = createdTime; }
     }
