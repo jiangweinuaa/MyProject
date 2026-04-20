@@ -165,12 +165,16 @@ public class NLQueryService extends BaseService {
             }
             
             // 统一返回 charts 数组格式
-            if ("ai".equals(chartType) && chartConfig != null) {
-                // 将单个图表配置包装成数组
-                com.alibaba.fastjson2.JSONArray chartsArray = new com.alibaba.fastjson2.JSONArray();
-                chartsArray.add(JSON.parse(chartConfig));
-                response.put("charts", chartsArray);
-            } else {
+            try {
+                if ("ai".equals(chartType) && chartConfig != null) {
+                    com.alibaba.fastjson2.JSONArray chartsArray = new com.alibaba.fastjson2.JSONArray();
+                    chartsArray.add(JSON.parse(chartConfig));
+                    response.put("charts", chartsArray);
+                } else {
+                    response.put("charts", new com.alibaba.fastjson2.JSONArray());
+                }
+            } catch (Exception e) {
+                System.err.println("⚠️ 图表配置包装失败（不影响查询结果）：" + e.getMessage());
                 response.put("charts", new com.alibaba.fastjson2.JSONArray());
             }
             
