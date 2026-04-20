@@ -101,25 +101,6 @@ public class NLQueryService extends BaseService {
             extractAndUpdateVariables(sessionId, sql);
             logQuery(question, sql, isRetry, "SUCCESS", null, sqlGenTime, sqlExecTime, startTime, token);
             
-            // 保存对话到数据库（包含完整结果集）
-            try {
-                // 从 token 解析 OPNO（用户 ID）
-                String userId = getUserIdFromToken(token);
-                
-                // 先保存会话（MERGE 模式，自动判断插入或更新）
-                String title = generateTitle(question);
-                conversationRepository.saveConversation(sessionId, userId, title);
-                
-                // 再保存对话记录
-                String resultData = JSON.toJSONString(result);
-                conversationRepository.saveDialogue(sessionId, question, sql, resultData, result.size(), sqlExecTime);
-                
-            } catch (Exception e) {
-                System.err.println("⚠️ 保存对话历史失败：" + e.getMessage());
-                e.printStackTrace();
-                // 不影响主流程
-            }
-            
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);
             response.put("sql", sql);

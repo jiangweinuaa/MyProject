@@ -41,12 +41,30 @@ public class ConversationRepository {
     
     /**
      * 保存对话记录（包含图表配置）
+     * @param chartConfig 单个图表配置 JSON（兼容旧格式）
      */
     public void saveDialogue(String sessionId, String question, String sql, String resultData, int rowCount, long executionTimeMs, String chartType, String chartConfig) {
+        // 将单个图表配置包装成 charts 数组再存储
+        String chartsJson = null;
+        if (chartConfig != null && !chartConfig.trim().isEmpty()) {
+            try {
+                com.alibaba.fastjson2.JSONArray chartsArray = new com.alibaba.fastjson2.JSONArray();
+                com.alibaba.fastjson2.JSONObject chartObj = new com.alibaba.fastjson2.JSONObject();
+                if (chartType != null) {
+                    chartObj.put("type", chartType);
+                }
+                chartObj.put("config", com.alibaba.fastjson2.JSON.parse(chartConfig));
+                chartsArray.add(chartObj);
+                chartsJson = chartsArray.toJSONString();
+            } catch (Exception e) {
+                // 解析失败，降级为存储原始 chartConfig
+                chartsJson = chartConfig;
+            }
+        }
         String id = UUID.randomUUID().toString().replace("-", "");
         String insertSql = "INSERT INTO AI_NL_DIALOGUE (ID, SESSION_ID, QUESTION, SQL_GENERATED, RESULT_DATA, ROW_COUNT, EXECUTION_TIME_MS, CHART_TYPE, CHART_CONFIG, CREATED_TIME) " +
                           "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, SYSDATE)";
-        jdbcTemplate.update(insertSql, id, sessionId, question, sql, resultData, rowCount, executionTimeMs, chartType, chartConfig);
+        jdbcTemplate.update(insertSql, id, sessionId, question, sql, resultData, rowCount, executionTimeMs, chartType, chartsJson);
     }
     
     /**
@@ -150,14 +168,34 @@ public class ConversationRepository {
         dto.setChartConfig(clobToString(row.get("CHART_CONFIG")));
         dto.setCreatedTime((Date) row.get("CREATED_TIME"));
         
-        // 将旧 chartConfig 转换为 charts 数组格式（向前端统一返回 charts）
-        String chartConfig = dto.getChartConfig();
-        if (chartConfig != null && !chartConfig.trim().isEmpty()) {
+        // 解析 charts 数组（新格式），向前端返回真正的数组结构
+        String chartConfigStr = dto.getChartConfig();
+        if (chartConfigStr != null && !chartConfigStr.trim().isEmpty()) {
             try {
-                // 将单个图表配置包装成 JSON 数组
-                dto.setCharts("[{\"type\":\"" + (dto.getChartType() != null ? dto.getChartType() : "ai") + "\",\"config\":" + chartConfig + "}]");
+                Object parsed = com.alibaba.fastjson2.JSON.parse(chartConfigStr);
+                if (parsed instanceof com.alibaba.fastjson2.JSONArray) {
+                    // 新格式：已经是 charts 数组
+                    dto.setCharts(parsed);
+                } else {
+                    // 旧数据：单个图表对象，包装成数组
+                    com.alibaba.fastjson2.JSONArray chartsArray = new com.alibaba.fastjson2.JSONArray();
+                    com.alibaba.fastjson2.JSONObject chartObj = new com.alibaba.fastjson2.JSONObject();
+                    String type = dto.getChartType() != null ? dto.getChartType() : "ai";
+                    chartObj.put("type", type);
+                    // 保留原始 chartConfig 字符串作为 config（可能包含 JS 函数）
+                    chartObj.put("config", chartConfigStr);
+                    chartsArray.add(chartObj);
+                    dto.setCharts(chartsArray);
+                }
             } catch (Exception e) {
-                // 如果包装失败，保留原始 chartConfig，charts 为 null（前端会兼容）
+                // JSON 解析失败（可能包含 JS 函数），直接包装原始字符串
+                com.alibaba.fastjson2.JSONArray chartsArray = new com.alibaba.fastjson2.JSONArray();
+                com.alibaba.fastjson2.JSONObject chartObj = new com.alibaba.fastjson2.JSONObject();
+                String type = dto.getChartType() != null ? dto.getChartType() : "ai";
+                chartObj.put("type", type);
+                chartObj.put("config", chartConfigStr);
+                chartsArray.add(chartObj);
+                dto.setCharts(chartsArray);
             }
         }
         
