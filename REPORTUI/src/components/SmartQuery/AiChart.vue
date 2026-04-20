@@ -9,7 +9,7 @@ export default {
   name: 'AiChart',
   props: {
     config: {
-      type: Object,
+      type: [Object, String],
       required: true
     }
   },
@@ -70,8 +70,14 @@ export default {
       }
       
       try {
+        // 如果 config 是字符串（可能包含 JS 函数），使用 new Function 解析
+        let parsedConfig = config
+        if (typeof config === 'string') {
+          parsedConfig = new Function('return ' + config)()
+        }
+        
         // 设置配置项
-        this.chart.setOption(config, true)
+        this.chart.setOption(parsedConfig, true)
         
         // 添加点击事件
         this.chart.on('click', (params) => {

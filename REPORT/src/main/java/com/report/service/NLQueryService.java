@@ -149,8 +149,12 @@ public class NLQueryService extends BaseService {
             response.put("chartType", chartType);
             try {
                 if ("ai".equals(chartType) && chartConfig != null) {
+                    // chartConfig 作为原始字符串传递（可能包含 JS 函数，不能 JSON.parse）
                     com.alibaba.fastjson2.JSONArray chartsArray = new com.alibaba.fastjson2.JSONArray();
-                    chartsArray.add(JSON.parse(chartConfig));
+                    com.alibaba.fastjson2.JSONObject chartObj = new com.alibaba.fastjson2.JSONObject();
+                    chartObj.put("type", "ai");
+                    chartObj.put("config", chartConfig);
+                    chartsArray.add(chartObj);
                     response.put("charts", chartsArray);
                 } else {
                     response.put("charts", new com.alibaba.fastjson2.JSONArray());
