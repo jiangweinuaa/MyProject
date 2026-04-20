@@ -146,6 +146,7 @@ public class NLQueryService extends BaseService {
             }
             
             // 统一返回 charts 数组格式
+            response.put("chartType", chartType);
             try {
                 if ("ai".equals(chartType) && chartConfig != null) {
                     com.alibaba.fastjson2.JSONArray chartsArray = new com.alibaba.fastjson2.JSONArray();
