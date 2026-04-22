@@ -1,0 +1,20 @@
+-- 表结构向量嵌入表
+-- 用于 Schema 检索：将表名、注释、字段信息向量化，通过向量相似度匹配相关表
+
+CREATE TABLE AI_TABLE_EMBEDDING (
+    TABLE_NAME VARCHAR2(100) NOT NULL,
+    EID VARCHAR2(20) DEFAULT '99',
+    TABLE_DESC VARCHAR2(1000),              -- 表名 + 表注释（用于 embedding）
+    ALL_COLUMNS_DESC VARCHAR2(4000),        -- 完整表结构描述（用于 embedding）
+    VECTOR_DATA CLOB,                       -- 向量数据 JSON 数组，如 [0.12, -0.34, ...]
+    MODEL_ID VARCHAR2(50),                  -- 使用的 embedding 模型，如 text-embedding-v3
+    UPDATED_TIME DATE DEFAULT SYSDATE,
+    CONSTRAINT PK_TABLE_EMBEDDING PRIMARY KEY (TABLE_NAME, EID)
+);
+
+COMMENT ON TABLE AI_TABLE_EMBEDDING IS '表结构向量嵌入表';
+COMMENT ON COLUMN AI_TABLE_EMBEDDING.TABLE_NAME IS '表名';
+COMMENT ON COLUMN AI_TABLE_EMBEDDING.TABLE_DESC IS '表的简要描述（用于生成向量）';
+COMMENT ON COLUMN AI_TABLE_EMBEDDING.ALL_COLUMNS_DESC IS '完整表结构描述（用于生成向量）';
+COMMENT ON COLUMN AI_TABLE_EMBEDDING.VECTOR_DATA IS '向量数据（JSON 数组格式）';
+COMMENT ON COLUMN AI_TABLE_EMBEDDING.MODEL_ID IS '使用的 Embedding 模型';

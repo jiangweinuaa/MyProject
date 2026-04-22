@@ -170,6 +170,8 @@ const menus = [
   { path: '/stock-analysis', title: '商品库存分析', icon: 'Box' },
   { path: '/dcp-sale-qty', title: '商品销售明细', icon: 'List' },
   { path: '/api-doc', title: 'API 文档', icon: 'Document' },
+  { path: '/schema-test', title: '🔍 Schema 检索测试', icon: 'Search' },
+  { path: '/dashvector-test', title: '🔮 DashVector 检索测试', icon: 'MagicStick' },
   { path: '/product-recognition', title: '商品识别', icon: 'Picture' },
   { path: '/training-library', title: '训练库管理', icon: 'FolderOpened' },
   { path: '/retrain', title: '商品重新训练', icon: 'RefreshRight' },

@@ -57,3 +57,6 @@ conversation:
   # 5 = 保留最近 5 轮（推荐）
   # 10 = 保留最近 10 轮（完整历史）
   max-history: 5
+
+#   api-key: YOUR_DASHVECTOR_API_KEY
+#   endpoint: https://YOUR_CLUSTER_ENDPOINT

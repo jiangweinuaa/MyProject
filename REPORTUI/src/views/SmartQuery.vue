@@ -625,7 +625,7 @@ export default {
      */
     hasChartType(msg, type) {
       // 如果是 AI 生成的图表配置，使用 AI 配置渲染，不使用自动检测
-      if (msg.chartType === 'ai' && msg.chartConfig) {
+      if (msg.chartType === 'ai' && (msg.chartConfig || (msg.charts && msg.charts.length > 0))) {
         return false  // AI 模式下不显示自动图表组件
       }
       

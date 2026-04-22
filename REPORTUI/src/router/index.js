@@ -120,6 +120,18 @@ const routes = [
         name: 'ApiDoc',
         component: () => import('@/views/ApiDoc.vue'),
         meta: { title: 'API 文档', icon: 'Document' }
+      },
+      {
+        path: '/schema-test',
+        name: 'SchemaTest',
+        component: () => import('@/views/SchemaTest.vue'),
+        meta: { title: '🔍 Schema 检索测试', icon: 'Search' }
+      },
+      {
+        path: '/dashvector-test',
+        name: 'DashVectorTest',
+        component: () => import('@/views/DashVectorTest.vue'),
+        meta: { title: '🔮 DashVector 检索测试', icon: 'MagicStick' }
       }
     ]
   }
